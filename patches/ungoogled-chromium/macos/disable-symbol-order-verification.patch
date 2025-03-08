@@ -2,7 +2,7 @@
 
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
-@@ -1255,7 +1255,7 @@ if (is_win) {
+@@ -1241,7 +1241,7 @@ if (is_win) {
  
    # TOOD(crbug/1163903#c8) - thakis@ look into why profile and coverage
    # instrumentation adds these symbols in different orders
