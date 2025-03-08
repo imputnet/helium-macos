@@ -1,6 +1,6 @@
 --- a/build/rust/std/remap_alloc.cc
 +++ b/build/rust/std/remap_alloc.cc
-@@ -92,7 +92,11 @@ extern "C" {
+@@ -97,7 +97,11 @@ extern "C" {
    __attribute__((visibility("default"))) __attribute__((weak))
  #endif
  #else
@@ -12,7 +12,7 @@
  #endif  // COMPONENT_BUILD
  
  #if !BUILDFLAG(RUST_ALLOCATOR_USES_PARTITION_ALLOC) && BUILDFLAG(IS_WIN) && \
-@@ -109,8 +113,13 @@ extern "C" {
+@@ -114,8 +118,13 @@ extern "C" {
  // Marked as weak as when Rust drives linking it includes this symbol itself,
  // and we don't want a collision due to C++ being in the same link target, where
  // C++ causes us to explicitly link in the stdlib and this symbol here.
