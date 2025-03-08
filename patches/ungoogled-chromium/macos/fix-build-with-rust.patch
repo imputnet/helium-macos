@@ -28,7 +28,7 @@
    # Rust targets to be rebuilt, which allows you to update your toolchain and
    # not break incremental builds.
 -  rustc_version = ""
-+  rustc_version = "rustc 1.85.0-nightly (9e136a30a 2024-12-19)"
++  rustc_version = "rustc 1.86.0-nightly (69fd5e405 2025-02-15)"
  
    # If you're using a Rust toolchain as specified by rust_sysroot_absolute,
    # you can specify whether it supports nacl here.
