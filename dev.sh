@@ -71,6 +71,11 @@ ___helium_setup() {
     ___helium_info_pull_thirdparty
 
     "$_root_dir/devutils/update_patches.sh" merge
+    python3 "$_main_repo/utils/helium_version.py" \
+        --tree "$_main_repo" \
+        --platform-tree "$_root_dir" \
+        --chromium-tree "$_src_dir"
+
     cd "$_src_dir"
     quilt push -a --refresh
 

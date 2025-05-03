@@ -41,6 +41,11 @@ python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "
 python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
 "$_main_repo/utils/name_substitution.sh" sub "$_src_dir"
 
+python3 "$_main_repo/utils/helium_version.py" \
+    --tree "$_main_repo" \
+    --platform-tree "$_root_dir" \
+    --chromium-tree "$_src_dir"
+
 # Generate and apply Helium resources
 "$_root_dir/resources/generate_icons.sh"
 python3 "$_main_repo/utils/replace_resources.py" "$_root_dir/resources/platform_resources.txt" "$_root_dir/resources" "$_src_dir"

@@ -4,6 +4,7 @@
 _target_cpu="${1:-x86_64}"
 
 _root_dir=$(dirname $(greadlink -f $0))
+_main_repo="$_root_dir/helium-chromium"
 _src_dir="$_root_dir/build/src"
 
 # If build finished successfully
@@ -12,8 +13,9 @@ if [[ -f "$_root_dir/build_finished_$_target_cpu.log" ]] ; then
   _chromium_version=$(cat $_root_dir/helium-chromium/chromium_version.txt)
   _ungoogled_revision=$(cat $_root_dir/helium-chromium/revision.txt)
   _package_revision=$(cat $_root_dir/revision.txt)
+  _helium_version=$(python3 "$_main_repo/utils/helium_version.py" --tree "$_main_repo" --platform-tree "$_root_dir" --print)
 
-  _file_name="helium_${_chromium_version}-${_ungoogled_revision}.${_package_revision}_${_target_cpu}-macos.dmg"
+  _file_name="helium_${_helium_version}_${_target_cpu}-macos.dmg"
   _hash_name="${_file_name}.hashes.md"
   
   cd "$_src_dir"
