@@ -1,0 +1,28 @@
+name: Sanity check
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    runs-on: macos-15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Copy GitHub specific scripts to git-root folder
+      run: cp -va ./.github/scripts/ ./
+    - name: Run sanity check
+      run: ./sanity-check.sh
+  substitution:
+    runs-on: macos-15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Copy GitHub specific scripts to git-root folder
+      run: cp -va ./.github/scripts/ ./
+    - name: Run substitution check
+      run: ./sanity-check.sh sub
