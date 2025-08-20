@@ -149,3 +149,16 @@ Once it's complete, a `.dmg` should appear in `build/`.
 11. Ensure patches/series is formatted correctly, e.g. blank lines
 12. Sanity checking for consistency in series file: `./devutils/check_patch_files.sh`
 13. Use git to add changes and commit
+
+## Features
+
+### On-Device Translation
+
+Helium now includes support for on-device translation that works without sending data to external services. This feature:
+
+- Enables translation functionality in the browser UI and context menus
+- Uses local machine learning models for translation
+- Preserves privacy by not contacting Google or other external translation services
+- Can be disabled with the `--disable-translate` command line flag if desired
+
+The translation feature is enabled by default in builds and provides a privacy-focused alternative to cloud-based translation services.
