@@ -1,6 +1,6 @@
 --- a/third_party/libpng/BUILD.gn
 +++ b/third_party/libpng/BUILD.gn
-@@ -107,6 +107,12 @@ source_set("libpng_sources") {
+@@ -109,6 +109,12 @@ source_set("libpng_sources") {
      cflags += [ "/wd4146" ]
    }
  

@@ -1,6 +1,6 @@
 --- a/build/config/mac/BUILD.gn
 +++ b/build/config/mac/BUILD.gn
-@@ -44,6 +44,8 @@ config("compiler") {
+@@ -50,6 +50,8 @@ config("compiler") {
    if (export_libcxxabi_from_executables) {
      ldflags += [ "-Wl,-undefined,dynamic_lookup" ]
    }

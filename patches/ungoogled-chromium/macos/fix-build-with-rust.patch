@@ -1,10 +1,10 @@
 --- a/build/config/clang/BUILD.gn
 +++ b/build/config/clang/BUILD.gn
-@@ -289,8 +289,6 @@ clang_lib("compiler_builtins") {
+@@ -292,8 +292,6 @@ clang_lib("compiler_builtins") {
      } else {
        assert(false, "unsupported target_platform=$target_platform")
      }
--  } else {
+-  } else if (current_cpu != "ppc64" && current_cpu != "s390x") {
 -    libname = "builtins"
    }
  }
@@ -25,7 +25,7 @@
    # Rust targets to be rebuilt, which allows you to update your toolchain and
    # not break incremental builds.
 -  rustc_version = ""
-+  rustc_version = "rustc 1.88.0-nightly (13e879094 2025-05-04)"
++  rustc_version = "rustc 1.89.0-nightly (be19eda0d 2025-06-22)"
  
-   # If you're using a Rust toolchain as specified by rust_sysroot_absolute,
-   # you can specify whether it supports nacl here.
+   # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
+   #
