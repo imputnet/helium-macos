@@ -1,0 +1,852 @@
+--- a/chrome/browser/search_engines/template_url_service_factory.cc
++++ b/chrome/browser/search_engines/template_url_service_factory.cc
+@@ -28,6 +28,7 @@
+ #include "components/search_engines/enterprise/enterprise_search_manager.h"
+ #include "components/search_engines/search_engines_pref_names.h"
+ #include "components/search_engines/template_url_service.h"
++#include "content/public/browser/storage_partition.h"
+ #include "rlz/buildflags/buildflags.h"
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -65,6 +66,7 @@ std::unique_ptr<KeyedService> TemplateUR
+   Profile* profile = Profile::FromBrowserContext(context);
+   return std::make_unique<TemplateURLService>(
+       CHECK_DEREF(profile->GetPrefs()),
++      context->GetDefaultStoragePartition()->GetURLLoaderFactoryForBrowserProcess(),
+       CHECK_DEREF(
+           search_engines::SearchEngineChoiceServiceFactory::GetForProfile(
+               profile)),
+--- a/components/search_engines/template_url_data_util.h
++++ b/components/search_engines/template_url_data_util.h
+@@ -8,6 +8,7 @@
+ #include <memory>
+ 
+ #include "base/values.h"
++#include "components/search_engines/template_url_bang_manager.h"
+ 
+ namespace TemplateURLPrepopulateData {
+ struct PrepopulatedEngine;
+@@ -40,4 +41,5 @@ std::unique_ptr<TemplateURLData> Templat
+ std::unique_ptr<TemplateURLData> TemplateURLDataFromStarterPackEngine(
+     const template_url_starter_pack_data::StarterPackEngine& engine);
+ 
++TemplateURLData TemplateURLDataFromBang(const Bangs::Bang& bang);
+ #endif  // COMPONENTS_SEARCH_ENGINES_TEMPLATE_URL_DATA_UTIL_H_
+--- a/components/search_engines/BUILD.gn
++++ b/components/search_engines/BUILD.gn
+@@ -35,6 +35,8 @@ static_library("search_engines") {
+     "search_terms_data.h",
+     "template_url.cc",
+     "template_url.h",
++    "template_url_bang_manager.cc",
++    "template_url_bang_manager.h",
+     "template_url_data.cc",
+     "template_url_data.h",
+     "template_url_data_util.cc",
+@@ -79,6 +81,7 @@ static_library("search_engines") {
+     "//components/country_codes",
+     "//components/crash/core/common:crash_key",
+     "//components/database_utils",
++    "//components/helium_services",
+     "//components/infobars/core",
+     "//components/lens:lens",
+     "//components/lens/proto/server:proto",
+--- a/components/search_engines/template_url_data_util.cc
++++ b/components/search_engines/template_url_data_util.cc
+@@ -15,6 +15,7 @@
+ #include "components/search_engines/default_search_manager.h"
+ #include "components/search_engines/template_url_data.h"
+ #include "components/search_engines/template_url_starter_pack_data.h"
++#include "components/search_engines/template_url_bang_manager.h"
+ #include "third_party/search_engines_data/resources/definitions/prepopulated_engines.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "url/gurl.h"
+@@ -519,3 +520,20 @@ std::unique_ptr<TemplateURLData> Templat
+ 
+   return turl;
+ }
++
++TemplateURLData TemplateURLDataFromBang(const Bangs::Bang& bang) {
++  TemplateURLData turl;
++  turl.SetShortName(base::UTF8ToUTF16(bang.name));
++  turl.SetKeyword(u"!" + base::UTF8ToUTF16(bang.bang));
++  turl.SetURL(bang.template_url);
++
++  GURL favicon_url = GURL(bang.template_url).GetWithEmptyPath();
++  favicon_url.path() = "/favicon.ico";
++  turl.favicon_url = std::move(favicon_url);
++  turl.bang_id = 1 + bang.id;
++
++  turl.safe_for_autoreplace = false;
++  turl.GenerateSyncGUID();
++  turl.is_active = TemplateURLData::ActiveStatus::kTrue;
++  return turl;
++}
+--- a/components/search_engines/template_url_service.cc
++++ b/components/search_engines/template_url_service.cc
+@@ -40,6 +40,8 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "build/build_config.h"
+ #include "components/country_codes/country_codes.h"
++#include "components/helium_services/pref_names.h"
++#include "components/helium_services/helium_services_helpers.h"
+ #include "components/omnibox/common/omnibox_features.h"
+ #include "components/pref_registry/pref_registry_syncable.h"
+ #include "components/prefs/pref_service.h"
+@@ -56,7 +58,9 @@
+ #include "components/search_engines/search_engines_switches.h"
+ #include "components/search_engines/search_terms_data.h"
+ #include "components/search_engines/template_url.h"
++#include "components/search_engines/template_url_bang_manager.h"
+ #include "components/search_engines/template_url_data.h"
++#include "components/search_engines/template_url_data_util.h"
+ #include "components/search_engines/template_url_prepopulate_data.h"
+ #include "components/search_engines/template_url_prepopulate_data_resolver.h"
+ #include "components/search_engines/template_url_service_client.h"
+@@ -70,6 +74,7 @@
+ #include "components/sync/protocol/search_engine_specifics.pb.h"
+ #include "components/url_formatter/url_fixer.h"
+ #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
+ #include "url/gurl.h"
+ #include "url/origin.h"
+ #include "url/url_util.h"
+@@ -550,6 +555,7 @@ class TemplateURLService::PreLoadingProv
+ // TemplateURLService ---------------------------------------------------------
+ TemplateURLService::TemplateURLService(
+     PrefService& prefs,
++    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+     search_engines::SearchEngineChoiceService& search_engine_choice_service,
+     TemplateURLPrepopulateData::Resolver& prepopulate_data_resolver,
+     std::unique_ptr<SearchTermsData> search_terms_data,
+@@ -562,6 +568,8 @@ TemplateURLService::TemplateURLService(
+       prepopulate_data_resolver_(prepopulate_data_resolver),
+       search_terms_data_(std::move(search_terms_data)),
+       web_data_service_(web_data_service),
++      url_loader_factory_(std::move(url_loader_factory)),
++      bang_manager_(Bangs::BangManager::GetInstance()),
+       client_(std::move(client)),
+       dsp_change_callback_(dsp_change_callback),
+       pre_loading_providers_(std::make_unique<PreLoadingProviders>()),
+@@ -578,11 +586,13 @@ TemplateURLService::TemplateURLService(
+ 
+ TemplateURLService::TemplateURLService(
+     PrefService& prefs,
++    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+     search_engines::SearchEngineChoiceService& search_engine_choice_service,
+     TemplateURLPrepopulateData::Resolver& prepopulate_data_resolver,
+     base::span<const TemplateURLService::Initializer> initializers)
+     : TemplateURLService(
+           prefs,
++          url_loader_factory,
+           search_engine_choice_service,
+           prepopulate_data_resolver,
+           /*search_terms_data=*/std::make_unique<SearchTermsData>(),
+@@ -685,6 +695,10 @@ bool TemplateURLService::ShowInActivesLi
+ }
+ 
+ bool TemplateURLService::HiddenFromLists(const TemplateURL* t_url) const {
++  if (t_url->bang_id()) {
++    return true;
++  }
++
+   switch (t_url->policy_origin()) {
+     case TemplateURLData::PolicyOrigin::kDefaultSearchProvider:
+       return false;
+@@ -1514,11 +1528,37 @@ void TemplateURLService::Load() {
+ 
+   if (web_data_service_) {
+     load_handle_ = web_data_service_->GetKeywords(this);
++    LoadBangs();
+   } else {
+     ChangeToLoadedState();
+   }
+ }
+ 
++void TemplateURLService::LoadBangs() {
++  VLOG(2) << "LoadBangs() called";
++  bang_manager_->LoadBangs(url_loader_factory_, prefs_.get(),
++    base::BindOnce(&TemplateURLService::BangsLoadedCallback, base::Unretained(this)));
++}
++
++void TemplateURLService::BangsLoadedCallback() {
++  LOG(INFO) << "BangsLoadedCallback() called";
++
++  for (const auto& bang : bang_manager_->GetBangs()) {
++    auto template_data = TemplateURLDataFromBang(bang);
++
++    if (!GetTemplateURLForKeyword(template_data.keyword())) {
++      template_data.id = ++next_id_;
++
++      auto t_url = std::make_unique<TemplateURL>(
++        std::move(template_data), TemplateURL::Type::LOCAL);
++      auto t_ptr = t_url.get();
++
++      template_urls_.push_back(std::move(t_url));
++      AddToMaps(t_ptr);
++    }
++  }
++}
++
+ base::CallbackListSubscription TemplateURLService::RegisterOnLoadedCallback(
+     base::OnceClosure callback) {
+   return loaded_ ? base::CallbackListSubscription()
+@@ -2520,6 +2560,13 @@ void TemplateURLService::Init() {
+             base::Unretained(this)));
+   }
+ 
++  helium::ConfigurePrefChangeRegistrarFor(
++    prefs::kHeliumBangsEnabled, pref_change_registrar_,
++    base::BindRepeating(
++        &TemplateURLService::LoadBangs,
++        base::Unretained(this))
++  );
++
+   DefaultSearchManager::Source source = DefaultSearchManager::FROM_USER;
+   const TemplateURLData* dse =
+       default_search_manager_.GetDefaultSearchEngine(&source);
+--- a/components/search_engines/template_url_service.h
++++ b/components/search_engines/template_url_service.h
+@@ -34,10 +34,12 @@
+ #include "components/search_engines/search_host_to_urls_map.h"
+ #include "components/search_engines/search_terms_data.h"
+ #include "components/search_engines/template_url.h"
++#include "components/search_engines/template_url_bang_manager.h"
+ #include "components/sync/model/sync_change.h"
+ #include "components/sync/model/syncable_service.h"
+ #include "components/sync/protocol/search_engine_specifics.pb.h"
+ #include "components/webdata/common/web_data_service_consumer.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
+ #if BUILDFLAG(IS_ANDROID)
+ #include "base/android/scoped_java_ref.h"
+ #endif
+@@ -150,6 +152,7 @@ class TemplateURLService final : public
+ 
+   TemplateURLService(
+       PrefService& prefs,
++      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+       search_engines::SearchEngineChoiceService& search_engine_choice_service,
+       TemplateURLPrepopulateData::Resolver& prepopulate_data_resolver,
+       std::unique_ptr<SearchTermsData> search_terms_data,
+@@ -161,6 +164,7 @@ class TemplateURLService final : public
+   // some template URL data.
+   explicit TemplateURLService(
+       PrefService& prefs,
++      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+       search_engines::SearchEngineChoiceService& search_engine_choice_service,
+       TemplateURLPrepopulateData::Resolver& prepopulate_data_resolver,
+       base::span<const TemplateURLService::Initializer> initializers = {});
+@@ -475,6 +479,8 @@ class TemplateURLService final : public
+   // OnTemplateURLServiceChanged.
+   void Load();
+ 
++  void LoadBangs();
++
+   // Registers a callback to be called when the service has loaded.
+   //
+   // If the service has already loaded, this function does nothing.
+@@ -711,6 +717,8 @@ class TemplateURLService final : public
+ 
+   void Init();
+ 
++  void BangsLoadedCallback();
++
+   // Simulate a loaded `TemplateURLService`.
+   void ApplyInitializersForTesting(
+       base::span<const TemplateURLService::Initializer> initializers);
+@@ -918,6 +926,10 @@ class TemplateURLService final : public
+   // Service used to store entries.
+   scoped_refptr<KeywordWebDataService> web_data_service_;
+ 
++  scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
++
++  Bangs::BangManager* bang_manager_;
++
+   std::unique_ptr<TemplateURLServiceClient> client_;
+ 
+   // This closure is run when the default search provider is set to Google.
+--- /dev/null
++++ b/components/search_engines/template_url_bang_manager.cc
+@@ -0,0 +1,215 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "components/search_engines/template_url_bang_manager.h"
++
++#include <memory>
++#include <string>
++#include <vector>
++#include <map>
++
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/memory/singleton.h"
++#include "base/json/json_reader.h"
++#include "components/helium_services/helium_services_helpers.h"
++#include "net/base/load_flags.h"
++#include "net/http/http_status_code.h"
++#include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
++#include "url/gurl.h"
++
++namespace Bangs {
++
++const int kMaxFetchRetries = 3;
++const int kFetchTimeoutSeconds = 30;
++
++constexpr net::NetworkTrafficAnnotationTag kCustomizationDocumentNetworkTag =
++    net::DefineNetworkTrafficAnnotation("native_bangs",
++                                        R"(
++        semantics {
++            sender: "Native bang loader"
++            description:
++            "Get data for native bangs."
++            trigger:
++            "Triggered when the browser is opened. "
++            data: "None."
++            destination: GOOGLE_OWNED_SERVICE
++        }
++        policy {
++            cookies_allowed: NO
++        })");
++
++
++BangManager* BangManager::GetInstance() {
++    return base::Singleton<
++        BangManager,
++        base::DefaultSingletonTraits<BangManager>
++    >::get();
++}
++
++BangCategory BangManager::GetCategoryForBang(size_t index) const {
++    if (auto category = category_map_.find(index - 1); category != category_map_.end()) {
++        return category->second;
++    }
++
++    return BANG_CATEGORY_OTHER;
++}
++
++BangCategory BangManager::GetCategoryFromJSONObject(std::string_view sc) const {
++    if (sc == "ai") {
++        return BANG_CATEGORY_AI;
++    }
++
++    return BANG_CATEGORY_OTHER;
++}
++
++void BangManager::LoadBangs(
++    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
++    PrefService& prefs,
++    base::OnceClosure callback) {
++    if (bangs_.empty() && !load_pending_) {
++        load_pending_ = true;
++        DoStartFileFetch(url_loader_factory, prefs);
++    } else if (!load_pending_) {
++        std::move(callback).Run();
++        return;
++    }
++
++    callbacks_.push_back(std::move(callback));
++}
++
++void BangManager::DoStartFileFetch(
++    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
++    PrefService& prefs
++) {
++    auto request = std::make_unique<network::ResourceRequest>();
++    request->url = helium::GetServicesBaseURL(prefs).Resolve(kBangsPrefix);
++
++    request->load_flags = helium::ShouldFetchBangs(prefs)
++                            ? net::LOAD_NORMAL
++                            : net::LOAD_ONLY_FROM_CACHE;
++
++    request->credentials_mode = network::mojom::CredentialsMode::kOmit;
++    request->headers.SetHeader("Accept", "application/json");
++
++    url_loader_ = network::SimpleURLLoader::Create(
++        std::move(request), kCustomizationDocumentNetworkTag);
++
++    url_loader_->SetTimeoutDuration(base::Seconds(kFetchTimeoutSeconds));
++    url_loader_->SetRetryOptions(
++        kMaxFetchRetries, network::SimpleURLLoader::RETRY_ON_NETWORK_CHANGE);
++
++    url_loader_->DownloadToString(
++        url_loader_factory.get(),
++        base::BindOnce(&BangManager::OnSimpleLoaderComplete, base::Unretained(this)),
++        5e6 /* 5 MB */
++    );
++}
++
++void BangManager::OnSimpleLoaderComplete(
++    std::unique_ptr<std::string> response_body) {
++    int response_code = -1;
++    std::string mime_type;
++
++    if (url_loader_->ResponseInfo() && url_loader_->ResponseInfo()->headers) {
++        response_code = url_loader_->ResponseInfo()->headers->response_code();
++        url_loader_->ResponseInfo()->headers->GetMimeType(&mime_type);
++    }
++
++    if (response_body && mime_type == "application/json") {
++        BangManager::LoadManifestFromString(*response_body);
++    } else {
++        LOG(ERROR) << "Fetching bangs failed:"
++                   << " response code = " << response_code;
++    }
++
++    load_pending_ = false;
++}
++
++void BangManager::LoadManifestFromString(const std::string& manifest) {
++    auto parsed = base::JSONReader::ReadAndReturnValueWithError(
++        manifest,
++        base::JSON_ALLOW_COMMENTS | base::JSON_ALLOW_TRAILING_COMMAS
++    );
++
++    if (!parsed.has_value()) {
++        LOG(ERROR) << parsed.error().message;
++        return;
++    } else if (!parsed->is_list()) {
++        LOG(ERROR) << "received invalid bang data - not an array";
++        return;
++    }
++
++    auto list = std::move(*parsed).TakeList();
++    bangs_.reserve(list.size());
++
++    size_t index = 0;
++
++    for (auto& bang : list) {
++        if (!bang.is_dict()) {
++            continue;
++        }
++
++        auto dict = std::move(bang).TakeDict();
++        auto bname = dict.FindString("s");
++
++        std::vector<const std::string*> triggers;
++        if (auto bbang = dict.FindString("t")) {
++            triggers.push_back(bbang);
++        }
++
++        if (auto bbangs = dict.FindList("ts")) {
++            triggers.reserve(triggers.size() + bbangs->size());
++
++            for (const auto& trigger : *bbangs) {
++                const std::string* value = trigger.GetIfString();
++                if (!value) continue;
++
++                triggers.push_back(value);
++            }
++        }
++
++        auto burl_template = dict.FindString("u");
++        if (!bname || !burl_template || triggers.empty()) {
++            continue;
++        }
++
++        auto b_gurl = GURL(*burl_template);
++        if (!b_gurl.is_valid() || !b_gurl.SchemeIsHTTPOrHTTPS()) {
++            LOG(INFO) << "invalid bang url " << *burl_template;
++            continue;
++        }
++
++        auto bcategory = dict.FindString("sc");
++        if (bcategory) {
++            category_map_[index] = GetCategoryFromJSONObject(*bcategory);
++        }
++
++        for (auto trigger : triggers) {
++            // We need to pass the URL here as-is, because otherwise URLs
++            // which have the template in the path will have it %-encoded,
++            // which will break everything.
++            bangs_.emplace_back(index++, *bname, *trigger, *burl_template);
++        }
++    }
++
++    LOG(INFO) << bangs_.size() << " bangs loaded";
++    if (!callbacks_.empty()) {
++        auto callbacks = std::move(callbacks_);
++        for (auto& cb : callbacks) {
++            std::move(cb).Run();
++        }
++    }
++}
++
++const std::vector<Bang>& BangManager::GetBangs() {
++    return bangs_;
++}
++
++}
++
+--- /dev/null
++++ b/components/search_engines/template_url_bang_manager.h
+@@ -0,0 +1,75 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef COMPONENTS_SEARCH_ENGINES_TEMPLATE_URL_BANG_MANAGER_H_
++#define COMPONENTS_SEARCH_ENGINES_TEMPLATE_URL_BANG_MANAGER_H_
++
++#include <memory>
++#include <string>
++#include <vector>
++#include <map>
++
++#include "base/memory/weak_ptr.h"
++#include "base/functional/callback.h"
++#include "components/prefs/pref_service.h"
++#include "services/network/public/cpp/simple_url_loader.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++#include "url/gurl.h"
++
++namespace Bangs {
++    // Template URL where to fetch bangs data from.
++    static constexpr char kBangsPrefix[] = "/bangs.json";
++
++    struct Bang {
++        size_t id;
++        std::string name;
++        std::string bang;
++        std::string template_url;
++    };
++
++    enum BangCategory {
++        BANG_CATEGORY_OTHER = 0,
++        BANG_CATEGORY_AI,
++    };
++
++    class BangManager {
++    public:
++        static BangManager* GetInstance();
++
++        BangManager() = default;
++        BangManager(const BangManager&) = delete;
++        BangManager& operator=(const BangManager&) = delete;
++
++        BangCategory GetCategoryForBang(size_t index) const;
++
++        void LoadBangs(
++            scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
++            PrefService& prefs,
++            base::OnceClosure callback
++        );
++        const std::vector<Bang>& GetBangs();
++
++    private:
++        void DoStartFileFetch(
++            scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
++            PrefService& prefs
++        );
++        void OnSimpleLoaderComplete(std::unique_ptr<std::string> response_body);
++        void LoadManifestFromString(const std::string& manifest);
++        BangCategory GetCategoryFromJSONObject(std::string_view sc) const;
++
++        // Weak factory for callbacks.
++        base::WeakPtrFactory<BangManager> weak_ptr_factory_{this};
++        // SimpleURLLoader instance.
++        std::unique_ptr<network::SimpleURLLoader> url_loader_;
++
++        std::vector<Bang> bangs_;
++        bool load_pending_;
++        std::vector<base::OnceClosure> callbacks_;
++        std::map<size_t, BangCategory> category_map_;
++    };
++}
++
++#endif  // COMPONENTS_SEARCH_ENGINES_TEMPLATE_URL_BANG_MANAGER_H_
++
+--- a/components/omnibox/browser/autocomplete_input.cc
++++ b/components/omnibox/browser/autocomplete_input.cc
+@@ -739,9 +739,9 @@ bool AutocompleteInput::HasHTTPSScheme(c
+ // static
+ AutocompleteInput::FeaturedKeywordMode
+ AutocompleteInput::GetFeaturedKeywordMode(std::u16string_view text) {
+-  if (text == u"@")
++  if (text == u"@" || text == u"!")
+     return FeaturedKeywordMode::kExact;
+-  if (text.starts_with(u'@'))
++  if (text.starts_with(u'@') || text.starts_with(u'!'))
+     return FeaturedKeywordMode::kPrefix;
+   return FeaturedKeywordMode::kFalse;
+ }
+@@ -909,6 +909,7 @@ std::u16string AutocompleteInput::Autoco
+     const std::u16string& input,
+     bool trim_leading_whitespace,
+     std::u16string* remaining_input) {
++  std::u16string_view input_view = input;
+   // Find end of first token.  The AutocompleteController has trimmed leading
+   // whitespace, so we need not skip over that.
+   const size_t first_white(input.find_first_of(base::kWhitespaceUTF16));
+@@ -917,6 +918,39 @@ std::u16string AutocompleteInput::Autoco
+     return input;  // Only one token provided.
+   }
+ 
++  const size_t first_exclamation(input.find_first_of('!'));
++  if (first_exclamation != std::u16string::npos && first_exclamation != 0) {
++    bool might_be_bang = input_view.substr(first_exclamation - 1)
++                                   .find_first_of(base::kWhitespaceUTF16) == 0;
++
++    if (might_be_bang) {
++      auto remaining_str = std::u16string(input_view.substr(0, first_exclamation));
++      std::u16string_view bang = input_view.substr(first_exclamation);
++
++      const size_t space_after(
++        input_view.find_first_of(base::kWhitespaceUTF16, first_exclamation)
++      );
++
++      if (space_after != std::string::npos) {
++        bang = bang.substr(0, space_after - first_exclamation);
++        remaining_str += input_view.substr(space_after + 1);
++      } else if (remaining_str.size() > 0) {
++        remaining_str.erase(remaining_str.size() - 1);
++      }
++
++      if (remaining_input != nullptr) {
++        if (trim_leading_whitespace) {
++          size_t offset = remaining_str.find_first_not_of(base::kWhitespaceUTF16);
++          remaining_str.erase(0, offset);
++        }
++
++        *remaining_input = std::move(remaining_str);
++      }
++
++      return std::u16string(bang);
++    }
++  }
++
+   // Set |remaining_input| to everything after the first token.
+   if (remaining_input != nullptr) {
+     const size_t remaining_start =
+--- a/components/search_engines/template_url_data.cc
++++ b/components/search_engines/template_url_data.cc
+@@ -32,7 +32,7 @@ constexpr bool kEnableBuiltinSearchProvi
+ // Returns a GUID used for sync, which is random except for built-in search
+ // engines. The latter benefit from using a deterministic GUID, to make sure
+ // sync doesn't incur in duplicates for prepopulated engines.
+-std::string GenerateGUID(int prepopulate_id, int starter_pack_id) {
++std::string GenerateGUID(int prepopulate_id, int starter_pack_id, int bang_id) {
+   // We compute a GUID deterministically given |prepopulate_id| or
+   // |starter_pack_id|, using an arbitrary base GUID.
+   std::string guid;
+@@ -43,6 +43,9 @@ std::string GenerateGUID(int prepopulate
+   } else if (starter_pack_id > 0) {
+     guid = base::StringPrintf("ec205736-edd7-4022-a9a3-b431fc%06d",
+                               starter_pack_id);
++  } else if (bang_id > 0) {
++    guid = base::StringPrintf("2bfdeb48-cca4-4647-8843-7bb6c8%06d",
++                              bang_id);
+   } else {
+     guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
+   }
+@@ -128,7 +131,7 @@ TemplateURLData::TemplateURLData(
+       regulatory_origin(RegulatoryExtensionType::kDefault),
+       usage_count(0),
+       prepopulate_id(prepopulate_id),
+-      sync_guid(GenerateGUID(prepopulate_id, 0)),
++      sync_guid(GenerateGUID(prepopulate_id, 0, 0)),
+       preconnect_to_search_url(preconnect_to_search_url),
+       prefetch_likely_navigations(prefetch_likely_navigations) {
+   SetShortName(name);
+@@ -201,7 +204,7 @@ std::string TemplateURLData::GetBuiltinI
+ }
+ 
+ void TemplateURLData::GenerateSyncGUID() {
+-  sync_guid = GenerateGUID(prepopulate_id, starter_pack_id);
++  sync_guid = GenerateGUID(prepopulate_id, starter_pack_id, bang_id);
+ }
+ 
+ size_t TemplateURLData::EstimateMemoryUsage() const {
+--- a/components/search_engines/template_url_data.h
++++ b/components/search_engines/template_url_data.h
+@@ -268,6 +268,9 @@ struct TemplateURLData {
+   // starter_pack_id > 0.
+   int starter_pack_id{0};
+ 
++  // This TemplateURL is a bang if bang_id > 0.
++  int bang_id{0};
++
+   friend bool operator==(const TemplateURLData&,
+                          const TemplateURLData&) = default;
+ 
+--- a/components/search_engines/template_url.cc
++++ b/components/search_engines/template_url.cc
+@@ -1675,6 +1675,8 @@ bool TemplateURL::IsBetterThanConflictin
+                                 : base::Time(),
+         // Prefer engines that CANNOT be auto-replaced.
+         !engine->safe_for_autoreplace(),
++        // Favor bangs over other auto-generated engines.
++        engine->bang_id() > 0,
+         // Prefer engines created by regulatory programs.
+         engine->CreatedByRegulatoryProgram(),
+         // Favor prepopulated engines over other auto-generated engines.
+--- a/components/search_engines/template_url.h
++++ b/components/search_engines/template_url.h
+@@ -825,6 +825,8 @@ class TemplateURL {
+            starter_pack_id() == template_url_starter_pack_data::kAiMode;
+   }
+ 
++  int bang_id() const { return data().bang_id; }
++
+   const std::vector<TemplateURLRef>& url_refs() const { return url_refs_; }
+   const TemplateURLRef& url_ref() const {
+     // Sanity check for https://crbug.com/781703.
+--- a/components/helium_services/helium_services_helpers.cc
++++ b/components/helium_services/helium_services_helpers.cc
+@@ -66,6 +66,11 @@ bool ShouldAccessExtensionService(const
+             prefs.GetBoolean(prefs::kHeliumExtProxyEnabled);
+ }
+ 
++bool ShouldFetchBangs(const PrefService& prefs) {
++    return ShouldAccessServices(prefs) &&
++            prefs.GetBoolean(prefs::kHeliumBangsEnabled);
++}
++
+ GURL GetExtensionUpdateURL(const PrefService& prefs) {
+     if (!ShouldAccessExtensionService(prefs)) {
+         return GetDummyURL();
+--- a/components/helium_services/helium_services_helpers.h
++++ b/components/helium_services/helium_services_helpers.h
+@@ -18,6 +18,7 @@ const char kHeliumDefaultOrigin[] =
+ const char kHeliumDummyOrigin[] =
+     "https://helium-services-are-disabled.qjz9zk";
+ 
++COMPONENT_EXPORT(HELIUM) bool ShouldFetchBangs(const PrefService& prefs);
+ COMPONENT_EXPORT(HELIUM) bool ShouldAccessExtensionService(const PrefService& prefs);
+ COMPONENT_EXPORT(HELIUM) GURL GetServicesBaseURL(const PrefService& prefs);
+ COMPONENT_EXPORT(HELIUM) GURL GetDummyURL();
+--- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
++++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
+@@ -1898,6 +1898,9 @@ void AddPrivacyStrings(content::WebUIDat
+       {"heliumServicesToggle", IDS_SETTINGS_HELIUM_SERVICES_TOGGLE},
+       {"heliumServicesToggleDescription",
+         IDS_SETTINGS_HELIUM_SERVICES_TOGGLE_DESCRIPTION},
++      {"heliumBangsToggle", IDS_SETTINGS_HELIUM_SERVICES_BANGS_TOGGLE},
++      {"heliumBangsToggleDescription",
++        IDS_SETTINGS_HELIUM_SERVICES_BANGS_TOGGLE_DESCRIPTION},
+       {"heliumExtProxyToggle",
+         IDS_SETTINGS_HELIUM_SERVICES_EXT_PROXY_TOGGLE},
+       {"heliumExtProxyToggleDescription",
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
+@@ -1890,6 +1890,12 @@
+   <message name="IDS_SETTINGS_HELIUM_SERVICES_EXT_PROXY_TOGGLE_DESCRIPTION" desc="Description of the toggle for enabling/disabling of downloading and proxying extensions">
+     When enabled, Helium will proxy extension downloads and updates to protect your privacy. When disabled, downloading and updating extensions will not work.
+   </message>
++  <message name="IDS_SETTINGS_HELIUM_SERVICES_BANGS_TOGGLE" desc="Toggle for enabling/disabling of downloading bangs">
++    Allow downloading the !bangs list
++  </message>
++  <message name="IDS_SETTINGS_HELIUM_SERVICES_BANGS_TOGGLE_DESCRIPTION" desc="Description of the toggle for enabling/disabling of downloading bangs">
++    Helium will fetch a list of bangs that help you browse the Internet faster, such as !w or !gh. When disabled, bangs will not work.
++  </message>
+   <message name="IDS_SETTINGS_HELIUM_SERVICES_OVERRIDE" desc="Text input for overriding the Helium services server">
+     Use your own instance of Helium services
+   </message>
+--- a/chrome/browser/resources/settings/privacy_page/services_page.html
++++ b/chrome/browser/resources/settings/privacy_page/services_page.html
+@@ -12,6 +12,11 @@
+     </settings-toggle-button>
+     <div class="cr-col">
+         <cr-collapse id="servicesCollapse" opened="[[prefs.helium.services.enabled.value]]">
++            <settings-toggle-button id="bangToggleButton"
++                pref="{{prefs.helium.services.bangs}}"
++                label="$i18n{heliumBangsToggle}"
++                sub-label="$i18n{heliumBangsToggleDescription}">
++            </settings-toggle-button>
+             <settings-toggle-button id="extProxyToggleButton"
+                 pref="{{prefs.helium.services.ext_proxy}}"
+                 label="$i18n{heliumExtProxyToggle}"
+--- a/chrome/browser/ui/browser_ui_prefs.cc
++++ b/chrome/browser/ui/browser_ui_prefs.cc
+@@ -191,6 +191,7 @@ void RegisterBrowserUserPrefs(user_prefs
+ 
+   {
+     registry->RegisterBooleanPref(prefs::kHeliumServicesEnabled, true);
++    registry->RegisterBooleanPref(prefs::kHeliumBangsEnabled, true);
+     registry->RegisterBooleanPref(prefs::kHeliumExtProxyEnabled, true);
+     registry->RegisterStringPref(prefs::kHeliumServicesOrigin, "");
+     registry->RegisterBooleanPref(prefs::kHeliumDidOnboarding, false);
+--- a/chrome/browser/extensions/api/settings_private/prefs_util.cc
++++ b/chrome/browser/extensions/api/settings_private/prefs_util.cc
+@@ -350,6 +350,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil
+       settings_api::PrefType::kBoolean;
+   (*s_allowlist)[::prefs::kHeliumExtProxyEnabled] =
+       settings_api::PrefType::kBoolean;
++  (*s_allowlist)[::prefs::kHeliumBangsEnabled] =
++      settings_api::PrefType::kBoolean;
+   (*s_allowlist)[::prefs::kHeliumServicesOrigin] =
+       settings_api::PrefType::kString;
+ 
+--- a/components/helium_services/pref_names.h
++++ b/components/helium_services/pref_names.h
+@@ -24,6 +24,9 @@ inline constexpr char kHeliumDidOnboardi
+ inline constexpr char kHeliumExtProxyEnabled[] =
+     "helium.services.ext_proxy";
+ 
++inline constexpr char kHeliumBangsEnabled[] =
++    "helium.services.bangs";
++
+ }  // namespace prefs
+ 
+ #endif  // COMPONENTS_HELIUM_SERVICES_PREF_NAMES_H_
+--- a/components/omnibox/browser/omnibox_edit_model.cc
++++ b/components/omnibox/browser/omnibox_edit_model.cc
+@@ -780,6 +780,17 @@ bool OmniboxEditModel::AcceptKeyword(
+ 
+   controller_->StopAutocomplete(/*clear_result=*/false);
+ 
++  const TemplateURL* turl =
++      controller_->client()->GetTemplateURLService()->GetTemplateURLForKeyword(
++          keyword_);
++
++  if (turl && turl->bang_id() > 0 && !user_text_.starts_with(u'!')) {
++    AutocompleteMatch match = CurrentMatch(nullptr);
++    if (!match.fill_into_edit.empty()) {
++      user_text_ = match.fill_into_edit;
++    }
++  }
++
+   is_keyword_hint_ = false;
+   keyword_mode_entry_method_ = entry_method;
+   if (original_user_text_with_keyword_.empty()) {
+@@ -822,9 +833,6 @@ bool OmniboxEditModel::AcceptKeyword(
+   }
+ 
+   base::RecordAction(base::UserMetricsAction("AcceptedKeywordHint"));
+-  const TemplateURL* turl =
+-      controller_->client()->GetTemplateURLService()->GetTemplateURLForKeyword(
+-          keyword_);
+   EmitEnteredKeywordModeHistogram(entry_method, turl);
+   return true;
+ }
+@@ -1506,7 +1514,13 @@ void OmniboxEditModel::InternalSetUserTe
+ 
+ std::u16string OmniboxEditModel::MaybeStripKeyword(
+     const std::u16string& text) const {
+-  return is_keyword_selected()
++  std::u16string trimmed_text;
++  base::TrimWhitespace(text, base::TRIM_LEADING, &trimmed_text);
++
++  std::u16string actual_keyword = base::ToLowerASCII(
++    AutocompleteInput::SplitKeywordFromInput(trimmed_text, false, nullptr));
++
++  return is_keyword_selected() && actual_keyword == keyword_
+              ? AutocompleteInput::SplitReplacementStringFromInput(text, false)
+              : text;
+ }
+@@ -2746,9 +2760,8 @@ bool OmniboxEditModel::MaybeAcceptKeywor
+     return false;
+ 
+   size_t keyword_length = new_text.length() - 1;
+-  return is_keyword_hint_ && (keyword_.length() == keyword_length) &&
++  return is_keyword_hint_ &&
+          IsSpaceCharForAcceptingKeyword(new_text[keyword_length]) &&
+-         !new_text.compare(0, keyword_length, keyword_, 0, keyword_length) &&
+          AcceptKeyword(OmniboxEventProto::SPACE_AT_END);
+ }
+ 
