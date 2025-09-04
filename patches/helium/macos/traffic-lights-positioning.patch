@@ -1,6 +1,6 @@
 --- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
 +++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
-@@ -30,6 +30,62 @@ const double kThinControllerHeight = 0.5
+@@ -32,6 +32,62 @@ const double kThinControllerHeight = 0.5
  @implementation BrowserWindowFrame {
    BOOL _inFullScreen;
    BOOL _alwaysShowTrafficLights;
@@ -63,7 +63,7 @@
  }
  
  // NSThemeFrame overrides.
-@@ -96,12 +152,20 @@ const double kThinControllerHeight = 0.5
+@@ -121,12 +177,20 @@ const double kThinControllerHeight = 0.5
    [[window standardWindowButton:NSWindowCloseButton] setAlphaValue:1.0];
    [[window standardWindowButton:NSWindowMiniaturizeButton] setAlphaValue:1.0];
    [[window standardWindowButton:NSWindowZoomButton] setAlphaValue:1.0];
@@ -96,26 +96,24 @@
  // NSWindow on screen.
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-@@ -331,6 +331,7 @@ NativeWidgetMacNSWindow* NativeWidgetNSW
+@@ -331,6 +331,14 @@ NativeWidgetMacNSWindow* NativeWidgetNSW
                      styleMask:params->style_mask
                        backing:NSBackingStoreBuffered
                          defer:NO];
-+      [(BrowserNativeWidgetWindow*)ns_window setTrafficLightXOffset:-9.0];
++
++      double controls_offset;
++      if (@available (macOS 26, *)) {
++        controls_offset = -1.0;
++      } else {
++        controls_offset = -9.0;
++      }
++      [(BrowserNativeWidgetWindow*)ns_window setTrafficLightXOffset:controls_offset];
        break;
      case mojom::WindowClass::kFrameless:
        ns_window = [[NativeWidgetMacFramelessNSWindow alloc]
 --- a/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
-@@ -49,7 +49,7 @@ namespace {
- 
- // Empirical measurements of the traffic lights.
- constexpr int kCaptionButtonsWidth = 52;
--constexpr int kCaptionButtonsLeadingPadding = 20;
-+constexpr int kCaptionButtonsLeadingPadding = 12;
- 
- FullscreenToolbarStyle GetUserPreferredToolbarStyle(bool always_show) {
-   // In Kiosk mode, we don't show top Chrome UI.
-@@ -176,7 +176,7 @@ gfx::Rect BrowserNonClientFrameViewMac::
+@@ -172,7 +172,7 @@ gfx::Rect BrowserNonClientFrameViewMac::
    if (frame()->IsFullscreen()) {
      if (!browser_view()->UsesImmersiveFullscreenMode()) {
        bounds.Inset(
@@ -124,3 +122,15 @@
      }
    } else {
      bounds.Inset(GetCaptionButtonInsets());
+@@ -391,9 +391,9 @@ void BrowserNonClientFrameViewMac::Paint
+ gfx::Insets BrowserNonClientFrameViewMac::GetCaptionButtonInsets() const {
+   int button_total_width;
+   if (@available(macOS 26, *)) {
+-    button_total_width = 86;
++    button_total_width = 83;
+   } else {
+-    button_total_width = 92;
++    button_total_width = 76;
+   }
+   int caption_button_inset =
+       button_total_width - TabStyle::Get()->GetBottomCornerRadius();

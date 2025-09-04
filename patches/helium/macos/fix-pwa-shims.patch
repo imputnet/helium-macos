@@ -12,7 +12,7 @@
    static const char kChromeCanaryAppDirName[] = "Chrome Canary Apps.localized";
 --- a/chrome/common/chrome_features.cc
 +++ b/chrome/common/chrome_features.cc
-@@ -77,7 +77,7 @@ BASE_FEATURE(kAppShimNotificationAttribu
+@@ -76,7 +76,7 @@ BASE_FEATURE(kAppShimNotificationAttribu
  // https://crbug.com/40276068
  BASE_FEATURE(kUseAdHocSigningForWebAppShims,
               "UseAdHocSigningForWebAppShims",

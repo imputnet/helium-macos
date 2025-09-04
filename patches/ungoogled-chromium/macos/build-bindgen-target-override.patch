@@ -1,6 +1,6 @@
 --- a/tools/rust/build_bindgen.py
 +++ b/tools/rust/build_bindgen.py
-@@ -172,11 +172,18 @@ def main():
+@@ -173,11 +173,18 @@ def main():
          '--skip-checkout',
          action='store_true',
          help='skip downloading the git repo. Useful for trying local changes')
@@ -19,16 +19,16 @@
  
      build_dir = BINDGEN_HOST_BUILD_DIR
      if os.path.exists(build_dir):
-@@ -187,7 +194,7 @@ def main():
+@@ -189,7 +196,7 @@ def main():
          'build',
          f'--manifest-path={BINDGEN_SRC_DIR}/Cargo.toml',
          f'--target-dir={build_dir}',
 -        f'--target={RustTargetTriple()}',
 +        f'--target={rust_target}',
          f'--no-default-features',
-         f'--features=logging',
+         f'--features=logging' + static_feature,
          '--release',
-@@ -201,7 +208,7 @@ def main():
+@@ -203,7 +210,7 @@ def main():
  
      llvm_dir = os.path.join(THIRD_PARTY_DIR, 'llvm-build', 'Release+Asserts')
      shutil.copy(

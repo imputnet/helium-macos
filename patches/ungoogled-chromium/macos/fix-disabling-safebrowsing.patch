@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -1770,10 +1770,6 @@ static_library("browser") {
+@@ -1772,10 +1772,6 @@ static_library("browser") {
      "//chrome/browser/prefs:util_impl",
      "//chrome/browser/profiles:profiles_extra_parts_impl",
      "//chrome/browser/profiles:profile_util_impl",
@@ -13,7 +13,7 @@
      "//chrome/browser/search",
      "//chrome/browser/search_engine_choice:impl",
      "//chrome/browser/signin:impl",
-@@ -2011,7 +2007,6 @@ static_library("browser") {
+@@ -2013,7 +2009,6 @@ static_library("browser") {
      "//chrome/browser/reading_list",
      "//chrome/browser/resource_coordinator:tab_manager_features",
      "//chrome/browser/resources/accessibility:resources",
@@ -23,7 +23,7 @@
      "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -841,9 +841,6 @@ source_set("extensions") {
+@@ -842,9 +842,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -33,7 +33,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -881,7 +878,6 @@ source_set("extensions") {
+@@ -882,7 +879,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -43,7 +43,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -548,17 +548,8 @@ static_library("ui") {
+@@ -552,17 +552,8 @@ static_library("ui") {
      "//components/reading_list/core",
      "//components/renderer_context_menu",
      "//components/resources",
@@ -61,7 +61,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5518,7 +5509,6 @@ static_library("ui_public_dependencies")
+@@ -5533,7 +5524,6 @@ static_library("ui_public_dependencies")
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",

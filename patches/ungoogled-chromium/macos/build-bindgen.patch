@@ -28,7 +28,7 @@
  
      env = collections.defaultdict(str, os.environ)
      # Cargo normally stores files in $HOME. Override this.
-@@ -209,7 +199,7 @@ def main():
+@@ -209,7 +201,7 @@ def main():
      install_dir = os.path.join(RUST_TOOLCHAIN_OUT_DIR)
      print(f'Installing bindgen to {install_dir} ...')
  

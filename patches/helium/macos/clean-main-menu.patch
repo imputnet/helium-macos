@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -283,10 +283,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+@@ -297,10 +297,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
                    .command_id(IDC_TOGGLE_FULLSCREEN_TOOLBAR),
                Item(IDS_CONTEXT_MENU_SHOW_FULL_URLS)
                    .command_id(IDC_SHOW_FULL_URLS),
@@ -11,7 +11,7 @@
                Item(IDS_CUSTOMIZE_TOUCH_BAR)
                    .tag(IDC_CUSTOMIZE_TOUCH_BAR)
                    .action(@selector(toggleTouchBarCustomizationPalette:))
-@@ -347,16 +343,6 @@ NSMenuItem* BuildHistoryMenu(NSApplicati
+@@ -361,16 +357,6 @@ NSMenuItem* BuildHistoryMenu(NSApplicati
        Item(IDS_HISTORY_MENU_MAC)
            .tag(IDC_HISTORY_MENU)
            .submenu({
@@ -28,7 +28,7 @@
                Item(IDS_HISTORY_CLOSED_MAC)
                    .tag(HistoryMenuBridge::kRecentlyClosedTitle)
                    .is_section_header()
-@@ -479,45 +465,24 @@ NSMenuItem* BuildTabMenu(NSApplication*
+@@ -493,45 +479,24 @@ NSMenuItem* BuildTabMenu(NSApplication*
  
    // clang-format off
    NSMenuItem* item =
@@ -86,7 +86,7 @@
                Item(IDS_SEARCH_TABS)
                    .command_id(IDC_TAB_SEARCH),
                Item().is_separator(),
-@@ -538,15 +503,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
+@@ -552,15 +517,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
    // clang-format off
    NSMenuItem* item =
        Item(IDS_HELP_MENU_MAC)
@@ -103,7 +103,7 @@
            .Build();
    // clang-format on
  
-@@ -568,10 +525,10 @@ NSMenu* BuildMainMenu(NSApplication* nsa
+@@ -582,10 +539,10 @@ NSMenu* BuildMainMenu(NSApplication* nsa
             &BuildFileMenu,
             &BuildEditMenu,
             &BuildViewMenu,
