@@ -11,7 +11,7 @@
      file_match = dsymutil_file_re.search(line)
 --- a/build/toolchain/apple/toolchain.gni
 +++ b/build/toolchain/apple/toolchain.gni
-@@ -229,8 +229,9 @@ template("single_apple_toolchain") {
+@@ -232,8 +232,9 @@ template("single_apple_toolchain") {
      if (_enable_dsyms) {
        dsym_switch = " -Wcrl,dsym,{{root_out_dir}} "
        dsym_switch += "-Wcrl,dsymutilpath," +

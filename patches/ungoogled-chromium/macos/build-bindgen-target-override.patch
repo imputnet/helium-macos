@@ -1,6 +1,6 @@
 --- a/tools/rust/build_bindgen.py
 +++ b/tools/rust/build_bindgen.py
-@@ -171,11 +171,18 @@ def main():
+@@ -173,11 +173,18 @@ def main():
          '--skip-checkout',
          action='store_true',
          help='skip downloading the git repo. Useful for trying local changes')
@@ -19,16 +19,16 @@
  
      build_dir = BINDGEN_HOST_BUILD_DIR
      if os.path.exists(build_dir):
-@@ -186,7 +193,7 @@ def main():
+@@ -189,7 +196,7 @@ def main():
          'build',
          f'--manifest-path={BINDGEN_SRC_DIR}/Cargo.toml',
          f'--target-dir={build_dir}',
 -        f'--target={RustTargetTriple()}',
 +        f'--target={rust_target}',
          f'--no-default-features',
-         f'--features=logging',
+         f'--features=logging' + static_feature,
          '--release',
-@@ -200,7 +207,7 @@ def main():
+@@ -203,7 +210,7 @@ def main():
  
      llvm_dir = os.path.join(THIRD_PARTY_DIR, 'llvm-build', 'Release+Asserts')
      shutil.copy(
@@ -37,3 +37,14 @@
                       f'bindgen{EXE}'), os.path.join(install_dir, 'bin'))
      if sys.platform == 'win32':
          shutil.copy(os.path.join(llvm_dir, 'bin', f'libclang.dll'),
+--- a/build/rust/rust_bindgen_generator.gni
++++ b/build/rust/rust_bindgen_generator.gni
+@@ -177,7 +177,7 @@ template("rust_bindgen_generator") {
+       ]
+     }
+ 
+-    if (is_linux) {
++    if (true) {
+       # Linux clang, and clang libs, use a shared libstdc++, which we must
+       # point to.
+       args += [

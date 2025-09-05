@@ -137,18 +137,18 @@ Once it's complete, a `.dmg` should appear in `build/`.
 
 3. Update Rust toolchain (if necessary)
     1. Check the `RUST_REVISION` constant in file `src/tools/rust/update_rust.py` in build root.
-        * As an example, the revision as of writing this guide is `4a0969e06dbeaaa43914d2d00b2e843d49aa3886`.
+        * As an example, the revision as of writing this guide is `22be76b7e259f27bf3e55eb931f354cd8b69d55f`.
     2. Get date for nightly Rust build from Rust's GitHub repository.
-        * The page URL for our example is `https://github.com/rust-lang/rust/commit/4a0969e06dbeaaa43914d2d00b2e843d49aa3886`
-            1. In this case, the corresponding nightly build date is `2024-05-05`.
+        * The page URL for our example is `https://github.com/rust-lang/rust/commit/22be76b7e259f27bf3e55eb931f354cd8b69d55f`
+            1. In this case, the corresponding nightly build date is `2025-06-23`.
             2. Adapt the version number in `downloads-{arm64,x86-64}{,-rustlib}.ini` accordingly.
     3. Get the information of the latest nightly build and adapt configurations accordingly.
        1. Download the latest nightly build from the Rust website.
-            * For our example, the download URL for Apple Silicon Macs is `https://static.rust-lang.org/dist/2024-05-05/rust-nightly-aarch64-apple-darwin.tar.gz`
-            * For our example, the download URL for Intel Chip Macs is `https://static.rust-lang.org/dist/2024-05-05/rust-nightly-x86_64-apple-darwin.tar.gz`
+            * For our example, the download URL for Apple Silicon Macs is `https://static.rust-lang.org/dist/2025-06-23/rust-nightly-aarch64-apple-darwin.tar.gz`
+            * For our example, the download URL for Intel Chip Macs is `https://static.rust-lang.org/dist/2025-06-23/rust-nightly-x86_64-apple-darwin.tar.gz`
        2. Extract the archive.
        3. Execute `rustc/bin/rustc -V` in the extracted directory to get Rust version string.
-            * For our example, the version string is `rustc 1.88.0-nightly (13e879094 2025-05-04)`.
+            * For our example, the version string is `rustc 1.89.0-nightly (be19eda0d 2025-06-22)`.
        4. Adapt the content of `retrieve_and_unpack_resource.sh` and `patches/ungoogled-chromium/macos/fix-build-with-rust.patch` accordingly.
 4. Switch to src directory
 
