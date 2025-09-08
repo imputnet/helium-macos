@@ -534,3 +534,17 @@
 -  enable_update_notifications = is_chrome_branded
 +  enable_update_notifications = enable_sparkle
  }
+--- a/third_party/sparkle/Configurations/strip-framework.sh
++++ b/third_party/sparkle/Configurations/strip-framework.sh
+@@ -40,6 +40,11 @@ if [[ "$SPARKLE_BUILD_UI_BITS" -eq 0 ]];
+     rm -rf "${FRAMEWORK_PATH}"/"Versions/"${FRAMEWORK_VERSION}"/Resources"/"ReleaseNotesColorStyle.css"
+ fi
+ 
++# Remove headers
++
++rm -rf "${FRAMEWORK_PATH}/Versions/${FRAMEWORK_VERSION}/Headers"
++rm -rf "${FRAMEWORK_PATH}/Versions/${FRAMEWORK_VERSION}/PrivateHeaders"
++
+ # Remove localization files if requested
+ 
+ if [[ "$SPARKLE_COPY_LOCALIZATIONS" -eq 0 ]]; then
