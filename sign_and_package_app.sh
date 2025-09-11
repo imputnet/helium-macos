@@ -89,12 +89,22 @@ if [ -z "${OUT_DMG_PATH:-}" ]; then
 fi
 
 # Package the app
-chrome/installer/mac/pkg-dmg \
-  --sourcefile --source out/Default/Helium.app \
-  --target "$OUT_DMG_PATH" \
-  --volname Helium --symlink /Applications:/Applications \
-  --format UDBZ --verbosity 2
+if command -v appdmg 2>&1 >/dev/null || [ -n "${NEEDS_APPDMG:-}" ]; then
+  ln -sf "$_root_dir/resources/dmg.json" out/Default
+  appdmg out/Default/dmg.json "$OUT_DMG_PATH"
+else
+  echo "no appdmg, falling back to stock .dmg" >&2
+
+  chrome/installer/mac/pkg-dmg \
+    --sourcefile --source out/Default/Helium.app \
+    --target "$OUT_DMG_PATH" \
+    --volname Helium --symlink /Applications:/Applications \
+    --format ULMO --verbosity 2
+fi
 
 if ! [ -z "${MACOS_CERTIFICATE_NAME-}" ]; then
-  codesign --sign "$MACOS_CERTIFICATE_NAME" --force "$OUT_DMG_PATH"
+  codesign \
+    --sign "$MACOS_CERTIFICATE_NAME" \
+    --identifier net.imput.helium --force \
+    "$OUT_DMG_PATH"
 fi

@@ -35,6 +35,7 @@ if [[ -f "$_root_dir/build_finished_$_target_cpu.log" ]] ; then
   fi
 
   export OUT_DMG_PATH="$_root_dir/$_file_name"
+  export NEEDS_APPDMG=1
   "$_root_dir/sign_and_package_app.sh"
 
   if ! [ -z "${PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64:-}" ]; then
