@@ -1,0 +1,20 @@
+{
+    "title": "Helium",
+    "icon": "Helium.app/Contents/Resources/app.icns",
+    "icon-size": 128,
+
+    "contents": [
+        { "x": 150, "y": 212, "type": "file", "path": "Helium.app" },
+        { "x": 465, "y": 212, "type": "link", "path": "/Applications" }
+    ],
+
+    "window": {
+        "size": {
+            "width": 640,
+            "height": 480
+        }
+    },
+
+    "format": "ULMO",
+    "filesystem": "APFS"
+}
