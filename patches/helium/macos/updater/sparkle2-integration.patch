@@ -1,21 +1,3 @@
---- /dev/null
-+++ b/third_party/sparkle/README.chromium
-@@ -0,0 +1,15 @@
-+Name: Sparkle
-+Short Name: sparkle
-+URL: https://github.com/sparkle-project/Sparkle
-+Version: 2.7.1
-+Date: 2025-06-28
-+License: MIT
-+License File: LICENSE
-+Shipped: yes
-+Security Critical: yes
-+
-+Description:
-+Used for automatic updates on macOS.
-+
-+Local Modifications:
-+Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/build/apple/tweak_info_plist.py
 +++ b/build/apple/tweak_info_plist.py
 @@ -189,6 +189,21 @@ def _RemoveBreakpadKeys(plist):
@@ -154,26 +136,124 @@
      configs += [ ":chrome_dll_symbol_order" ]
      if (!is_component_build && !using_sanitizer) {
        configs += [ ":chrome_dll_symbol_exports" ]
---- /dev/null
-+++ b/chrome/updater/sparkle.gni
-@@ -0,0 +1,17 @@
-+# Copyright 2025 The Helium Authors
-+# You can use, redistribute, and/or modify this source code under
-+# the terms of the GPL-3.0 license that can be found in the LICENSE file.
-+
-+declare_args() {
-+  # Enable automatic update checking via Sparkle.
-+  enable_sparkle = false
-+
-+  # SUPublicEDKey: EdDSA key used for signing Sparkle updates.
-+  sparkle_ed_key = ""
-+
-+  # SUEnableAutomaticChecks: enable automatic checking of updates
-+  sparkle_automatic_checks = false
-+
-+  # SUScheduledCheckInterval: number of seconds between update checks (min: 3600)
-+  sparkle_check_interval = 3600
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -59,6 +59,10 @@ if (is_win) {
+   import("//build/config/win/manifest.gni")
+ }
+ 
++if (is_mac) {
++  import("//chrome/updater/sparkle.gni")
 +}
++
+ assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
+ 
+ declare_args() {
+@@ -108,6 +112,10 @@ buildflag_header("buildflags") {
+     flags += [ "ENABLE_SEGMENT_HEAP=$enable_segment_heap" ]
+   }
+ 
++  if (is_mac) {
++    flags += [ "ENABLE_SPARKLE=$enable_sparkle" ]
++  }
++
+   # Android and ChromeOS don't support multiple browser processes, so they don't
+   # employ ProcessSingleton.
+   if (is_android || is_chromeos) {
+@@ -6625,6 +6633,22 @@ static_library("browser") {
+     weak_frameworks = [
+       "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
+     ]
++
++    if (enable_sparkle) {
++      include_dirs = [ "//third_party/sparkle" ]
++
++      sources += [
++        "mac/sparkle_glue.h",
++        "mac/sparkle_glue.mm",
++      ]
++
++      deps += [
++        "//third_party/sparkle:sparkle_framework",
++        "//components/helium_services",
++      ]
++      frameworks += [ "Sparkle.framework" ]
++    }
++
+   }
+ 
+   if (is_android || is_mac || is_win || is_chromeos) {
+--- a/chrome/browser/app_controller_mac.mm
++++ b/chrome/browser/app_controller_mac.mm
+@@ -38,6 +38,7 @@
+ #include "chrome/browser/browser_features.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/browser_process_platform_part.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/command_updater_impl.h"
+ #include "chrome/browser/download/download_core_service.h"
+ #include "chrome/browser/download/download_core_service_factory.h"
+@@ -47,6 +48,9 @@
+ #include "chrome/browser/lifetime/browser_shutdown.h"
+ #include "chrome/browser/mac/auth_session_request.h"
+ #include "chrome/browser/mac/key_window_notifier.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
++#include "chrome/browser/mac/sparkle_glue.h"
++#endif
+ #include "chrome/browser/policy/chrome_browser_policy_connector.h"
+ #include "chrome/browser/prefs/incognito_mode_prefs.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+@@ -867,6 +871,9 @@ class AppControllerNativeThemeObserver :
+   NSWindow.allowsAutomaticWindowTabbing = NO;
+ 
+   [self initShareMenu];
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
++  helium::InitializeSparkleFramework();
++#endif
+ }
+ 
+ - (BOOL)tryToTerminateApplication:(NSApplication*)app {
+--- a/chrome/browser/buildflags.gni
++++ b/chrome/browser/buildflags.gni
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/chrome_build.gni")
++import("//chrome/updater/sparkle.gni")
+ 
+ declare_args() {
+   # By default, only branded builds allow for platform experience.
+@@ -13,5 +14,5 @@ declare_args() {
+ 
+   # Detect updates and notify the user for Google Chrome across all platforms.
+   # Chromium does not use an auto-updater.
+-  enable_update_notifications = is_chrome_branded
++  enable_update_notifications = enable_sparkle
+ }
+--- a/chrome/browser/chrome_browser_main_mac.mm
++++ b/chrome/browser/chrome_browser_main_mac.mm
+@@ -30,6 +30,9 @@
+ #include "chrome/browser/first_run/first_run.h"
+ #include "chrome/browser/mac/install_from_dmg.h"
+ #include "chrome/browser/mac/metrics.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
++#include "chrome/browser/mac/sparkle_glue.h"
++#endif
+ #include "chrome/browser/ui/cocoa/main_menu_builder.h"
+ #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
+ #include "chrome/browser/updater/browser_updater_client_util.h"
+@@ -175,6 +178,11 @@ void ChromeBrowserMainPartsMac::PreProfi
+ 
+ void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
+                                                 bool is_initial_profile) {
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
++  if (is_initial_profile) {
++    std::make_unique<VersionUpdaterSparkle>(profile);
++  }
++#endif
+   ChromeBrowserMainPartsPosix::PostProfileInit(profile, is_initial_profile);
+ }
+ 
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -9,6 +9,7 @@ import("//build/config/ozone.gni")
@@ -199,6 +279,58 @@
      }
  
      # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+--- /dev/null
++++ b/chrome/updater/sparkle.gni
+@@ -0,0 +1,17 @@
++# Copyright 2025 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++declare_args() {
++  # Enable automatic update checking via Sparkle.
++  enable_sparkle = false
++
++  # SUPublicEDKey: EdDSA key used for signing Sparkle updates.
++  sparkle_ed_key = ""
++
++  # SUEnableAutomaticChecks: enable automatic checking of updates
++  sparkle_automatic_checks = false
++
++  # SUScheduledCheckInterval: number of seconds between update checks (min: 3600)
++  sparkle_check_interval = 3600
++}
+--- a/third_party/sparkle/Configurations/strip-framework.sh
++++ b/third_party/sparkle/Configurations/strip-framework.sh
+@@ -40,6 +40,11 @@ if [[ "$SPARKLE_BUILD_UI_BITS" -eq 0 ]];
+     rm -rf "${FRAMEWORK_PATH}"/"Versions/"${FRAMEWORK_VERSION}"/Resources"/"ReleaseNotesColorStyle.css"
+ fi
+ 
++# Remove headers
++
++find "$TARGET_BUILD_DIR" -name Headers -exec rm -rf {} \;
++find "$TARGET_BUILD_DIR" -name PrivateHeaders -exec rm -rf {} \;
++
+ # Remove localization files if requested
+ 
+ if [[ "$SPARKLE_COPY_LOCALIZATIONS" -eq 0 ]]; then
+--- /dev/null
++++ b/third_party/sparkle/README.chromium
+@@ -0,0 +1,15 @@
++Name: Sparkle
++Short Name: sparkle
++URL: https://github.com/sparkle-project/Sparkle
++Version: 2.7.1
++Date: 2025-06-28
++License: MIT
++License File: LICENSE
++Shipped: yes
++Security Critical: yes
++
++Description:
++Used for automatic updates on macOS.
++
++Local Modifications:
++Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 +++ b/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 @@ -454,6 +454,8 @@
@@ -272,6 +404,33 @@
  			);
  			runOnlyForDeploymentPostprocessing = 0;
  		};
+--- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
++++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
+@@ -144,4 +144,24 @@
+     [_coreDriver abortUpdateAndShowNextUpdateImmediately:showNextUpdateImmediately error:error];
+ }
+ 
++- (void)downloadDriverDidReceiveExpectedContentLength:(uint64_t)expectedContentLength
++{
++    [_userDriver showDownloadDidReceiveExpectedContentLength:expectedContentLength];
++}
++
++- (void)downloadDriverDidReceiveDataOfLength:(uint64_t)length
++{
++    [_userDriver showDownloadDidReceiveDataOfLength:length];
++}
++
++- (void)coreDriverDidStartExtractingUpdate
++{
++    [_userDriver showDownloadDidStartExtractingUpdate];
++}
++
++- (void)installerDidExtractUpdateWithProgress:(double)progress
++{
++    [_userDriver showExtractionReceivedProgress:progress];
++}
++
+ @end
 --- /dev/null
 +++ b/third_party/sparkle/Sparkle/SPUHeadlessUserDriver.h
 @@ -0,0 +1,29 @@
@@ -389,162 +548,3 @@
 +{}
 +
 +@end
---- a/chrome/browser/app_controller_mac.mm
-+++ b/chrome/browser/app_controller_mac.mm
-@@ -38,6 +38,7 @@
- #include "chrome/browser/browser_features.h"
- #include "chrome/browser/browser_process.h"
- #include "chrome/browser/browser_process_platform_part.h"
-+#include "chrome/browser/buildflags.h"
- #include "chrome/browser/command_updater_impl.h"
- #include "chrome/browser/download/download_core_service.h"
- #include "chrome/browser/download/download_core_service_factory.h"
-@@ -47,6 +48,9 @@
- #include "chrome/browser/lifetime/browser_shutdown.h"
- #include "chrome/browser/mac/auth_session_request.h"
- #include "chrome/browser/mac/key_window_notifier.h"
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+#include "chrome/browser/mac/sparkle_glue.h"
-+#endif
- #include "chrome/browser/policy/chrome_browser_policy_connector.h"
- #include "chrome/browser/prefs/incognito_mode_prefs.h"
- #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -867,6 +871,9 @@ class AppControllerNativeThemeObserver :
-   NSWindow.allowsAutomaticWindowTabbing = NO;
- 
-   [self initShareMenu];
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+  helium::InitializeSparkleFramework();
-+#endif
- }
- 
- - (BOOL)tryToTerminateApplication:(NSApplication*)app {
---- a/chrome/browser/chrome_browser_main_mac.mm
-+++ b/chrome/browser/chrome_browser_main_mac.mm
-@@ -30,6 +30,9 @@
- #include "chrome/browser/first_run/first_run.h"
- #include "chrome/browser/mac/install_from_dmg.h"
- #include "chrome/browser/mac/metrics.h"
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+#include "chrome/browser/mac/sparkle_glue.h"
-+#endif
- #include "chrome/browser/ui/cocoa/main_menu_builder.h"
- #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
- #include "chrome/browser/updater/browser_updater_client_util.h"
-@@ -175,6 +178,11 @@ void ChromeBrowserMainPartsMac::PreProfi
- 
- void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
-                                                 bool is_initial_profile) {
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+  if (is_initial_profile) {
-+    std::make_unique<VersionUpdaterSparkle>(profile);
-+  }
-+#endif
-   ChromeBrowserMainPartsPosix::PostProfileInit(profile, is_initial_profile);
- }
- 
---- a/chrome/browser/BUILD.gn
-+++ b/chrome/browser/BUILD.gn
-@@ -59,6 +59,10 @@ if (is_win) {
-   import("//build/config/win/manifest.gni")
- }
- 
-+if (is_mac) {
-+  import("//chrome/updater/sparkle.gni")
-+}
-+
- assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
- 
- declare_args() {
-@@ -108,6 +112,10 @@ buildflag_header("buildflags") {
-     flags += [ "ENABLE_SEGMENT_HEAP=$enable_segment_heap" ]
-   }
- 
-+  if (is_mac) {
-+    flags += [ "ENABLE_SPARKLE=$enable_sparkle" ]
-+  }
-+
-   # Android and ChromeOS don't support multiple browser processes, so they don't
-   # employ ProcessSingleton.
-   if (is_android || is_chromeos) {
-@@ -6625,6 +6633,22 @@ static_library("browser") {
-     weak_frameworks = [
-       "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
-     ]
-+
-+    if (enable_sparkle) {
-+      include_dirs = [ "//third_party/sparkle" ]
-+
-+      sources += [
-+        "mac/sparkle_glue.h",
-+        "mac/sparkle_glue.mm",
-+      ]
-+
-+      deps += [
-+        "//third_party/sparkle:sparkle_framework",
-+        "//components/helium_services",
-+      ]
-+      frameworks += [ "Sparkle.framework" ]
-+    }
-+
-   }
- 
-   if (is_android || is_mac || is_win || is_chromeos) {
---- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
-+++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
-@@ -144,4 +144,24 @@
-     [_coreDriver abortUpdateAndShowNextUpdateImmediately:showNextUpdateImmediately error:error];
- }
- 
-+- (void)downloadDriverDidReceiveExpectedContentLength:(uint64_t)expectedContentLength
-+{
-+    [_userDriver showDownloadDidReceiveExpectedContentLength:expectedContentLength];
-+}
-+
-+- (void)downloadDriverDidReceiveDataOfLength:(uint64_t)length
-+{
-+    [_userDriver showDownloadDidReceiveDataOfLength:length];
-+}
-+
-+- (void)coreDriverDidStartExtractingUpdate
-+{
-+    [_userDriver showDownloadDidStartExtractingUpdate];
-+}
-+
-+- (void)installerDidExtractUpdateWithProgress:(double)progress
-+{
-+    [_userDriver showExtractionReceivedProgress:progress];
-+}
-+
- @end
---- a/chrome/browser/buildflags.gni
-+++ b/chrome/browser/buildflags.gni
-@@ -3,6 +3,7 @@
- # found in the LICENSE file.
- 
- import("//build/config/chrome_build.gni")
-+import("//chrome/updater/sparkle.gni")
- 
- declare_args() {
-   # By default, only branded builds allow for platform experience.
-@@ -13,5 +14,5 @@ declare_args() {
- 
-   # Detect updates and notify the user for Google Chrome across all platforms.
-   # Chromium does not use an auto-updater.
--  enable_update_notifications = is_chrome_branded
-+  enable_update_notifications = enable_sparkle
- }
---- a/third_party/sparkle/Configurations/strip-framework.sh
-+++ b/third_party/sparkle/Configurations/strip-framework.sh
-@@ -40,6 +40,11 @@ if [[ "$SPARKLE_BUILD_UI_BITS" -eq 0 ]];
-     rm -rf "${FRAMEWORK_PATH}"/"Versions/"${FRAMEWORK_VERSION}"/Resources"/"ReleaseNotesColorStyle.css"
- fi
- 
-+# Remove headers
-+
-+find "$TARGET_BUILD_DIR" -name Headers -exec rm -rf {} \;
-+find "$TARGET_BUILD_DIR" -name PrivateHeaders -exec rm -rf {} \;
-+
- # Remove localization files if requested
- 
- if [[ "$SPARKLE_COPY_LOCALIZATIONS" -eq 0 ]]; then
