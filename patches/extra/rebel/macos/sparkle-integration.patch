@@ -26,6 +26,42 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+--- a/chrome/browser/lifetime/application_lifetime_desktop.cc
++++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
+@@ -14,6 +14,7 @@
+ #include "base/time/time.h"
+ #include "base/types/strong_alias.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/browser_process_platform_part.h"
+ #include "chrome/browser/download/download_core_service.h"
+@@ -55,6 +56,10 @@
+ #include "chrome/browser/background/glic/glic_background_mode_manager.h"
+ #endif
+ 
++#if BUILDFLAG(ENABLE_SPARKLE)
++#include "chrome/browser/mac/sparkle_glue.h"
++#endif
++
+ namespace chrome {
+ 
+ namespace {
+@@ -107,6 +112,14 @@ void AttemptRestartInternal(IgnoreUnload
+ #else   // !BUILDFLAG(IS_CHROMEOS).
+   // Set the flag to restore state after the restart.
+   pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
++
++#if BUILDFLAG(ENABLE_SPARKLE)
++  if (helium::ApplicationIsNearlyUpdated()) {
++    helium::RelaunchBrowserUsingSparkle();
++    return;
++  }
++#endif
++
+   if (ignore_unload_handlers) {
+     ExitIgnoreUnloadHandlers();
+   } else {
 --- /dev/null
 +++ b/chrome/browser/mac/sparkle_glue.h
 @@ -0,0 +1,85 @@
@@ -647,39 +683,3 @@
 +
 +if __name__ == '__main__':
 +  sys.exit(main(sys.argv))
---- a/chrome/browser/lifetime/application_lifetime_desktop.cc
-+++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
-@@ -14,6 +14,7 @@
- #include "base/time/time.h"
- #include "base/types/strong_alias.h"
- #include "build/build_config.h"
-+#include "chrome/browser/buildflags.h"
- #include "chrome/browser/browser_process.h"
- #include "chrome/browser/browser_process_platform_part.h"
- #include "chrome/browser/download/download_core_service.h"
-@@ -55,6 +56,10 @@
- #include "chrome/browser/background/glic/glic_background_mode_manager.h"
- #endif
- 
-+#if BUILDFLAG(ENABLE_SPARKLE)
-+#include "chrome/browser/mac/sparkle_glue.h"
-+#endif
-+
- namespace chrome {
- 
- namespace {
-@@ -107,6 +112,14 @@ void AttemptRestartInternal(IgnoreUnload
- #else   // !BUILDFLAG(IS_CHROMEOS).
-   // Set the flag to restore state after the restart.
-   pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
-+
-+#if BUILDFLAG(ENABLE_SPARKLE)
-+  if (helium::ApplicationIsNearlyUpdated()) {
-+    helium::RelaunchBrowserUsingSparkle();
-+    return;
-+  }
-+#endif
-+
-   if (ignore_unload_handlers) {
-     ExitIgnoreUnloadHandlers();
-   } else {

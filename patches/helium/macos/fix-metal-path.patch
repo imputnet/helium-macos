@@ -1,6 +1,6 @@
 --- a/third_party/angle/src/libANGLE/renderer/metal/BUILD.gn
 +++ b/third_party/angle/src/libANGLE/renderer/metal/BUILD.gn
-@@ -37,7 +37,7 @@
+@@ -37,7 +37,7 @@ if (metal_internal_shader_compilation_su
      sources = [ _metal_internal_shaders_metal_source ]
  
      args = [
@@ -9,7 +9,7 @@
        "-c",
        rebase_path(_metal_internal_shaders_metal_source, root_build_dir),
        "-o",
-@@ -70,7 +70,7 @@
+@@ -70,7 +70,7 @@ if (metal_internal_shader_compilation_su
      deps = [ ":angle_metal_internal_shaders_to_air" ]
  
      args = [
