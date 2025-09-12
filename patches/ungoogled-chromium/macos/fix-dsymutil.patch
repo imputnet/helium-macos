@@ -1,14 +1,3 @@
---- a/tools/mac/dump-static-initializers.py
-+++ b/tools/mac/dump-static-initializers.py
-@@ -41,7 +41,7 @@ def ParseDsymutil(binary):
-   static initializers.
-   """
- 
--  child = subprocess.Popen(['tools/clang/dsymutil/bin/dsymutil', '-s', binary],
-+  child = subprocess.Popen(['/usr/bin/dsymutil', '-s', binary],
-      stdout=subprocess.PIPE)
-   for line in child.stdout:
-     file_match = dsymutil_file_re.search(line)
 --- a/build/toolchain/apple/toolchain.gni
 +++ b/build/toolchain/apple/toolchain.gni
 @@ -232,8 +232,9 @@ template("single_apple_toolchain") {
@@ -23,3 +12,14 @@
  
        dsym_output_dir =
            "{{root_out_dir}}/{{target_output_name}}{{output_extension}}.dSYM"
+--- a/tools/mac/dump-static-initializers.py
++++ b/tools/mac/dump-static-initializers.py
+@@ -41,7 +41,7 @@ def ParseDsymutil(binary):
+   static initializers.
+   """
+ 
+-  child = subprocess.Popen(['tools/clang/dsymutil/bin/dsymutil', '-s', binary],
++  child = subprocess.Popen(['/usr/bin/dsymutil', '-s', binary],
+      stdout=subprocess.PIPE)
+   for line in child.stdout:
+     file_match = dsymutil_file_re.search(line)
