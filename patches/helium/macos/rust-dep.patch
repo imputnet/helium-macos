@@ -1,13 +1,3 @@
---- a/services/webnn/BUILD.gn
-+++ b/services/webnn/BUILD.gn
-@@ -131,6 +131,7 @@ component("webnn_service") {
-     deps += [
-       "//third_party/coremltools:modelformat_proto",
-       "//third_party/fp16",
-+      "//build/rust/allocator",
-     ]
-   }
- 
 --- a/media/midi/BUILD.gn
 +++ b/media/midi/BUILD.gn
 @@ -117,6 +117,8 @@ component("midi") {
@@ -19,3 +9,13 @@
    }
  
    if (is_win) {
+--- a/services/webnn/BUILD.gn
++++ b/services/webnn/BUILD.gn
+@@ -131,6 +131,7 @@ component("webnn_service") {
+     deps += [
+       "//third_party/coremltools:modelformat_proto",
+       "//third_party/fp16",
++      "//build/rust/allocator",
+     ]
+   }
+ 

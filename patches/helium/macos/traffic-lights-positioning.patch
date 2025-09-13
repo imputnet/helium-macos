@@ -1,3 +1,26 @@
+--- a/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
+@@ -172,7 +172,7 @@ gfx::Rect BrowserNonClientFrameViewMac::
+   if (frame()->IsFullscreen()) {
+     if (!browser_view()->UsesImmersiveFullscreenMode()) {
+       bounds.Inset(
+-          gfx::Insets::TLBR(0, GetLayoutConstant(TOOLBAR_CORNER_RADIUS), 0, 0));
++          gfx::Insets::VH(0, 0));
+     }
+   } else {
+     bounds.Inset(GetCaptionButtonInsets());
+@@ -391,9 +391,9 @@ void BrowserNonClientFrameViewMac::Paint
+ gfx::Insets BrowserNonClientFrameViewMac::GetCaptionButtonInsets() const {
+   int button_total_width;
+   if (@available(macOS 26, *)) {
+-    button_total_width = 86;
++    button_total_width = 80;
+   } else {
+-    button_total_width = 92;
++    button_total_width = 74;
+   }
+   int caption_button_inset =
+       button_total_width - TabStyle::Get()->GetBottomCornerRadius();
 --- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
 +++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
 @@ -63,13 +63,10 @@ const double kThinControllerHeight = 0.5
@@ -27,26 +50,3 @@
             7.0 /* widget radius */;
    }
    // Don't mess with the window radius before macOS 26, as concentricity was not
---- a/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
-+++ b/chrome/browser/ui/views/frame/browser_non_client_frame_view_mac.mm
-@@ -172,7 +172,7 @@ gfx::Rect BrowserNonClientFrameViewMac::
-   if (frame()->IsFullscreen()) {
-     if (!browser_view()->UsesImmersiveFullscreenMode()) {
-       bounds.Inset(
--          gfx::Insets::TLBR(0, GetLayoutConstant(TOOLBAR_CORNER_RADIUS), 0, 0));
-+          gfx::Insets::VH(0, 0));
-     }
-   } else {
-     bounds.Inset(GetCaptionButtonInsets());
-@@ -391,9 +391,9 @@ void BrowserNonClientFrameViewMac::Paint
- gfx::Insets BrowserNonClientFrameViewMac::GetCaptionButtonInsets() const {
-   int button_total_width;
-   if (@available(macOS 26, *)) {
--    button_total_width = 86;
-+    button_total_width = 80;
-   } else {
--    button_total_width = 92;
-+    button_total_width = 74;
-   }
-   int caption_button_inset =
-       button_total_width - TabStyle::Get()->GetBottomCornerRadius();

@@ -21,176 +21,6 @@
      "//chrome/browser/safe_browsing:advanced_protection",
      "//chrome/browser/safe_browsing:metrics_collector",
      "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
---- a/chrome/browser/extensions/BUILD.gn
-+++ b/chrome/browser/extensions/BUILD.gn
-@@ -842,9 +842,6 @@ source_set("extensions") {
-       # TODO(crbug.com/346472679): Remove this circular dependency.
-       "//chrome/browser/web_applications/extensions",
- 
--      # TODO(crbug.com/41437292): Remove this circular dependency.
--      "//chrome/browser/safe_browsing",
--
-       # TODO(crbug.com/343037853): Remove this circular dependency.
-       "//chrome/browser/themes",
- 
-@@ -882,7 +879,6 @@ source_set("extensions") {
-       "//chrome/common",
-       "//chrome/common/extensions/api",
-       "//components/omnibox/browser",
--      "//components/safe_browsing/core/common/proto:csd_proto",
-       "//components/safe_browsing/core/common/proto:realtimeapi_proto",
-       "//components/translate/content/browser",
-       "//content/public/browser",
---- a/chrome/browser/ui/BUILD.gn
-+++ b/chrome/browser/ui/BUILD.gn
-@@ -552,17 +552,8 @@ static_library("ui") {
-     "//components/reading_list/core",
-     "//components/renderer_context_menu",
-     "//components/resources",
--    "//components/safe_browsing/content/browser",
--    "//components/safe_browsing/content/browser/password_protection",
-     "//components/safe_browsing/content/browser/web_ui",
--    "//components/safe_browsing/core/browser/db:database_manager",
--    "//components/safe_browsing/core/browser/db:util",
--    "//components/safe_browsing/core/browser/password_protection:password_protection_metrics_util",
--    "//components/safe_browsing/core/browser/tailored_security_service",
--    "//components/safe_browsing/core/common",
--    "//components/safe_browsing/core/common:safe_browsing_prefs",
-     "//components/safe_browsing/core/common/hashprefix_realtime:hash_realtime_utils",
--    "//components/safe_browsing/core/common/proto:csd_proto",
-     "//components/schema_org/common:improved_mojom",
-     "//components/search_engines",
-     "//components/security_interstitials/content:security_interstitial_page",
-@@ -5533,7 +5524,6 @@ static_library("ui_public_dependencies")
-     "//components/dom_distiller/core",
-     "//components/enterprise/buildflags",
-     "//components/paint_preview/buildflags",
--    "//components/safe_browsing:buildflags",
-     "//components/segmentation_platform/public",
-     "//components/sync",
-     "//components/sync_user_events",
---- a/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
-+++ b/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
-@@ -378,8 +378,12 @@ void DownloadProtectionService::ShowDeta
-   Profile* profile = Profile::FromBrowserContext(
-       content::DownloadItemUtils::GetBrowserContext(item));
-   if (profile &&
-+#if BUILDFLAG(FULL_SAFE_BROWSING)
-       AdvancedProtectionStatusManagerFactory::GetForProfile(profile)
-           ->IsUnderAdvancedProtection() &&
-+#else
-+      false &&
-+#endif
-       item->GetDangerType() ==
-           download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT) {
-     learn_more_url = GURL(chrome::kAdvancedProtectionDownloadLearnMoreURL);
---- a/chrome/browser/download/notification/download_item_notification.cc
-+++ b/chrome/browser/download/notification/download_item_notification.cc
-@@ -973,9 +973,13 @@ std::u16string DownloadItemNotification:
-     }
-     case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT: {
-       bool requests_ap_verdicts =
-+#if BUILDFLAG(FULL_SAFE_BROWSING)
-           safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-               profile())
-               ->IsUnderAdvancedProtection();
-+#else
-+          false;
-+#endif
-       return l10n_util::GetStringFUTF16(
-           requests_ap_verdicts
-               ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
---- a/chrome/browser/ui/webui/downloads/downloads_ui.cc
-+++ b/chrome/browser/ui/webui/downloads/downloads_ui.cc
-@@ -40,6 +40,7 @@
- #include "components/history/core/common/pref_names.h"
- #include "components/prefs/pref_service.h"
- #include "components/profile_metrics/browser_profile_type.h"
-+#include "components/safe_browsing/buildflags.h"
- #include "components/strings/grit/components_strings.h"
- #include "content/public/browser/download_manager.h"
- #include "content/public/browser/url_data_source.h"
-@@ -68,10 +69,12 @@ content::WebUIDataSource* CreateAndAddDo
-   webui::SetupWebUIDataSource(source, kDownloadsResources,
-                               IDR_DOWNLOADS_DOWNLOADS_HTML);
- 
--  bool requests_ap_verdicts =
--      safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-+  bool requests_ap_verdicts = false;
-+#if BUILDFLAG(FULL_SAFE_BROWSING)
-+      requests_ap_verdicts = safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-           profile)
-           ->IsUnderAdvancedProtection();
-+#endif
-   source->AddBoolean("requestsApVerdicts", requests_ap_verdicts);
- 
-   static constexpr webui::LocalizedString kStrings[] = {
---- a/chrome/browser/ui/views/download/download_danger_prompt_views.cc
-+++ b/chrome/browser/ui/views/download/download_danger_prompt_views.cc
-@@ -178,11 +178,15 @@ std::u16string DownloadDangerPromptViews
-                                         filename);
-     case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT:
-       return l10n_util::GetStringFUTF16(
--          safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-+    #if BUILDFLAG(FULL_SAFE_BROWSING)
-+        safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-               profile_)
-                   ->IsUnderAdvancedProtection()
-               ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
-               : IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT,
-+    #else
-+          IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT
-+    #endif
-           filename);
-     case download::DOWNLOAD_DANGER_TYPE_POTENTIALLY_UNWANTED:
-       return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
---- a/chrome/test/BUILD.gn
-+++ b/chrome/test/BUILD.gn
-@@ -7559,13 +7559,9 @@ test("unit_tests") {
-       "//chrome/browser/renderer_host:history_swiper",
-       "//chrome/browser/updater:browser_updater_client",
-       "//chrome/common/notifications",
--      "//chrome/common/safe_browsing:archive_analyzer_results",
--      "//chrome/common/safe_browsing:disk_image_type_sniffer_mac",
-       "//chrome/services/mac_notifications:unit_tests",
-       "//chrome/services/mac_notifications/public/mojom",
-       "//chrome/updater:browser_sources",
--      "//chrome/utility/safe_browsing",
--      "//chrome/utility/safe_browsing/mac:dmg_common",
-       "//components/power_metrics",
-       "//ui/events/devices:test_support",
-     ]
---- a/chrome/services/file_util/BUILD.gn
-+++ b/chrome/services/file_util/BUILD.gn
-@@ -46,10 +46,6 @@ source_set("file_util") {
-     deps += [ "//components/services/filesystem/public/mojom" ]
-   }
- 
--  if (is_mac) {
--    deps += [ "//chrome/utility/safe_browsing" ]
--  }
--
-   if (safe_browsing_mode == 1) {
-     sources += [
-       "safe_archive_analyzer.cc",
---- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-+++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2323,15 +2323,6 @@ const PolicyToPreferenceMapEntry kSimple
-     base::Value::Type::BOOLEAN },
- #endif
- 
--#if BUILDFLAG(ENTERPRISE_CLIENT_CERTIFICATES)
--  { key::kProvisionManagedClientCertificateForUser,
--    client_certificates::prefs::kProvisionManagedClientCertificateForUserPrefs,
--    base::Value::Type::INTEGER },
--  { key::kProvisionManagedClientCertificateForBrowser,
--    client_certificates::prefs::kProvisionManagedClientCertificateForBrowserPrefs,
--    base::Value::Type::INTEGER },
--#endif  // BUILDFLAG(ENTERPRISE_CLIENT_CERTIFICATES)
--
- #if !BUILDFLAG(IS_ANDROID)
-   { key::kLensOverlaySettings,
-     lens::prefs::kLensOverlaySettings,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
 @@ -7742,33 +7742,6 @@ bool ChromeContentBrowserClient::SetupEm
@@ -227,3 +57,173 @@
    }
  
    return false;
+--- a/chrome/browser/download/notification/download_item_notification.cc
++++ b/chrome/browser/download/notification/download_item_notification.cc
+@@ -973,9 +973,13 @@ std::u16string DownloadItemNotification:
+     }
+     case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT: {
+       bool requests_ap_verdicts =
++#if BUILDFLAG(FULL_SAFE_BROWSING)
+           safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
+               profile())
+               ->IsUnderAdvancedProtection();
++#else
++          false;
++#endif
+       return l10n_util::GetStringFUTF16(
+           requests_ap_verdicts
+               ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -842,9 +842,6 @@ source_set("extensions") {
+       # TODO(crbug.com/346472679): Remove this circular dependency.
+       "//chrome/browser/web_applications/extensions",
+ 
+-      # TODO(crbug.com/41437292): Remove this circular dependency.
+-      "//chrome/browser/safe_browsing",
+-
+       # TODO(crbug.com/343037853): Remove this circular dependency.
+       "//chrome/browser/themes",
+ 
+@@ -882,7 +879,6 @@ source_set("extensions") {
+       "//chrome/common",
+       "//chrome/common/extensions/api",
+       "//components/omnibox/browser",
+-      "//components/safe_browsing/core/common/proto:csd_proto",
+       "//components/safe_browsing/core/common/proto:realtimeapi_proto",
+       "//components/translate/content/browser",
+       "//content/public/browser",
+--- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
++++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
+@@ -2323,15 +2323,6 @@ const PolicyToPreferenceMapEntry kSimple
+     base::Value::Type::BOOLEAN },
+ #endif
+ 
+-#if BUILDFLAG(ENTERPRISE_CLIENT_CERTIFICATES)
+-  { key::kProvisionManagedClientCertificateForUser,
+-    client_certificates::prefs::kProvisionManagedClientCertificateForUserPrefs,
+-    base::Value::Type::INTEGER },
+-  { key::kProvisionManagedClientCertificateForBrowser,
+-    client_certificates::prefs::kProvisionManagedClientCertificateForBrowserPrefs,
+-    base::Value::Type::INTEGER },
+-#endif  // BUILDFLAG(ENTERPRISE_CLIENT_CERTIFICATES)
+-
+ #if !BUILDFLAG(IS_ANDROID)
+   { key::kLensOverlaySettings,
+     lens::prefs::kLensOverlaySettings,
+--- a/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
++++ b/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
+@@ -378,8 +378,12 @@ void DownloadProtectionService::ShowDeta
+   Profile* profile = Profile::FromBrowserContext(
+       content::DownloadItemUtils::GetBrowserContext(item));
+   if (profile &&
++#if BUILDFLAG(FULL_SAFE_BROWSING)
+       AdvancedProtectionStatusManagerFactory::GetForProfile(profile)
+           ->IsUnderAdvancedProtection() &&
++#else
++      false &&
++#endif
+       item->GetDangerType() ==
+           download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT) {
+     learn_more_url = GURL(chrome::kAdvancedProtectionDownloadLearnMoreURL);
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -552,17 +552,8 @@ static_library("ui") {
+     "//components/reading_list/core",
+     "//components/renderer_context_menu",
+     "//components/resources",
+-    "//components/safe_browsing/content/browser",
+-    "//components/safe_browsing/content/browser/password_protection",
+     "//components/safe_browsing/content/browser/web_ui",
+-    "//components/safe_browsing/core/browser/db:database_manager",
+-    "//components/safe_browsing/core/browser/db:util",
+-    "//components/safe_browsing/core/browser/password_protection:password_protection_metrics_util",
+-    "//components/safe_browsing/core/browser/tailored_security_service",
+-    "//components/safe_browsing/core/common",
+-    "//components/safe_browsing/core/common:safe_browsing_prefs",
+     "//components/safe_browsing/core/common/hashprefix_realtime:hash_realtime_utils",
+-    "//components/safe_browsing/core/common/proto:csd_proto",
+     "//components/schema_org/common:improved_mojom",
+     "//components/search_engines",
+     "//components/security_interstitials/content:security_interstitial_page",
+@@ -5533,7 +5524,6 @@ static_library("ui_public_dependencies")
+     "//components/dom_distiller/core",
+     "//components/enterprise/buildflags",
+     "//components/paint_preview/buildflags",
+-    "//components/safe_browsing:buildflags",
+     "//components/segmentation_platform/public",
+     "//components/sync",
+     "//components/sync_user_events",
+--- a/chrome/browser/ui/views/download/download_danger_prompt_views.cc
++++ b/chrome/browser/ui/views/download/download_danger_prompt_views.cc
+@@ -178,11 +178,15 @@ std::u16string DownloadDangerPromptViews
+                                         filename);
+     case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT:
+       return l10n_util::GetStringFUTF16(
+-          safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
++    #if BUILDFLAG(FULL_SAFE_BROWSING)
++        safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
+               profile_)
+                   ->IsUnderAdvancedProtection()
+               ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
+               : IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT,
++    #else
++          IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT
++    #endif
+           filename);
+     case download::DOWNLOAD_DANGER_TYPE_POTENTIALLY_UNWANTED:
+       return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
+--- a/chrome/browser/ui/webui/downloads/downloads_ui.cc
++++ b/chrome/browser/ui/webui/downloads/downloads_ui.cc
+@@ -40,6 +40,7 @@
+ #include "components/history/core/common/pref_names.h"
+ #include "components/prefs/pref_service.h"
+ #include "components/profile_metrics/browser_profile_type.h"
++#include "components/safe_browsing/buildflags.h"
+ #include "components/strings/grit/components_strings.h"
+ #include "content/public/browser/download_manager.h"
+ #include "content/public/browser/url_data_source.h"
+@@ -68,10 +69,12 @@ content::WebUIDataSource* CreateAndAddDo
+   webui::SetupWebUIDataSource(source, kDownloadsResources,
+                               IDR_DOWNLOADS_DOWNLOADS_HTML);
+ 
+-  bool requests_ap_verdicts =
+-      safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
++  bool requests_ap_verdicts = false;
++#if BUILDFLAG(FULL_SAFE_BROWSING)
++      requests_ap_verdicts = safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
+           profile)
+           ->IsUnderAdvancedProtection();
++#endif
+   source->AddBoolean("requestsApVerdicts", requests_ap_verdicts);
+ 
+   static constexpr webui::LocalizedString kStrings[] = {
+--- a/chrome/services/file_util/BUILD.gn
++++ b/chrome/services/file_util/BUILD.gn
+@@ -46,10 +46,6 @@ source_set("file_util") {
+     deps += [ "//components/services/filesystem/public/mojom" ]
+   }
+ 
+-  if (is_mac) {
+-    deps += [ "//chrome/utility/safe_browsing" ]
+-  }
+-
+   if (safe_browsing_mode == 1) {
+     sources += [
+       "safe_archive_analyzer.cc",
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -7559,13 +7559,9 @@ test("unit_tests") {
+       "//chrome/browser/renderer_host:history_swiper",
+       "//chrome/browser/updater:browser_updater_client",
+       "//chrome/common/notifications",
+-      "//chrome/common/safe_browsing:archive_analyzer_results",
+-      "//chrome/common/safe_browsing:disk_image_type_sniffer_mac",
+       "//chrome/services/mac_notifications:unit_tests",
+       "//chrome/services/mac_notifications/public/mojom",
+       "//chrome/updater:browser_sources",
+-      "//chrome/utility/safe_browsing",
+-      "//chrome/utility/safe_browsing/mac:dmg_common",
+       "//components/power_metrics",
+       "//ui/events/devices:test_support",
+     ]
