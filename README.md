@@ -1,6 +1,14 @@
 # helium-macos
 macOS development tooling & packaging for [Helium](//github.com/imputnet/helium).
 
+## Install
+
+### Homebrew
+
+```sh
+brew install --cask helium-browser
+```
+
 ## Credits
 This repo is based on
 [ungoogled-chromium-macos](https://github.com/ungoogled-software/ungoogled-chromium-macos),
