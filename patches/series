@@ -17,7 +17,6 @@ helium/macos/change-keychain-name.patch
 helium/macos/change-product-dir-name.patch
 helium/macos/rust-dep.patch
 helium/macos/fix-pwa-shims.patch
-helium/macos/replace-email-shortcut-with-devtools.patch
 helium/macos/traffic-lights-positioning.patch
 helium/macos/clean-main-menu.patch
 helium/macos/disable-immersive-fullscreen.patch
