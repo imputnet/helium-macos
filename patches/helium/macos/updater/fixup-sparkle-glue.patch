@@ -338,7 +338,7 @@
    if (error.code == SUNoUpdateError) {
      // Handled by notifications
      return;
-@@ -185,110 +150,153 @@ class VersionUpdaterForTests : public Ve
+@@ -185,110 +150,154 @@ class VersionUpdaterForTests : public Ve
  }
  
  // Delegated method. Return the appcast URL for the installed channel.
@@ -431,6 +431,7 @@
 -  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 -  status_callbacks_.Notify(status, error_string);
 +- (void)showDownloadDidReceiveExpectedContentLength:(uint64_t)expectedContentLength {
++  downloaded_length_ = 0;
 +  content_length_ = expectedContentLength;
  }
  
@@ -541,7 +542,7 @@
        // Launch a new update check, even if one was already completed, because
        // a new update may be available or a new update may have been installed
        // in the background since the last time the Help page was displayed.
-@@ -303,14 +311,16 @@ void VersionUpdaterSparkle::CheckForUpda
+@@ -303,14 +312,16 @@ void VersionUpdaterSparkle::CheckForUpda
  }
  
  void VersionUpdaterSparkle::UpdateStatus(Status status,
@@ -559,7 +560,7 @@
                                                     NSString* error_string) {
    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
    if (status_callback_.is_null()) {
-@@ -322,76 +332,104 @@ void VersionUpdaterSparkle::UpdateStatus
+@@ -322,76 +333,104 @@ void VersionUpdaterSparkle::UpdateStatus
    std::u16string message;
  
    // If we have an error to display, include the detail messages
