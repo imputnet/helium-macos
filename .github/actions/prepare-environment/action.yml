@@ -2,26 +2,17 @@ name: Prepare build environment
 runs:
   using: composite
   steps:
-    - name: Cleanup Xcode installations
-      run: sudo mv /Applications/Xcode_26.0.app /Applications/tmp_Xcode_26.0.app ; sudo rm -rf /Applications/Xcode* ; sudo mv /Applications/tmp_Xcode_26.0.app /Applications/Xcode_26.0.app
+    - name: Copy GitHub specific scripts to git-root folder
+      run: cp -va ./.github/scripts/ ./ ; date +%s > ./epoch_job_start.txt
       shell: bash
-    - name: Select Xcode version
-      run: sudo xcode-select --switch /Applications/Xcode_26.0.app
-      shell: bash
-    - name: Cleanup Xcode Simulators
-      run: sudo xcrun simctl delete all
+    - name: Prepare Xcode
+      run: ./github_prepare_xcode.sh
       shell: bash
     - name: Cleanup Android Related Stuff
       run: sudo rm -rf $ANDROID_HOME
       shell: bash
-    - name: Copy GitHub specific scripts to git-root folder
-      run: cp -va ./.github/scripts/ ./ ; date +%s > ./epoch_job_start.txt
-      shell: bash
     - name: Disable Spotlight
       run: sudo mdutil -a -i off
-      shell: bash
-    - name: Run xcode-select
-      run: sudo xcode-select --switch /Applications/Xcode_26.0.app
       shell: bash
     - name: Setup Environment and Toolchain
       run: ./github_setup_env_toolchain.sh ${{ inputs.arch }} | tee -a github_actions_setup_env_toolchain.log

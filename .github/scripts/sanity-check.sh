@@ -2,7 +2,6 @@
 set -exo pipefail
 
 sudo mdutil -a -i off
-sudo xcode-select --switch /Applications/Xcode_26.0.app
 
 brew install ninja coreutils python@3.14 quilt llvm@20 --overwrite
 brew unlink python || true

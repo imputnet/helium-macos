@@ -12,8 +12,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Copy GitHub specific scripts to git-root folder
-      run: cp -va ./.github/scripts/ ./
+    - uses: ./.github/actions/prepare-environment
     - name: Run sanity check
       run: ./sanity-check.sh
   substitution:
@@ -22,7 +21,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Copy GitHub specific scripts to git-root folder
-      run: cp -va ./.github/scripts/ ./
+    - uses: ./.github/actions/prepare-environment
     - name: Run substitution check
       run: ./sanity-check.sh sub
