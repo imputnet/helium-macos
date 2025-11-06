@@ -90,11 +90,9 @@ ___helium_reset() {
     "$_root_dir/devutils/update_patches.sh" unmerge || true
     rm "$_subs_cache" || true
     rm "$_namesubs_cache" || true
-
-    (
-        mv "$_src_dir" "${_src_dir}x" && \
-        rm -rf "${_src_dir}x"
-    ) &
+    if mv "$_src_dir" "${_src_dir}x"; then
+        rm -rf "${_src_dir}x" &
+    fi
 }
 
 ___helium_name_substitution() {
