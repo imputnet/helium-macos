@@ -147,7 +147,9 @@ ___helium_build() {
 ___helium_run() {
     cd "$_src_dir" && ./out/Default/Helium.app/Contents/MacOS/Helium \
     --user-data-dir="$HOME/Library/Application Support/net.imput.helium.dev" \
-    --enable-ui-devtools=$RANDOM
+    --enable-ui-devtools \
+    --use-mock-keychain \
+    --disable-features=DialMediaRouteProvider
 }
 
 ___helium_pull() {
