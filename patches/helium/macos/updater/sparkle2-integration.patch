@@ -222,24 +222,7 @@
  		A5BF4F1B1BC7668B007A052A /* SUTestWebServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SUTestWebServer.h; sourceTree = "<group>"; };
  		A5BF4F1C1BC7668B007A052A /* SUTestWebServer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SUTestWebServer.m; sourceTree = "<group>"; };
  		C23E88591BE7AF890050BB73 /* SparkleTestCodeSignApp.enc.dmg */ = {isa = PBXFileReference; lastKnownFileType = file; path = SparkleTestCodeSignApp.enc.dmg; sourceTree = "<group>"; };
-@@ -1644,7 +1648,7 @@
- 			name = Products;
- 			sourceTree = "<group>";
- 		};
--		0867D691FE84028FC02AAC07 /* Sparkle */ = {
-+		0867D691FE84028FC02AAC07 = {
- 			isa = PBXGroup;
- 			children = (
- 				723DFF962B3DFF6E00628E6C /* Package.swift */,
-@@ -2007,7 +2011,6 @@
- 				72AEB1D629A1CB510033883E /* SPUNoUpdateFoundInfo.h */,
- 				72AEB1D729A1CB510033883E /* SPUNoUpdateFoundInfo.m */,
- 			);
--			includeInIndex = 1;
- 			name = "Other Sources";
- 			sourceTree = "<group>";
- 		};
-@@ -2210,6 +2213,8 @@
+@@ -2210,6 +2214,8 @@
  				7269E49C2648FC6C0088C213 /* SPUUserUpdateState+Private.h */,
  				7269E4992648F7C00088C213 /* SPUUserUpdateState.m */,
  				725CB9561C7120410064365A /* SPUUserDriver.h */,
@@ -248,7 +231,7 @@
  			);
  			name = "User Driver";
  			sourceTree = "<group>";
-@@ -2545,6 +2550,7 @@
+@@ -2545,6 +2551,7 @@
  				3772FEA913DE0B6B00F79537 /* SUVersionDisplayProtocol.h in Headers */,
  				724BB3871D32A167005D534A /* SUXPCInstallerConnection.h in Headers */,
  				724BB3A81D33461B005D534A /* SUXPCInstallerStatus.h in Headers */,
@@ -256,16 +239,7 @@
  			);
  			runOnlyForDeploymentPostprocessing = 0;
  		};
-@@ -3062,7 +3068,7 @@
- 				zh_HK,
- 				nn,
- 			);
--			mainGroup = 0867D691FE84028FC02AAC07 /* Sparkle */;
-+			mainGroup = 0867D691FE84028FC02AAC07;
- 			packageReferences = (
- 				727DBAE326B5BBFD00111F0C /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
- 			);
-@@ -3620,6 +3626,7 @@
+@@ -3620,6 +3627,7 @@
  				724BB3881D32A167005D534A /* SUXPCInstallerConnection.m in Sources */,
  				724BB3A91D33461B005D534A /* SUXPCInstallerStatus.m in Sources */,
  				723AC011259DBDAA00BDB4FA /* SUReleaseNotesCommon.m in Sources */,
