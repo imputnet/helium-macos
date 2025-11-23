@@ -133,15 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1187,6 +1206,7 @@ if (is_win) {
-       "//components/webapps/isolated_web_apps/preload:component_bundle",
-     ]
- 
-+
-     if (is_chrome_branded) {
-       bundle_deps += [ ":preinstalled_apps" ]
-     }
-@@ -1195,6 +1215,12 @@ if (is_win) {
+@@ -1195,6 +1214,12 @@ if (is_win) {
        bundle_deps += [ ":angle_binaries" ]
      }
  
