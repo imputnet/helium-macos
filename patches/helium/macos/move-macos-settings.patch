@@ -1,6 +1,6 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html
-@@ -252,16 +252,6 @@
+@@ -248,16 +248,6 @@
              </template>
            </select>
          </div>
@@ -15,8 +15,8 @@
 -        </settings-toggle-button>
 -</if>
        </div>
-       <settings-toggle-button class="hr" id="splitViewDragAndDrop"
-           hidden="[[!showSplitViewDragAndDropSetting_]]"
+     </settings-section>
+     <template is="dom-if" if="[[showManagedThemeDialog_]]" restamp>
 --- a/chrome/browser/resources/settings/system_page/system_page.html
 +++ b/chrome/browser/resources/settings/system_page/system_page.html
 @@ -19,6 +19,17 @@
