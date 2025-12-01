@@ -1,0 +1,40 @@
+--- a/chrome/browser/ui/cocoa/applescript/scripting.sdef
++++ b/chrome/browser/ui/cocoa/applescript/scripting.sdef
+@@ -250,6 +250,9 @@
+       <responds-to command="save">
+         <cocoa method="handlesSaveScriptCommand:"/>
+       </responds-to>
++      <responds-to command="select">
++        <cocoa method="handlesSelectScriptCommand:"/>
++      </responds-to>
+       <responds-to command="close">
+         <cocoa method="handlesCloseScriptCommand:"/>
+       </responds-to>
+@@ -331,6 +334,10 @@
+       <direct-parameter description="The tab to execute the command in." type="specifier"/>
+     </command>
+ 
++    <command name="select" code="CrSuSelc" description="Select the tab.">
++      <direct-parameter description="The tab to select." type="specifier"/>
++    </command>
++
+     <command name="execute" code="CrSuExJa" description="Execute a piece of javascript.">
+       <direct-parameter description="The tab to execute the command in." type="specifier"/>
+       <parameter name="javascript" code="JvSc" description="The javascript code to execute." type="text">
+--- a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
+@@ -336,6 +336,14 @@ void ResumeAppleEventAndSendReply(NSAppl
+   _webContents->SavePage(mainFile, directoryPath, savePageType);
+ }
+ 
++- (void)handlesSelectScriptCommand:(NSScriptCommand*)command {
++  if (!_webContents) {
++    return;
++  }
++
++  _webContents->GetDelegate()->ActivateContents(_webContents.get());
++}
++
+ - (void)handlesCloseScriptCommand:(NSScriptCommand*)command {
+   if (!_webContents) {
+     return;
