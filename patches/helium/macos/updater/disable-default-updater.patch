@@ -8,5 +8,5 @@
 +    return;
 +
      EnsureUpdater(
+         base::TaskPriority::USER_VISIBLE,
          base::BindOnce(
-             [](PromoteCallback prompt) {

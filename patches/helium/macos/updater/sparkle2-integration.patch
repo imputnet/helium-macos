@@ -93,7 +93,7 @@
      return 3
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
-@@ -51,6 +51,7 @@ if (is_android) {
+@@ -50,6 +50,7 @@ if (is_android) {
    import("//build/util/branding.gni")
    import("//chrome/browser/buildflags.gni")
    import("//chrome/updater/branding.gni")
@@ -101,7 +101,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -501,6 +502,20 @@ if (is_win) {
+@@ -496,6 +497,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +122,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1139,6 +1154,10 @@ if (is_win) {
+@@ -1134,6 +1149,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1195,6 +1214,12 @@ if (is_win) {
+@@ -1190,6 +1209,12 @@ if (is_win) {
        bundle_deps += [ ":angle_binaries" ]
      }
  
@@ -173,10 +173,10 @@
  import("//chrome/browser/buildflags.gni")
  import("//chrome/common/features.gni")
 +import("//chrome/updater/sparkle.gni")
- import("//chromeos/ash/components/assistant/assistant.gni")
+ import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3177,11 +3178,9 @@ static_library("ui") {
+@@ -3199,11 +3200,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -376,7 +376,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -872,6 +876,9 @@ class AppControllerNativeThemeObserver :
+@@ -883,6 +887,9 @@ class AppControllerNativeThemeObserver :
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -412,7 +412,7 @@
  
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -59,6 +59,10 @@ if (is_win) {
+@@ -57,6 +57,10 @@ if (is_win) {
    import("//build/config/win/manifest.gni")
  }
  
@@ -423,7 +423,7 @@
  assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
  
  declare_args() {
-@@ -108,6 +112,10 @@ buildflag_header("buildflags") {
+@@ -103,6 +107,10 @@ buildflag_header("buildflags") {
      flags += [ "ENABLE_SEGMENT_HEAP=$enable_segment_heap" ]
    }
  
@@ -434,7 +434,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -6715,6 +6723,22 @@ static_library("browser") {
+@@ -6716,6 +6724,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]
