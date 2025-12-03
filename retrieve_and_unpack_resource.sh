@@ -51,9 +51,6 @@ if $retrieve_generic; then
     else
         python3 "$_main_repo/utils/downloads.py" retrieve -i "$_main_repo/downloads.ini" -c "$_download_cache"
         python3 "$_main_repo/utils/downloads.py" unpack -i "$_main_repo/downloads.ini" -c "$_download_cache" "$_src_dir"
-
-        # TODO: remove this once chromium includes dawn_commit_hash in tarball
-        cp "$_root_dir/resources/dawn_commit_hash.h" "$_src_dir/gpu/webgpu/"
     fi
 
     # Retrieve and unpack general resources
