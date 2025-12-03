@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -1677,10 +1677,6 @@ static_library("browser") {
+@@ -1640,10 +1640,6 @@ static_library("browser") {
      "//chrome/browser/prefs:util_impl",
      "//chrome/browser/profiles:profiles_extra_parts_impl",
      "//chrome/browser/profiles:profile_util_impl",
@@ -13,7 +13,7 @@
      "//chrome/browser/search",
      "//chrome/browser/search_engine_choice:impl",
      "//chrome/browser/signin:impl",
-@@ -1989,7 +1985,6 @@ static_library("browser") {
+@@ -1971,7 +1967,6 @@ static_library("browser") {
      "//chrome/browser/regional_capabilities:metrics_provider_impl",
      "//chrome/browser/resource_coordinator:tab_manager_features",
      "//chrome/browser/resources/accessibility:resources",
@@ -23,7 +23,7 @@
      "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -845,9 +845,6 @@ source_set("extensions") {
+@@ -843,9 +843,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -33,7 +33,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -886,7 +883,6 @@ source_set("extensions") {
+@@ -884,7 +881,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -43,13 +43,14 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -548,17 +548,8 @@ static_library("ui") {
+@@ -549,18 +549,9 @@ static_library("ui") {
      "//components/reading_list/core",
      "//components/renderer_context_menu",
      "//components/resources",
 -    "//components/safe_browsing/content/browser",
 -    "//components/safe_browsing/content/browser/password_protection",
      "//components/safe_browsing/content/browser/web_ui",
+     "//components/safe_browsing/core/browser:safe_browsing_metrics_collector",
 -    "//components/safe_browsing/core/browser/db:database_manager",
 -    "//components/safe_browsing/core/browser/db:util",
 -    "//components/safe_browsing/core/browser/password_protection:password_protection_metrics_util",
@@ -61,7 +62,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5390,7 +5381,6 @@ static_library("ui_public_dependencies")
+@@ -5454,7 +5445,6 @@ static_library("ui_public_dependencies")
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
@@ -71,7 +72,7 @@
      "//components/sync_user_events",
 --- a/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
 +++ b/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
-@@ -383,8 +383,12 @@ void DownloadProtectionService::ShowDeta
+@@ -388,8 +388,12 @@ void DownloadProtectionService::ShowDeta
    Profile* profile = Profile::FromBrowserContext(
        content::DownloadItemUtils::GetBrowserContext(item));
    if (profile &&
@@ -146,7 +147,7 @@
        return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -7682,13 +7682,9 @@ test("unit_tests") {
+@@ -7695,13 +7695,9 @@ test("unit_tests") {
        "//chrome/browser/renderer_host:history_swiper",
        "//chrome/browser/updater:browser_updater_client",
        "//chrome/common/notifications",
@@ -162,7 +163,7 @@
      ]
 --- a/chrome/services/file_util/BUILD.gn
 +++ b/chrome/services/file_util/BUILD.gn
-@@ -46,10 +46,6 @@ source_set("file_util") {
+@@ -45,10 +45,6 @@ source_set("file_util") {
      deps += [ "//components/services/filesystem/public/mojom" ]
    }
  
@@ -175,7 +176,7 @@
        "safe_archive_analyzer.cc",
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2356,15 +2356,6 @@ const PolicyToPreferenceMapEntry kSimple
+@@ -2362,15 +2362,6 @@ const PolicyToPreferenceMapEntry kSimple
      base::Value::Type::BOOLEAN },
  #endif
  
@@ -193,7 +194,7 @@
      lens::prefs::kLensOverlaySettings,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -7879,33 +7879,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -7834,33 +7834,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));

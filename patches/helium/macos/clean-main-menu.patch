@@ -1,17 +1,19 @@
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -297,10 +297,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+@@ -297,12 +297,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
                    .command_id(IDC_TOGGLE_FULLSCREEN_TOOLBAR),
                Item(IDS_CONTEXT_MENU_SHOW_FULL_URLS)
                    .command_id(IDC_SHOW_FULL_URLS),
 -              Item(IDS_CONTEXT_MENU_SHOW_GOOGLE_LENS_SHORTCUT)
 -                  .command_id(IDC_SHOW_GOOGLE_LENS_SHORTCUT),
+-              Item(IDS_CONTEXT_MENU_SHOW_AI_MODE_OMNIBOX_BUTTON)
+-                  .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
 -              Item(IDS_CONTEXT_MENU_SHOW_SEARCH_TOOLS)
 -                  .command_id(IDC_SHOW_SEARCH_TOOLS),
                Item(IDS_CUSTOMIZE_TOUCH_BAR)
                    .tag(IDC_CUSTOMIZE_TOUCH_BAR)
                    .action(@selector(toggleTouchBarCustomizationPalette:))
-@@ -495,7 +491,8 @@ NSMenuItem* BuildTabMenu(NSApplication*
+@@ -522,7 +516,8 @@ NSMenuItem* BuildTabMenu(NSApplication*
  
    // clang-format off
    NSMenuItem* item =
@@ -21,7 +23,7 @@
            .tag(IDC_TAB_MENU)
            .submenu({
                Item(IDS_TAB_CXMENU_NEWTABTORIGHT)
-@@ -554,15 +551,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
+@@ -581,15 +576,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
    // clang-format off
    NSMenuItem* item =
        Item(IDS_HELP_MENU_MAC)
@@ -38,13 +40,15 @@
            .Build();
    // clang-format on
  
-@@ -584,10 +573,10 @@ NSMenu* BuildMainMenu(NSApplication* nsa
+@@ -611,11 +598,11 @@ NSMenu* BuildMainMenu(NSApplication* nsa
             &BuildFileMenu,
             &BuildEditMenu,
             &BuildViewMenu,
 -           &BuildHistoryMenu,
+-           &BuildBookmarksMenu,
 +           &BuildTabMenu,
-            &BuildBookmarksMenu,
+            &BuildGroupsMenu,
++           &BuildBookmarksMenu,
 +           &BuildHistoryMenu,
             &BuildPeopleMenu,
 -           &BuildTabMenu,

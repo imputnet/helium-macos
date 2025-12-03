@@ -12,16 +12,16 @@ ungoogled-chromium/macos/no-unknown-warnings.patch
 ungoogled-chromium/macos/re2-include-fix
 ungoogled-chromium/macos/build-bindgen-target-override.patch
 
+helium/macos/fix-rust-allocator-in-component-builds.patch
 helium/macos/move-macos-settings.patch
 helium/macos/change-keychain-name.patch
 helium/macos/change-product-dir-name.patch
 helium/macos/rust-dep.patch
 helium/macos/fix-pwa-shims.patch
-helium/macos/traffic-lights-positioning.patch
 helium/macos/clean-main-menu.patch
 helium/macos/disable-immersive-fullscreen.patch
-extra/rebel/macos/sparkle-integration.patch
+
+rebel/macos/sparkle-integration.patch
 helium/macos/updater/fixup-sparkle-glue.patch
 helium/macos/updater/sparkle2-integration.patch
 helium/macos/updater/disable-default-updater.patch
-helium/macos/fix-rust-allocator-in-component-builds.patch
