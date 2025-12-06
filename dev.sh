@@ -46,7 +46,7 @@ ___helium_configure() {
     cd "$_src_dir"
     python3 ./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
     python3 ./tools/rust/build_bindgen.py --rust-target $_rust_target --skip-test
-    ./out/Default/gn gen out/Default --fail-on-unused-args
+    ./out/Default/gn gen out/Default --fail-on-unused-args --export-compile-commands
 }
 
 ___helium_resources() {
@@ -207,6 +207,56 @@ ___helium_validate() {
     fi
 }
 
+___helium_format() {
+    cd "$_src_dir"
+    quilt diff | "$_clang_dir/share/clang/clang-format-diff.py" -p1 -i -style=file
+}
+
+___helium_find_tidy_diff() {
+    if [ -n "$_tidy_diff_script" ]; then
+        return
+    elif command -v clang-tidy-diff >/dev/null 2>&1; then
+        _tidy_diff_script=$(command -v clang-tidy-diff)
+    elif command -v clang-tidy-diff.py >/dev/null 2>&1; then
+        _tidy_diff_script=$(command -v clang-tidy-diff.py)
+    else
+        _tidy_diff_script=$(find /opt/homebrew/Cellar/llvm -name clang-tidy-diff.py | head -1)
+    fi
+
+    if [ -z "$_tidy_diff_script" ]; then
+        echo "could not find clang-tidy-diff.py script." >&2
+        echo "ensure that you have llvm installed on your system" >&2
+        return 1
+    fi
+}
+
+___helium_strip_compile_commands() {
+    _ccmd_path="$_src_dir/out/Default/compile_commands.json"
+    [ "$_ccmd_stripped" = 1 ] && return;
+    _ccmd_stripped=1
+
+    echo "normalizing compile_commands.json, this will take a while..."
+    cp "$_ccmd_path" "$_ccmd_path.orig";
+    gsed -Ei 's/^(\s*"command": ").*?\s(\S+bin\/clang)/\1\2/g' "$_ccmd_path"
+}
+
+___helium_tidy() {
+    ___helium_find_tidy_diff || return;
+    ___helium_strip_compile_commands;
+    quilt diff | "$_tidy_diff_script" \
+        -regex '.*\.(cc|mm)' \
+        -use-color \
+        -p1 \
+        -path "$_src_dir/out/Default" \
+        -quiet \
+        -j$(nproc)
+}
+
+___helium_lint() {
+    ___helium_format;
+    ___helium_tidy;
+}
+
 __helium_menu() {
     set -e
     case $1 in
@@ -225,6 +275,9 @@ __helium_menu() {
         pull) ___helium_pull;;
 
         validate) ___helium_validate "$2";;
+        format) ___helium_format;;
+        tidy) ___helium_tidy;;
+        lint) ___helium_lint;;
 
         build) ___helium_build;;
         run) ___helium_run;;
@@ -254,6 +307,9 @@ __helium_menu() {
             echo "\tvalidate config - validates the build configuration" >&2
             echo "\tvalidate patches - validates that patches are applied correctly" >&2
             echo "\tvalidate series - checks the consistency of the series file" >&2
+            echo "\tformat - formats the topmost patch according to Chromium coding style" >&2
+            echo "\ttidy - runs clang-tidy on the topmost patch" >&2
+            echo "\tlint - he format + he tidy" >&2
 
             echo "\n" >&2
             echo "\tbuild - builds a development binary" >&2
