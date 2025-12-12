@@ -62,7 +62,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5454,7 +5445,6 @@ static_library("ui_public_dependencies")
+@@ -5456,7 +5447,6 @@ static_library("ui_public_dependencies")
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
@@ -194,7 +194,7 @@
      lens::prefs::kLensOverlaySettings,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -7834,33 +7834,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -7852,33 +7852,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));

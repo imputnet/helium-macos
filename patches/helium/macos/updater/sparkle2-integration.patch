@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3199,11 +3200,9 @@ static_library("ui") {
+@@ -3201,11 +3202,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
