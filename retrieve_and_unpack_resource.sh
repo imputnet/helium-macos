@@ -55,9 +55,9 @@ if $retrieve_generic; then
 
     # Retrieve and unpack general resources
     python3 "$_main_repo/utils/downloads.py" retrieve -i "$_root_dir/downloads.ini" -c "$_download_cache"
-    python3 "$_main_repo/utils/downloads.py" retrieve -i "$_main_repo/extras.ini" -c "$_download_cache"
+    python3 "$_main_repo/utils/downloads.py" retrieve -i "$_main_repo/deps.ini" -c "$_download_cache"
     python3 "$_main_repo/utils/downloads.py" unpack -i "$_root_dir/downloads.ini" -c "$_download_cache" "$_src_dir"
-    python3 "$_main_repo/utils/downloads.py" unpack -i "$_main_repo/extras.ini" -c "$_download_cache" "$_src_dir"
+    python3 "$_main_repo/utils/downloads.py" unpack -i "$_main_repo/deps.ini" -c "$_download_cache" "$_src_dir"
 fi
 
 if $retrieve_arch_specific; then
