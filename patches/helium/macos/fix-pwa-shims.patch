@@ -1,6 +1,6 @@
 --- a/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm
 +++ b/chrome/browser/web_applications/os_integration/mac/apps_folder_support.mm
-@@ -33,6 +33,9 @@ namespace {
+@@ -34,6 +34,9 @@ namespace {
  bool g_have_localized_app_dir_name = false;
  
  base::FilePath GetLocalizableAppShortcutsSubdirName() {

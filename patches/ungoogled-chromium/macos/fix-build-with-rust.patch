@@ -1,6 +1,6 @@
 --- a/build/config/clang/BUILD.gn
 +++ b/build/config/clang/BUILD.gn
-@@ -248,8 +248,6 @@ clang_lib("compiler_builtins") {
+@@ -257,8 +257,6 @@ clang_lib("compiler_builtins") {
      } else {
        assert(false, "unsupported target_platform=$target_platform")
      }
@@ -11,21 +11,30 @@
  
 --- a/build/config/rust.gni
 +++ b/build/config/rust.gni
-@@ -52,7 +52,7 @@ declare_args() {
-   # To use a custom toolchain instead, specify an absolute path to the root of
-   # a Rust sysroot, which will have a 'bin' directory and others. Commonly
-   # <home dir>/.rustup/toolchains/nightly-<something>-<something>
+@@ -57,7 +57,7 @@ declare_args() {
+   # build may depend on using a *nightly* version of Rust toolchain (see
+   # `tools/rust/unstable_rust_feature_usage.md`) although other projects (e.g. V8)
+   # may be compatible with the stable version of Rust toolchain.
 -  rust_sysroot_absolute = ""
 +  rust_sysroot_absolute = "//third_party/rust-toolchain"
  
    # Directory under which to find `bin/bindgen` (a `bin` directory containing
    # the bindgen exectuable).
-@@ -62,7 +62,7 @@ declare_args() {
+@@ -67,7 +67,7 @@ declare_args() {
    # set this to the output of `rustc -V`. Changing this string will cause all
    # Rust targets to be rebuilt, which allows you to update your toolchain and
    # not break incremental builds.
 -  rustc_version = ""
-+  rustc_version = "rustc 1.89.0-nightly (be19eda0d 2025-06-22)"
++  rustc_version = "rustc 1.93.0-nightly (01867557c 2025-11-12)"
  
    # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
    #
+@@ -112,7 +112,7 @@ use_chromium_rust_toolchain = rust_sysro
+ # `rustc_nightly_capability = false` will make the build avoid the use of
+ # Rust nightly features. There are no bots that test this and there is no
+ # guarantee it will work, but we accept patches for this configuration.
+-rustc_nightly_capability = use_chromium_rust_toolchain
++rustc_nightly_capability = true
+ 
+ # Platform support for the Rust toolchain.
+ chromium_toolchain_supports_platform = !is_wasm
