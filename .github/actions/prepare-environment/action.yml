@@ -2,6 +2,10 @@ name: Prepare build environment
 runs:
   using: composite
   steps:
+    - name: Setup Python 3.13
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
     - name: Copy GitHub specific scripts to git-root folder
       run: cp -va ./.github/scripts/ ./ ; date +%s > ./epoch_job_start.txt
       shell: bash
