@@ -657,7 +657,7 @@
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
  #include "chrome/browser/download/download_core_service.h"
-@@ -56,6 +57,10 @@
+@@ -57,6 +58,10 @@
  #include "chrome/browser/background/glic/glic_background_mode_manager.h"
  #endif
  
@@ -668,7 +668,7 @@
  namespace chrome {
  
  namespace {
-@@ -110,6 +115,14 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -111,6 +116,14 @@ void AttemptRestartInternal(IgnoreUnload
  #else   // !BUILDFLAG(IS_CHROMEOS).
    // Set the flag to restore state after the restart.
    pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);

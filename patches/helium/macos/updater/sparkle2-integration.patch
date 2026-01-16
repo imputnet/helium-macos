@@ -18,8 +18,8 @@
 +Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/build/apple/tweak_info_plist.py
 +++ b/build/apple/tweak_info_plist.py
-@@ -189,6 +189,21 @@ def _RemoveBreakpadKeys(plist):
-               'BreakpadSendAndExit', 'BreakpadSkipConfirm')
+@@ -195,6 +195,21 @@ def _IsValidBundleId(bundle_identifier):
+   return re.match(r'^[0-9a-zA-Z-.]+$', bundle_identifier) is not None
  
  
 +def _AddSparkleKeys(plist, ed_key, auto_checks, check_interval):
@@ -40,7 +40,7 @@
  def _TagSuffixes():
    # Keep this list sorted in the order that tag suffix components are to
    # appear in a tag value. That is to say, it should be sorted per ASCII.
-@@ -279,6 +294,29 @@ def Main(argv):
+@@ -285,6 +300,29 @@ def Main(argv):
        action='store_true',
        default=False,
        help='Use staging breakpad to upload reports. Ignored if --breakpad=0.')
@@ -70,7 +70,7 @@
    parser.add_option('--keystone',
                      dest='use_keystone',
                      action='store',
-@@ -420,6 +458,20 @@ def Main(argv):
+@@ -429,6 +467,20 @@ def Main(argv):
    else:
      _RemoveKeystoneKeys(plist)
  
@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3201,11 +3202,9 @@ static_library("ui") {
+@@ -3220,11 +3221,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -358,7 +358,7 @@
 +@end
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
-@@ -38,6 +38,7 @@
+@@ -39,6 +39,7 @@
  #include "chrome/browser/browser_features.h"
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
@@ -366,7 +366,7 @@
  #include "chrome/browser/command_updater_impl.h"
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/download/download_core_service_factory.h"
-@@ -47,6 +48,9 @@
+@@ -48,6 +49,9 @@
  #include "chrome/browser/lifetime/browser_shutdown.h"
  #include "chrome/browser/mac/auth_session_request.h"
  #include "chrome/browser/mac/key_window_notifier.h"
@@ -376,7 +376,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -883,6 +887,9 @@ class AppControllerNativeThemeObserver :
+@@ -893,6 +897,9 @@ class AppControllerNativeThemeObserver :
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -434,7 +434,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -6716,6 +6724,22 @@ static_library("browser") {
+@@ -6703,6 +6711,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]
