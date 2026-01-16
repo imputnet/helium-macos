@@ -17,7 +17,7 @@
 
 ### Build dependencies
 
-1. Install Python 3 via Homebrew: `brew install python@3`
+1. Install Python 3 via Homebrew: `brew install python@3.13`
 2. Install Python dependencies via `pip3`: `pip3 install httplib2==0.22.0 requests pillow`
     * Note that you might need to use `--break-system-packages` if you don't want to use a
       dedicated Python environment for building Helium.
