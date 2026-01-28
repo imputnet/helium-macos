@@ -23,7 +23,7 @@
            .tag(IDC_TAB_MENU)
            .submenu({
                Item(IDS_TAB_CXMENU_NEWTABTORIGHT)
-@@ -581,15 +576,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
+@@ -583,15 +578,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
    // clang-format off
    NSMenuItem* item =
        Item(IDS_HELP_MENU_MAC)
@@ -40,7 +40,7 @@
            .Build();
    // clang-format on
  
-@@ -611,11 +598,11 @@ NSMenu* BuildMainMenu(NSApplication* nsa
+@@ -613,11 +600,11 @@ NSMenu* BuildMainMenu(NSApplication* nsa
             &BuildFileMenu,
             &BuildEditMenu,
             &BuildViewMenu,
