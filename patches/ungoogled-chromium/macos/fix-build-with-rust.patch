@@ -29,7 +29,7 @@
  
    # Whether artifacts produced by the Rust compiler can participate in ThinLTO.
    #
-@@ -112,7 +112,7 @@ use_chromium_rust_toolchain = rust_sysro
+@@ -121,7 +121,7 @@ use_chromium_rust_toolchain = rust_sysro
  # `rustc_nightly_capability = false` will make the build avoid the use of
  # Rust nightly features. There are no bots that test this and there is no
  # guarantee it will work, but we accept patches for this configuration.
