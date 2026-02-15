@@ -518,7 +518,7 @@
 +++ b/chrome/browser/upgrade_detector/get_installed_version_mac.mm
 @@ -13,14 +13,27 @@
  #include "base/version.h"
- #include "chrome/browser/updater/browser_updater_client_util.h"
+ #include "chrome/browser/updater/updater.h"
  
 +#include "build/branding_buildflags.h"  // Needed for REBEL_BROWSER.
 +#if BUILDFLAG(REBEL_BROWSER)
@@ -539,7 +539,7 @@
 +#else
        base::BindOnce([] {
          return InstalledAndCriticalVersion(
-             base::Version(CurrentlyInstalledVersion()));
+             updater::CurrentlyInstalledVersion());
        }),
 +#endif
        std::move(callback));

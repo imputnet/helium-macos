@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -1624,10 +1624,6 @@ static_library("browser") {
+@@ -1586,10 +1586,6 @@ static_library("browser") {
      "//chrome/browser/prefs:util_impl",
      "//chrome/browser/profiles:profiles_extra_parts_impl",
      "//chrome/browser/profiles:profile_util_impl",
@@ -13,9 +13,9 @@
      "//chrome/browser/search",
      "//chrome/browser/search_engine_choice:impl",
      "//chrome/browser/signin:impl",
-@@ -1961,7 +1957,6 @@ static_library("browser") {
+@@ -1920,7 +1916,6 @@ static_library("browser") {
+     "//chrome/browser/regional_capabilities",
      "//chrome/browser/regional_capabilities:metrics_provider_impl",
-     "//chrome/browser/resource_coordinator:tab_manager_features",
      "//chrome/browser/resources/accessibility:resources",
 -    "//chrome/browser/safe_browsing",
      "//chrome/browser/safe_browsing:advanced_protection",
@@ -23,7 +23,7 @@
      "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -850,9 +850,6 @@ source_set("extensions") {
+@@ -844,9 +844,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -33,7 +33,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -886,7 +883,6 @@ source_set("extensions") {
+@@ -880,7 +877,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -43,7 +43,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -550,18 +550,9 @@ static_library("ui") {
+@@ -554,18 +554,9 @@ static_library("ui") {
      "//components/reading_list/core",
      "//components/renderer_context_menu",
      "//components/resources",
@@ -62,7 +62,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5494,7 +5485,6 @@ static_library("ui_public_dependencies")
+@@ -5523,7 +5514,6 @@ static_library("ui_public_dependencies")
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
@@ -87,7 +87,7 @@
      learn_more_url = GURL(chrome::kAdvancedProtectionDownloadLearnMoreURL);
 --- a/chrome/browser/download/notification/download_item_notification.cc
 +++ b/chrome/browser/download/notification/download_item_notification.cc
-@@ -973,9 +973,13 @@ std::u16string DownloadItemNotification:
+@@ -974,9 +974,13 @@ std::u16string DownloadItemNotification:
      }
      case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT: {
        bool requests_ap_verdicts =
@@ -103,7 +103,7 @@
                ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
 --- a/chrome/browser/ui/webui/downloads/downloads_ui.cc
 +++ b/chrome/browser/ui/webui/downloads/downloads_ui.cc
-@@ -40,6 +40,7 @@
+@@ -39,6 +39,7 @@
  #include "components/history/core/common/pref_names.h"
  #include "components/prefs/pref_service.h"
  #include "components/profile_metrics/browser_profile_type.h"
@@ -111,7 +111,7 @@
  #include "components/strings/grit/components_strings.h"
  #include "content/public/browser/download_manager.h"
  #include "content/public/browser/url_data_source.h"
-@@ -68,10 +69,12 @@ content::WebUIDataSource* CreateAndAddDo
+@@ -67,10 +68,12 @@ content::WebUIDataSource* CreateAndAddDo
    webui::SetupWebUIDataSource(source, kDownloadsResources,
                                IDR_DOWNLOADS_DOWNLOADS_HTML);
  
@@ -147,15 +147,14 @@
        return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -7712,13 +7712,9 @@ test("unit_tests") {
+@@ -7751,12 +7751,8 @@ test("unit_tests") {
+       "//chrome/browser/apps/app_shim",
        "//chrome/browser/renderer_host:history_swiper",
-       "//chrome/browser/updater:browser_updater_client",
        "//chrome/common/notifications",
 -      "//chrome/common/safe_browsing:archive_analyzer_results",
 -      "//chrome/common/safe_browsing:disk_image_type_sniffer_mac",
        "//chrome/services/mac_notifications:unit_tests",
        "//chrome/services/mac_notifications/public/mojom",
-       "//chrome/updater:browser_sources",
 -      "//chrome/utility/safe_browsing",
 -      "//chrome/utility/safe_browsing/mac:dmg_common",
        "//components/power_metrics",
@@ -163,7 +162,7 @@
      ]
 --- a/chrome/services/file_util/BUILD.gn
 +++ b/chrome/services/file_util/BUILD.gn
-@@ -45,10 +45,6 @@ source_set("file_util") {
+@@ -47,10 +47,6 @@ source_set("file_util") {
      deps += [ "//components/services/filesystem/public/mojom" ]
    }
  
@@ -173,10 +172,10 @@
 -
    if (safe_browsing_mode == 1) {
      sources += [
-       "safe_archive_analyzer.cc",
+       "obfuscated_archive_analysis_delegate.cc",
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2392,15 +2392,6 @@ const PolicyToPreferenceMapEntry kSimple
+@@ -2377,15 +2377,6 @@ const PolicyToPreferenceMapEntry kSimple
      base::Value::Type::BOOLEAN },
  #endif
  
@@ -194,7 +193,7 @@
      ash::prefs::kAuthenticationFlowAutoReloadInterval,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -7954,33 +7954,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -7916,33 +7916,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));

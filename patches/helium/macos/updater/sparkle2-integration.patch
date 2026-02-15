@@ -101,7 +101,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -496,6 +497,20 @@ if (is_win) {
+@@ -497,6 +498,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +122,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1134,6 +1149,10 @@ if (is_win) {
+@@ -1135,6 +1150,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1190,6 +1209,12 @@ if (is_win) {
+@@ -1191,6 +1210,12 @@ if (is_win) {
        bundle_deps += [ ":angle_binaries" ]
      }
  
@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3220,11 +3221,9 @@ static_library("ui") {
+@@ -3238,11 +3239,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -397,7 +397,7 @@
 +#endif
  #include "chrome/browser/ui/cocoa/main_menu_builder.h"
  #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
- #include "chrome/browser/updater/browser_updater_client_util.h"
+ #include "chrome/browser/updater/updater.h"
 @@ -175,6 +178,11 @@ void ChromeBrowserMainPartsMac::PreProfi
  
  void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
@@ -434,7 +434,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -6705,6 +6713,22 @@ static_library("browser") {
+@@ -6673,6 +6681,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]
