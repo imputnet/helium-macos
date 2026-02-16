@@ -727,7 +727,7 @@
 -            base::UTF16ToASCII(rebel::CurrentlyDownloadedVersion())));
 +        return InstalledAndCriticalVersion(
 +            base::Version(helium::CurrentlyDownloadedVersion()
-+                          .value_or(CurrentlyInstalledVersion())));
++                          .value_or(updater::CurrentlyInstalledVersion().GetString())));
        }),
  #else
        base::BindOnce([] {
