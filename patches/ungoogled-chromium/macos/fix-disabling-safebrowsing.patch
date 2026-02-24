@@ -147,7 +147,7 @@
        return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -7753,12 +7753,8 @@ test("unit_tests") {
+@@ -7754,12 +7754,8 @@ test("unit_tests") {
        "//chrome/browser/apps/app_shim",
        "//chrome/browser/renderer_host:history_swiper",
        "//chrome/common/notifications",
