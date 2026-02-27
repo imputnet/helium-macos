@@ -56,11 +56,11 @@ if [ ! -d "${_platform_resources}/generated" ]; then
     cp -R "${_platform_resources}/assets" "${_platform_resources}/generated"
 fi
 
-generate_iconset "${_resources_dir}/branding/app_icon/shadow.png" \
+generate_iconset "${_platform_resources}/assets/legacy.png" \
     "${_platform_resources}/generated/Assets.xcassets/AppIcon.appiconset" \
-    "${_resources_dir}/branding/app_icon/shadow_cropped.png"
+    "${_platform_resources}/assets/legacy_crop.png"
 
-generate_iconset "${_resources_dir}/branding/app_icon/shadow_cropped.png" \
+generate_iconset "${_platform_resources}/assets/legacy_crop.png" \
     "${_platform_resources}/generated/Assets.xcassets/Icon.iconset"
 
 rm -rf "${_root_dir}/build/src/chrome/app/theme/chromium/mac"
