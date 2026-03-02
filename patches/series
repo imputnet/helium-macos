@@ -1,16 +1,7 @@
-ungoogled-chromium/macos/build-bindgen.patch
-ungoogled-chromium/macos/disable-clang-version-check.patch
 ungoogled-chromium/macos/disable-crashpad-handler.patch
-ungoogled-chromium/macos/disable-symbol-order-verification.patch
-ungoogled-chromium/macos/fix-build-with-rust.patch
-ungoogled-chromium/macos/fix-clang-format-path.patch
 ungoogled-chromium/macos/fix-disabling-safebrowsing.patch
 ungoogled-chromium/macos/fix-dsymutil.patch
-ungoogled-chromium/macos/fix-libpng-build.patch
-ungoogled-chromium/macos/fix-runTsc-log-info.patch
 ungoogled-chromium/macos/no-unknown-warnings.patch
-ungoogled-chromium/macos/re2-include-fix
-ungoogled-chromium/macos/build-bindgen-target-override.patch
 
 helium/macos/fix-rust-allocator-in-component-builds.patch
 helium/macos/move-macos-settings.patch

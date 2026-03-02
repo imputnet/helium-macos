@@ -21,6 +21,8 @@ mkdir -p "$_download_cache"
 mkdir -p "$_src_dir/out/Default"
 
 python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
+"$_root_dir/retrieve_and_unpack_resource.sh" -t
+
 python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
 python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
 python3 "$_main_repo/utils/name_substitution.py" --sub -t "$_src_dir"
@@ -33,10 +35,5 @@ python3 "$_main_repo/utils/helium_version.py" \
 python3 "$_main_repo/utils/generate_resources.py" "$_main_repo/resources/generate_resources.txt" "$_main_repo/resources"
 python3 "$_main_repo/utils/replace_resources.py" "$_root_dir/resources/platform_resources.txt" "$_root_dir/resources" "$_src_dir"
 python3 "$_main_repo/utils/replace_resources.py" "$_main_repo/resources/helium_resources.txt" "$_main_repo/resources" "$_src_dir"
-
-mkdir -p "$_src_dir/third_party/llvm-build/Release+Asserts"
-mkdir -p "$_src_dir/third_party/rust-toolchain/bin"
-
-"$_root_dir/retrieve_and_unpack_resource.sh" -p "$_target_cpu"
 
 rm -rvf "$_download_cache"
