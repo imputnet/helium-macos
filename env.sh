@@ -1,10 +1,6 @@
 # The architecture of the running shell
 # Also used to determine the build target architecture
 _arch="$(/usr/bin/uname -m)"
-_rust_target="x86_64-apple-darwin"
-if [[ $_arch == "arm64" ]]; then
-  _rust_target="aarch64-apple-darwin"
-fi
 
 # Some path variables
 _root_dir=$(dirname $(greadlink -f $0))
