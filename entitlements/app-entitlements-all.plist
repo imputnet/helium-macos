@@ -20,15 +20,14 @@
 	<string>${CHROMIUM_TEAM_ID}.net.imput.helium</string>
 	<key>keychain-access-groups</key>
 	<array>
+		<string>${CHROMIUM_TEAM_ID}.net.imput.helium</string>
 		<string>${CHROMIUM_TEAM_ID}.net.imput.helium.devicetrust</string>
 		<string>${CHROMIUM_TEAM_ID}.net.imput.helium.unexportable-keys</string>
 		<string>${CHROMIUM_TEAM_ID}.net.imput.helium.webauthn</string>
 		<string>${CHROMIUM_TEAM_ID}.net.imput.helium.webauthn-uvk</string>
 	</array>
-<!-- pending
-	<key>com.apple.developer.associated-domains.applinks.read-write</key>
-	<true/>
--->	<key>com.apple.developer.web-browser.public-key-credential</key>
+	<!-- pending: com.apple.developer.associated-domains.applinks.read-write -->
+	<key>com.apple.developer.web-browser.public-key-credential</key>
 	<true/>
 </dict>
 </plist>

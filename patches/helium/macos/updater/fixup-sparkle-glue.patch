@@ -323,6 +323,15 @@
 +    mayPerformUpdateCheck:(SPUUpdateCheck)updateCheck
 +                    error:(NSError *_Nullable *_Nullable)error {
 +    return [self shouldAccessUpdateService];
++}
++
++// Set background QoS for update downloads to prevent network saturation.
++// Some consumer routers crash when a single connection uses full bandwidth.
++// See: https://github.com/imputnet/helium-macos/issues/83
++- (void)updater:(SPUUpdater *)updater
++    willDownloadUpdate:(SUAppcastItem *)item
++          withRequest:(NSMutableURLRequest *)request {
++    request.networkServiceType = NSURLNetworkServiceTypeBackground;
  }
  
  // In the list of updates there are no new version available.
@@ -598,12 +607,22 @@
 -  SUUpdater* updater = [SUUpdater sharedUpdater];
 -  if (updater) {
 -    [updater forceInstallAndRelaunch];
-+  if (observer) {
++  if (observer && observer.invocationBlock) {
++    // Invoke Sparkle's immediate installation handler.
++    // This will atomically install the update and relaunch the application.
++    // Sparkle terminates the process inside this block, so the lines
++    // after it are only reached if Sparkle fails to terminate.
++    void (^installBlock)(void) = observer.invocationBlock;
 +    observer.invocationBlock = nil;
-+    VersionUpdaterSparkle::sparkle_observer_ = nullptr;
-+
-+    chrome::AttemptRelaunch();
++    observer.currentlyDownloadedVersion = nil;
++    installBlock();
++    // If we reach here, Sparkle failed to terminate.
++    // Fall through to Chromium's relaunch as a last resort.
    }
++
++  // Fallback: no Sparkle install block available (or Sparkle failed),
++  // use Chromium's standard relaunch.
++  chrome::AttemptRelaunch();
  }
  
  void InitializeSparkleFramework() {
