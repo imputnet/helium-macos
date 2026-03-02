@@ -40,7 +40,7 @@
  def _TagSuffixes():
    # Keep this list sorted in the order that tag suffix components are to
    # appear in a tag value. That is to say, it should be sorted per ASCII.
-@@ -285,6 +300,29 @@ def Main(argv):
+@@ -324,6 +339,29 @@ def Main(argv):
        action='store_true',
        default=False,
        help='Use staging breakpad to upload reports. Ignored if --breakpad=0.')
@@ -70,7 +70,7 @@
    parser.add_option('--keystone',
                      dest='use_keystone',
                      action='store',
-@@ -429,6 +467,20 @@ def Main(argv):
+@@ -468,6 +506,20 @@ def Main(argv):
    else:
      _RemoveKeystoneKeys(plist)
  
@@ -101,7 +101,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -497,6 +498,20 @@ if (is_win) {
+@@ -496,6 +497,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +122,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1135,6 +1150,10 @@ if (is_win) {
+@@ -1133,6 +1148,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1191,6 +1210,12 @@ if (is_win) {
+@@ -1189,6 +1208,12 @@ if (is_win) {
        bundle_deps += [ ":angle_binaries" ]
      }
  
@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3242,11 +3243,9 @@ static_library("ui") {
+@@ -3238,11 +3239,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -376,7 +376,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -893,6 +897,9 @@ class AppControllerNativeThemeObserver :
+@@ -905,6 +909,9 @@ class AppControllerNativeThemeObserver :
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -388,7 +388,7 @@
  - (BOOL)tryToTerminateApplication:(NSApplication*)app {
 --- a/chrome/browser/chrome_browser_main_mac.mm
 +++ b/chrome/browser/chrome_browser_main_mac.mm
-@@ -30,6 +30,9 @@
+@@ -31,6 +31,9 @@
  #include "chrome/browser/first_run/first_run.h"
  #include "chrome/browser/mac/install_from_dmg.h"
  #include "chrome/browser/mac/metrics.h"
@@ -398,7 +398,7 @@
  #include "chrome/browser/ui/cocoa/main_menu_builder.h"
  #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
  #include "chrome/browser/updater/updater.h"
-@@ -175,6 +178,11 @@ void ChromeBrowserMainPartsMac::PreProfi
+@@ -178,6 +181,11 @@ void ChromeBrowserMainPartsMac::PreProfi
  
  void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
                                                  bool is_initial_profile) {
@@ -412,7 +412,7 @@
  
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -57,6 +57,10 @@ if (is_win) {
+@@ -58,6 +58,10 @@ if (is_win) {
    import("//build/config/win/manifest.gni")
  }
  
@@ -423,7 +423,7 @@
  assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
  
  declare_args() {
-@@ -103,6 +107,10 @@ buildflag_header("buildflags") {
+@@ -104,6 +108,10 @@ buildflag_header("buildflags") {
      flags += [ "ENABLE_SEGMENT_HEAP=$enable_segment_heap" ]
    }
  
@@ -434,7 +434,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -6673,6 +6681,22 @@ static_library("browser") {
+@@ -6653,6 +6661,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]
