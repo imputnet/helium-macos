@@ -35,18 +35,14 @@ ___helium_info_pull() {
     cd "$_src_dir"
 }
 
-___helium_info_pull_thirdparty() {
-    mkdir -p "$_src_dir/third_party/llvm-build/Release+Asserts"
-    mkdir -p "$_src_dir/third_party/rust-toolchain/bin"
-
-    "$_root_dir/retrieve_and_unpack_resource.sh" -p
-}
-
 ___helium_configure() {
     cd "$_src_dir"
     python3 ./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
-    python3 ./tools/rust/build_bindgen.py --rust-target $_rust_target --skip-test
     ./out/Default/gn gen out/Default --fail-on-unused-args --export-compile-commands
+}
+
+___helium_toolchain() {
+    "$_root_dir/retrieve_and_unpack_resource.sh" -t
 }
 
 ___helium_resources() {
@@ -65,9 +61,9 @@ ___helium_setup_presetup() {
 
     ___helium_info_pull
     python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
+    ___helium_toolchain
     ___helium_resources
     ___helium_setup_gn
-    ___helium_info_pull_thirdparty
 
     python3 "$_main_repo/utils/helium_version.py" \
         --tree "$_main_repo" \

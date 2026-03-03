@@ -12,9 +12,9 @@ _main_repo="$_root_dir/helium-chromium"
 # Clone to get the Chromium Source
 clone=true
 retrieve_generic=false
-retrieve_arch_specific=false
+retrieve_toolchain=false
 
-while getopts 'dgp' OPTION; do
+while getopts 'dgt' OPTION; do
   case "$OPTION" in
     d)
         clone=false
@@ -22,14 +22,14 @@ while getopts 'dgp' OPTION; do
     g)
         retrieve_generic=true
         ;;
-    p)
-        retrieve_arch_specific=true
+    t)
+        retrieve_toolchain=true
         ;;
     ?)
         echo "Usage: $0 [-d] [-g] [-p]"
         echo "  -d: Use download instead of git clone to get Chromium Source"
         echo "  -g: Retrieve and unpack Chromium Source and general resources"
-        echo "  -p: Retrieve and unpack platform-specific resources"
+        echo "  -t: Retrieve and unpack Chromium toolchain"
         exit 1
         ;;
     esac
@@ -60,59 +60,16 @@ if $retrieve_generic; then
     python3 "$_main_repo/utils/downloads.py" unpack -i "$_main_repo/deps.ini" -c "$_download_cache" "$_src_dir"
 fi
 
-if $retrieve_arch_specific; then
-    rm -rf "$_src_dir/third_party/llvm-build/Release+Asserts/"
-    rm -rf "$_src_dir/third_party/rust-toolchain/"
-    rm -rf "$_src_dir/third_party/node/mac/"
-    rm -rf "$_src_dir/third_party/node/mac_arm64/"
-    mkdir -p "$_src_dir/third_party/llvm-build/Release+Asserts"
+if $retrieve_toolchain; then
+  pushd "$_src_dir"
+    "$_src_dir/tools/rust/update_rust.py"
+    for pkg in clang objdump clang-tidy libclang; do
+      "$_src_dir/tools/clang/scripts/update.py" --package $pkg;
+    done
+    "$_src_dir/third_party/node/update_node_binaries"
 
-    # Retrieve and unpack platform-specific resources
-    if [[ $(uname -m) == "arm64" ]]; then
-        python3 "$_main_repo/utils/downloads.py" retrieve -i "$_root_dir/downloads-arm64.ini" -c "$_download_cache"
-        mkdir -p "$_src_dir/third_party/node/mac_arm64/node-darwin-arm64/"
-        python3 "$_main_repo/utils/downloads.py" unpack -i "$_root_dir/downloads-arm64.ini" -c "$_download_cache" "$_src_dir"
-        if [[ $_target_cpu == "x86_64" ]]; then
-            python3 "$_main_repo/utils/downloads.py" retrieve -i "$_root_dir/downloads-x86-64-rustlib.ini" -c "$_download_cache"
-            python3 "$_main_repo/utils/downloads.py" unpack -i "$_root_dir/downloads-x86-64-rustlib.ini" -c "$_download_cache" "$_src_dir"
-        fi
-    else
-        python3 "$_main_repo/utils/downloads.py" retrieve -i "$_root_dir/downloads-x86-64.ini" -c "$_download_cache"
-        mkdir -p "$_src_dir/third_party/node/mac/node-darwin-x64/"
-        python3 "$_main_repo/utils/downloads.py" unpack -i "$_root_dir/downloads-x86-64.ini" -c "$_download_cache" "$_src_dir"
-        if [[ $_target_cpu == "arm64" ]]; then
-            python3 "$_main_repo/utils/downloads.py" retrieve -i "$_root_dir/downloads-arm64-rustlib.ini" -c "$_download_cache"
-            python3 "$_main_repo/utils/downloads.py" unpack -i "$_root_dir/downloads-arm64-rustlib.ini" -c "$_download_cache" "$_src_dir"
-        fi
-    fi
-
-    ## Rust Resource
-    _rust_name="x86_64-apple-darwin"
-    if [[ $(uname -m) == "arm64" ]]; then
-        _rust_name="aarch64-apple-darwin"
-    fi
-
-    _rust_dir="$_src_dir/third_party/rust-toolchain"
-    _rust_bin_dir="$_rust_dir/bin"
-    _rust_flag_file="$_rust_dir/INSTALLED_VERSION"
-
-    _rust_lib_dir="$_rust_dir/rust-std-$_rust_name/lib/rustlib/$_rust_name/lib"
-    _rustc_dir="$_rust_dir/rustc"
-    _rustc_lib_dir="$_rust_dir/rustc/lib/rustlib/$_rust_name/lib"
-
-    echo "rustc 1.93.0-nightly (01867557c 2025-11-12)" > "$_rust_flag_file"
-
-    mkdir -p "$_rust_bin_dir"
-    mkdir -p "$_rust_dir/lib"
-    ln -s "$_rust_dir/rustc/bin/rustc" "$_rust_bin_dir/rustc"
-    ln -s "$_rust_dir/cargo/bin/cargo" "$_rust_bin_dir/cargo"
-    ln -s "$_rust_dir/rustfmt-preview/bin/rustfmt" "$_rust_bin_dir/rustfmt"
-    ln -s "$_rust_dir/rustfmt-preview/bin/cargo-fmt" "$_rust_bin_dir/cargo-fmt"
-    ln -s "$_rust_dir/rustc/lib" "$_rust_dir/rustfmt-preview/lib"
-    ln -s "$_rust_lib_dir" "$_rustc_lib_dir"
-
-    _llvm_dir="$_src_dir/third_party/llvm-build/Release+Asserts"
-    _llvm_bin_dir="$_llvm_dir/bin"
-
-    ln -s "$_llvm_bin_dir/llvm-install-name-tool" "$_llvm_bin_dir/install_name_tool"
+    NODE="$_src_dir/third_party/node"
+    mkdir -p "$NODE/mac_arm64"
+    mv "$NODE/mac/node-darwin-arm64" "$NODE/mac_arm64/"
+  popd
 fi

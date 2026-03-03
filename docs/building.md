@@ -13,20 +13,18 @@
 * Xcode 26
 * Homebrew
 * Perl (for creating a `.dmg` package)
-* Node.js
 
 ### Build dependencies
 
 1. Install Python 3 via Homebrew: `brew install python@3.13`
-2. Install Python dependencies via `pip3`: `pip3 install httplib2==0.22.0 requests pillow`
+1. Install Python dependencies via `pip3`: `pip3 install httplib2==0.22.0 requests pillow`
     * Note that you might need to use `--break-system-packages` if you don't want to use a
       dedicated Python environment for building Helium.
-3. Install Metal toolchain: `xcodebuild -downloadComponent MetalToolchain`
-4. Install Ninja via Homebrew: `brew install ninja`
-5. Install GNU coreutils and readline via Homebrew: `brew install coreutils readline`
-6. Unlink binutils to use the one provided with Xcode: `brew unlink binutils`
-7. Install Node.js via Homebrew: `brew install node`
-8. Restart your terminal.
+1. Install Metal toolchain: `xcodebuild -downloadComponent MetalToolchain`
+1. Install Ninja via Homebrew: `brew install ninja`
+1. Install GNU coreutils and readline via Homebrew: `brew install coreutils readline`
+1. Unlink binutils to use the one provided with Xcode: `brew unlink binutils`
+1. Restart your terminal.
 
 ## Official (non-development) build
 
@@ -146,48 +144,33 @@ Confused about quilt? Run ```man quilt``` to read more about its functionality.
     source dev.sh
     ```
 
-2. Download sources, set up GN, and prepare third-party dependencies:
+1. Download sources, set up GN, and prepare third-party dependencies:
     ```sh
     he presetup
     ```
 
-3. Update Rust toolchain (if necessary)
-    1. Check the `RUST_REVISION` constant in file `src/tools/rust/update_rust.py` in build root.
-        * As an example, the revision as of writing this guide is `22be76b7e259f27bf3e55eb931f354cd8b69d55f`.
-    2. Get date for nightly Rust build from Rust's GitHub repository.
-        * The page URL for our example is `https://github.com/rust-lang/rust/commit/22be76b7e259f27bf3e55eb931f354cd8b69d55f`
-            1. In this case, the corresponding nightly build date is `2025-06-23`.
-            2. Adapt the version number in `downloads-{arm64,x86-64}{,-rustlib}.ini` accordingly.
-    3. Get the information of the latest nightly build and adapt configurations accordingly.
-       1. Download the latest nightly build from the Rust website.
-            * For our example, the download URL for Apple Silicon Macs is `https://static.rust-lang.org/dist/2025-06-23/rust-nightly-aarch64-apple-darwin.tar.gz`
-            * For our example, the download URL for Intel Chip Macs is `https://static.rust-lang.org/dist/2025-06-23/rust-nightly-x86_64-apple-darwin.tar.gz`
-       2. Extract the archive.
-       3. Execute `rustc/bin/rustc -V` in the extracted directory to get Rust version string.
-            * For our example, the version string is `rustc 1.89.0-nightly (be19eda0d 2025-06-22)`.
-       4. Adapt the content of `retrieve_and_unpack_resource.sh` and `patches/ungoogled-chromium/macos/fix-build-with-rust.patch` accordingly.
-
-4. Switch to src directory
+1. Switch to src directory
     ```sh
     cd build/src
     ```
 
-5. Use `quilt` to refresh all patches: `quilt push -a --refresh`
+1. Use `quilt` to refresh all patches: `quilt push -a --refresh`
    * If an error occurs, go to the next step. Otherwise, skip to Step 7.
 
-6. Use `quilt` to fix the broken patch:
+1. Use `quilt` to fix the broken patch:
     1. Run `quilt push -f`
     2. Edit the broken files as necessary by adding (`quilt edit ...` or `quilt add ...`) or removing (`quilt remove ...`) files as necessary
         * When removing large chunks of code, remove each line instead of using language features to hide or remove the code. This makes the patches less susceptible to breakages when using quilt's refresh command (e.g. quilt refresh updates the line numbers based on the patch context, so it's possible for new but desirable code in the middle of the block comment to be excluded.). It also helps with readability when someone wants to see the changes made based on the patch alone.
     3. Refresh the patch: `quilt refresh`
     4. Go back to Step 5.
 
-7. After all patches are fixed, run `he version && he configure` to finish build env setup.
-8. Build and run Helium to verify that everything functions as intended: `he build && he run`
-9. Run `he validate config` and resolve the error if it occurs.
-10. Run `he pop` to pop all applied patches.
-11. Validate that patches are applied correctly: `he validate config`
-12. Unmerge main and platform patches: `he unmerge`
-13. Ensure that patches and series are formatted correctly, e.g. no blank lines.
-14. Check the consistency of the series file: `he validate series`
-15. Use git to add changes and commit. Refer to recent commit history for an appropriate commit comment.
+1. After all patches are fixed, run `he version && he configure` to finish build env setup.
+1. Build and run Helium to verify that everything functions as intended: `he build && he run`
+1. Run `he validate config` and resolve the error if it occurs.
+1. Run `he pop` to pop all applied patches.
+1. Validate that patches are applied correctly: `he validate config`
+1. Unmerge main and platform patches: `he unmerge`
+1. Ensure that patches and series are formatted correctly, e.g. no blank lines.
+1. Check the consistency of the series file: `he validate series`
+1. Use git to add changes and commit. Refer to recent commit history for an appropriate commit comment.
+
