@@ -19,9 +19,9 @@
      <template is="dom-if" if="[[showManagedThemeDialog_]]" restamp>
 --- a/chrome/browser/resources/settings/system_page/system_page.html
 +++ b/chrome/browser/resources/settings/system_page/system_page.html
-@@ -28,6 +28,17 @@
-       </template>
-     </settings-toggle-button>
+@@ -41,6 +41,17 @@
+     </template>
+     </if>
  
 +<if expr="is_macosx">
 +    <settings-toggle-button class="hr"
