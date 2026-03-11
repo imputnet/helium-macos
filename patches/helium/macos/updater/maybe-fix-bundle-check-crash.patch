@@ -1,0 +1,38 @@
+--- a/chrome/app/chrome_main_mac.mm
++++ b/chrome/app/chrome_main_mac.mm
+@@ -104,10 +104,33 @@ NSBundle* OuterAppBundle() {
+ 
+ void SetUpBundleOverrides() {
+   @autoreleasepool {
+-    base::apple::SetOverrideFrameworkBundlePath(
+-        chrome::GetFrameworkBundlePath());
++    base::FilePath framework_path = chrome::GetFrameworkBundlePath();
++    NSBundle* framework_bundle = nil;
++
++    if (!framework_path.empty()) {
++      framework_bundle =
++        [NSBundle bundleWithURL:base::apple::FilePathToNSURL(framework_path)];
++    }
++
++    if (!framework_bundle) {
++      LOG(ERROR) << "no framework bundle found, falling back to BWI";
++      framework_bundle =
++        [NSBundle bundleWithIdentifier:@"net.imput.helium.framework"];
++    }
++
++    if (!framework_bundle) {
++      LOG(ERROR) << "still no framework bundle found! crashing";
++    }
++
++    CHECK(framework_bundle);
++    base::apple::SetOverrideFrameworkBundle(framework_bundle);
+ 
+     NSBundle* base_bundle = OuterAppBundle();
++    if (!base_bundle) {
++      LOG(ERROR) << "no base bundle found, falling back to BWI";
++      base_bundle = [NSBundle bundleWithIdentifier:@"net.imput.helium"];
++    }
++
+     base::apple::SetOverrideOuterBundle(base_bundle);
+     base::apple::SetBaseBundleIDOverride(
+         base::SysNSStringToUTF8(base_bundle.bundleIdentifier));
