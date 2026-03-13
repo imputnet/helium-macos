@@ -560,7 +560,7 @@
                                                     NSString* error_string) {
    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
    if (status_callback_.is_null()) {
-@@ -322,76 +333,104 @@ void VersionUpdaterSparkle::UpdateStatus
+@@ -322,76 +333,105 @@ void VersionUpdaterSparkle::UpdateStatus
    std::u16string message;
  
    // If we have an error to display, include the detail messages
@@ -598,11 +598,12 @@
 -  SUUpdater* updater = [SUUpdater sharedUpdater];
 -  if (updater) {
 -    [updater forceInstallAndRelaunch];
-+  if (observer) {
++  if (observer && observer.invocationBlock) {
++    auto fn = observer.invocationBlock;
 +    observer.invocationBlock = nil;
 +    VersionUpdaterSparkle::sparkle_observer_ = nullptr;
 +
-+    chrome::AttemptRelaunch();
++    fn();
    }
  }
  
