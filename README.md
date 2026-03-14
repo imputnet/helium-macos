@@ -7,6 +7,9 @@ developing new Helium features.
 
 *[Go to docs/building.md](docs/building.md)*
 
+## Additional documentation
+- [Passkeys on macOS](docs/passkeys.md)
+
 ## Credits
 This repo is based on
 [ungoogled-chromium-macos](https://github.com/ungoogled-software/ungoogled-chromium-macos),

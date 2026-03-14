@@ -6,6 +6,7 @@
     - [Basics](#basics)
     - [Creating a new patch](#creating-a-new-patch)
     - [Updating for a new Chromium release](#updating-for-a-new-chromium-release)
+- [Passkeys on macOS](passkeys.md)
 
 ### Software requirements
 
@@ -37,6 +38,9 @@ If you want to notarize the build, you need to have an Apple Developer ID and a 
 - `PROD_MACOS_NOTARIZATION_TEAM_ID`: Your Apple Developer Team ID, which can be found in the Apple Developer membership page
 - `PROD_MACOS_NOTARIZATION_PWD`: An app-specific password generated in the Apple ID account settings
 - `PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_PATH`: Path to the provisioning profile that allows you to use entitlements which need to be specifically approved by Apple (`com.apple.developer.web-browser.public-key-credential`, `com.apple.developer.associated-domains.applinks.read-write`).
+
+For passkey-specific signing behavior and runtime troubleshooting, see
+[`docs/passkeys.md`](passkeys.md).
 
 If you don't have an Apple Developer ID to sign the build (or you don't want to sign it), you can simply not specify MACOS_CERTIFICATE_NAME.
 
@@ -173,4 +177,3 @@ Confused about quilt? Run ```man quilt``` to read more about its functionality.
 1. Ensure that patches and series are formatted correctly, e.g. no blank lines.
 1. Check the consistency of the series file: `he validate series`
 1. Use git to add changes and commit. Refer to recent commit history for an appropriate commit comment.
-
