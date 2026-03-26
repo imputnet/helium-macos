@@ -398,13 +398,16 @@
  #include "chrome/browser/ui/cocoa/main_menu_builder.h"
  #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
  #include "chrome/browser/updater/updater.h"
-@@ -178,6 +181,11 @@ void ChromeBrowserMainPartsMac::PreProfi
+@@ -178,6 +181,14 @@ void ChromeBrowserMainPartsMac::PreProfi
  
  void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
                                                  bool is_initial_profile) {
 +#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
 +  if (is_initial_profile) {
-+    std::make_unique<VersionUpdaterSparkle>(profile);
++    // Intentionally not stored - this object is leaked so its sparkle_subscription_
++    // (and thus the background update callback) remains registered for the app lifetime.
++    // TODO: refactor the whole sparkle integration to use Singleton patterns instead of this.
++    new VersionUpdaterSparkle(profile);
 +  }
 +#endif
    ChromeBrowserMainPartsPosix::PostProfileInit(profile, is_initial_profile);
