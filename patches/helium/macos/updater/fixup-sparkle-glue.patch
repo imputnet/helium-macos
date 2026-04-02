@@ -212,16 +212,16 @@
  @implementation SparkleObserver {
 -  raw_ptr<Profile> profile_;
 +  base::WeakPtr<Profile> profile_;
-+}
-+
+ }
+ 
+-@synthesize appcastFeedUrl = appcastFeedUrl_;
 +@synthesize invocationBlock = invocationBlock_;
 +@synthesize currentlyDownloadedVersion = currentlyDownloadedVersion_;
 +
 +- (BOOL)hasProfile {
 +  return (bool)profile_;
- }
- 
--@synthesize appcastFeedUrl = appcastFeedUrl_;
++}
++
 +- (void)updateProfile:(Profile*)profile {
 +  if (!profile_ && profile) {
 +    profile_ = profile->GetWeakPtr();
@@ -241,7 +241,7 @@
    }
  
    return self;
-@@ -119,63 +88,59 @@ class VersionUpdaterForTests : public Ve
+@@ -119,63 +88,65 @@ class VersionUpdaterForTests : public Ve
  }
  
  - (void)dealloc {
@@ -295,17 +295,24 @@
    [self updateStatus:VersionUpdater::UPDATING error_string:nil];
  }
  
- // There is a downloaded and unarchived version, waiting for application quit.
+-// There is a downloaded and unarchived version, waiting for application quit.
 -- (void)handleUpdaterDidReachNearlyUpdatedStateNotification:
 -    (NSNotification*)notification {
 +- (BOOL)updater:(SPUUpdater *)updater
-+          willInstallUpdateOnQuit:(SUAppcastItem *)item
-+          immediateInstallationBlock:(void (^)(void))immediateInstallHandler {
-+
++          shouldPostponeRelaunchForUpdate:(SUAppcastItem *)item
++          untilInvokingBlock:(void (^)(void))installHandler {
 +  currentlyDownloadedVersion_ = item.versionString;
-+  self.invocationBlock = immediateInstallHandler;
    [self updateStatus:VersionUpdater::NEARLY_UPDATED error_string:nil];
 -  rebel::StoreSelectedChannel(profile_->GetPrefs());
++  self.invocationBlock = installHandler;
++  return YES;
++}
++
++// There is a downloaded and unarchived version, waiting for application quit.
++- (BOOL)updater:(SPUUpdater *)updater
++          willInstallUpdateOnQuit:(SUAppcastItem *)item
++          immediateInstallationBlock:(void (^)(void))immediateInstallHandler {
++  immediateInstallHandler();
 +  return YES;
 +}
 +
@@ -338,7 +345,7 @@
    if (error.code == SUNoUpdateError) {
      // Handled by notifications
      return;
-@@ -185,110 +150,154 @@ class VersionUpdaterForTests : public Ve
+@@ -185,110 +156,154 @@ class VersionUpdaterForTests : public Ve
  }
  
  // Delegated method. Return the appcast URL for the installed channel.
@@ -542,7 +549,7 @@
        // Launch a new update check, even if one was already completed, because
        // a new update may be available or a new update may have been installed
        // in the background since the last time the Help page was displayed.
-@@ -303,14 +312,16 @@ void VersionUpdaterSparkle::CheckForUpda
+@@ -303,14 +318,16 @@ void VersionUpdaterSparkle::CheckForUpda
  }
  
  void VersionUpdaterSparkle::UpdateStatus(Status status,
@@ -560,7 +567,7 @@
                                                     NSString* error_string) {
    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
    if (status_callback_.is_null()) {
-@@ -322,76 +333,105 @@ void VersionUpdaterSparkle::UpdateStatus
+@@ -322,76 +339,103 @@ void VersionUpdaterSparkle::UpdateStatus
    std::u16string message;
  
    // If we have an error to display, include the detail messages
@@ -599,11 +606,9 @@
 -  if (updater) {
 -    [updater forceInstallAndRelaunch];
 +  if (observer && observer.invocationBlock) {
-+    auto fn = observer.invocationBlock;
 +    observer.invocationBlock = nil;
 +    VersionUpdaterSparkle::sparkle_observer_ = nullptr;
-+
-+    fn();
++    chrome::AttemptRelaunch();
    }
  }
  
