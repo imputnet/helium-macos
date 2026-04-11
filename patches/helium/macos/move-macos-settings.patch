@@ -1,6 +1,6 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html
-@@ -265,16 +265,6 @@
+@@ -262,16 +262,6 @@
              </template>
            </select>
          </div>
@@ -21,7 +21,7 @@
 +++ b/chrome/browser/resources/settings/system_page/system_page.html
 @@ -41,6 +41,17 @@
      </template>
-     </if>
+ </if>
  
 +<if expr="is_macosx">
 +    <settings-toggle-button class="hr"
