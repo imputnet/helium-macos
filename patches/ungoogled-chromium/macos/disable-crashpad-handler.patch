@@ -2,10 +2,10 @@
 
 --- a/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
 +++ b/third_party/crashpad/crashpad/client/crashpad_client_mac.cc
-@@ -138,61 +138,7 @@ class HandlerStarter final : public Noti
-       const std::map<std::string, std::string>& annotations,
+@@ -139,62 +139,7 @@ class HandlerStarter final : public Noti
        const std::vector<std::string>& arguments,
-       bool restartable) {
+       bool restartable,
+       const std::vector<base::FilePath>& attachments) {
 -    base::apple::ScopedMachReceiveRight receive_right(
 -        NewMachPort(MACH_PORT_RIGHT_RECEIVE));
 -    if (!receive_right.is_valid()) {
@@ -46,13 +46,14 @@
 -                     arguments,
 -                     std::move(receive_right),
 -                     handler_restarter.get(),
--                     false)) {
+-                     false,
+-                     attachments)) {
 -      return base::apple::ScopedMachSendRight();
 -    }
 -
--    if (handler_restarter &&
--        handler_restarter->StartRestartThread(
--            handler, database, metrics_dir, url, annotations, arguments)) {
+-    if (handler_restarter && handler_restarter->StartRestartThread(
+-                                 handler, database, metrics_dir, url,
+-                                 annotations, arguments, attachments)) {
 -      // The thread owns the object now.
 -      std::ignore = handler_restarter.release();
 -    }
@@ -65,10 +66,10 @@
    }
  
    // NotifyServer::DefaultInterface:
-@@ -463,24 +409,7 @@ bool CrashpadClient::StartHandler(
-   // Attachments are not implemented on MacOS yet.
-   DCHECK(attachments.empty());
- 
+@@ -470,25 +415,7 @@ bool CrashpadClient::StartHandler(
+     bool restartable,
+     bool asynchronous_start,
+     const std::vector<base::FilePath>& attachments) {
 -  // The “restartable” behavior can only be selected on OS X 10.10 and later. In
 -  // previous OS versions, if the initial client were to crash while attempting
 -  // to restart the handler, it would become an unkillable process.
@@ -80,7 +81,8 @@
 -      annotations,
 -      arguments,
 -      restartable && (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_10 ||
--                      MacOSVersionNumber() >= 10'10'00)));
+-                      MacOSVersionNumber() >= 10'10'00),
+-      attachments));
 -  if (!exception_port.is_valid()) {
 -    return false;
 -  }

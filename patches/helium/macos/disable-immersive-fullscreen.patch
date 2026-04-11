@@ -1,11 +1,20 @@
---- a/chrome/common/chrome_features.cc
-+++ b/chrome/common/chrome_features.cc
-@@ -1328,7 +1328,7 @@ BASE_FEATURE(kHttpsFirstModeIncognitoNew
- #if BUILDFLAG(IS_MAC)
- // Enables immersive fullscreen. The tab strip and toolbar are placed underneath
- // the titlebar. The tab strip and toolbar can auto hide and reveal.
--BASE_FEATURE(kImmersiveFullscreen, base::FEATURE_ENABLED_BY_DEFAULT);
-+BASE_FEATURE(kImmersiveFullscreen, base::FEATURE_DISABLED_BY_DEFAULT);
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -1354,15 +1354,11 @@ std::vector<ContentsContainerView*> Brow
  
- // Enables immersive fullscreen mode for PWA windows. PWA windows will use
- // immersive fullscreen mode if and only if both this and kImmersiveFullscreen
+ #if BUILDFLAG(IS_MAC)
+ bool BrowserView::UsesImmersiveFullscreenMode() const {
+-  const bool is_pwa = GetIsWebAppType();
+-  const bool is_tabbed_window = GetSupportsTabStrip();
+-  return is_pwa || is_tabbed_window;
++  return false;
+ }
+ 
+ bool BrowserView::UsesImmersiveFullscreenTabbedMode() const {
+-  const bool is_pwa = GetIsWebAppType();
+-  const bool is_tabbed_window = GetSupportsTabStrip();
+-  return is_tabbed_window && !is_pwa;
++  return false;
+ }
+ #endif
+ 

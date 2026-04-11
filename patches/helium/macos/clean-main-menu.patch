@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -300,12 +300,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+@@ -304,15 +304,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
                    .command_id(IDC_TOGGLE_FULLSCREEN_TOOLBAR),
                Item(IDS_CONTEXT_MENU_SHOW_FULL_URLS)
                    .command_id(IDC_SHOW_FULL_URLS),
@@ -10,10 +10,13 @@
 -                  .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
 -              Item(IDS_CONTEXT_MENU_SHOW_SEARCH_TOOLS)
 -                  .command_id(IDC_SHOW_SEARCH_TOOLS),
+-              Item(IDS_SWITCH_TO_VERTICAL_TAB)
+-                  .command_id(IDC_TOGGLE_VERTICAL_TABS)
+-                  .remove_if(!tabs::IsVerticalTabsFeatureEnabled()),
                Item(IDS_CUSTOMIZE_TOUCH_BAR)
                    .tag(IDC_CUSTOMIZE_TOUCH_BAR)
                    .action(@selector(toggleTouchBarCustomizationPalette:))
-@@ -531,7 +525,8 @@ NSMenuItem* BuildTabMenu(NSApplication*
+@@ -538,7 +529,8 @@ NSMenuItem* BuildTabMenu(NSApplication*
  
    // clang-format off
    NSMenuItem* item =
@@ -23,24 +26,35 @@
            .tag(IDC_TAB_MENU)
            .submenu({
                Item(is_rtl ? IDS_TAB_CXMENU_NEWTABTOLEFT
-@@ -595,15 +590,7 @@ NSMenuItem* BuildHelpMenu(NSApplication*
-   // clang-format off
+@@ -599,26 +591,9 @@ NSMenuItem* BuildHelpMenu(NSApplication*
+     return nil;
+   }
+ 
+-  // clang-format off
+-  std::vector<Item> items = {};
+-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-  items.push_back(Item(IDS_FEEDBACK_MAC).command_id(IDC_FEEDBACK));
+-  bool is_profile_loaded =
+-      g_browser_process && g_browser_process->profile_manager() &&
+-      g_browser_process->profile_manager()->GetLastUsedProfileIfLoaded();
+-  if (is_profile_loaded && feedback::ReportUnsafeSiteDialog::IsEnabled(
+-                               *(g_browser_process->profile_manager()
+-                                     ->GetLastUsedProfileIfLoaded()))) {
+-    items.push_back(Item(IDS_REPORT_UNSAFE_SITE)
+-                        .command_id(IDC_REPORT_UNSAFE_SITE));
+-  }
+-#endif
+-  items.push_back(Item(IDS_HELP_MAC)
+-                      .string_format_1(product_name)
+-                      .command_id(IDC_HELP_PAGE_VIA_MENU));
    NSMenuItem* item =
        Item(IDS_HELP_MENU_MAC)
--          .submenu({
--#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
--              Item(IDS_FEEDBACK_MAC)
--                  .command_id(IDC_FEEDBACK),
--#endif
--              Item(IDS_HELP_MAC)
--                  .string_format_1(product_name)
--                  .command_id(IDC_HELP_PAGE_VIA_MENU),
--          })
+-          .submenu(items)
 +          .submenu({})
            .Build();
    // clang-format on
  
-@@ -626,11 +613,11 @@ NSMenu* BuildMainMenu(NSApplication* nsa
+@@ -641,11 +616,11 @@ NSMenu* BuildMainMenu(NSApplication* nsa
             &BuildFileMenu,
             &BuildEditMenu,
             &BuildViewMenu,
