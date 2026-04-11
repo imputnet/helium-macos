@@ -649,17 +649,17 @@
 +  sys.exit(main(sys.argv))
 --- a/chrome/browser/lifetime/application_lifetime_desktop.cc
 +++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
-@@ -14,6 +14,7 @@
- #include "base/time/time.h"
- #include "base/types/strong_alias.h"
- #include "build/build_config.h"
-+#include "chrome/browser/buildflags.h"
+@@ -17,6 +17,7 @@
+ #include "chrome/browser/background/glic/glic_background_mode_manager.h"
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
++#include "chrome/browser/buildflags.h"
  #include "chrome/browser/download/download_core_service.h"
-@@ -58,6 +59,10 @@
- #include "chrome/browser/background/glic/glic_background_mode_manager.h"
- #endif
+ #include "chrome/browser/lifetime/application_lifetime.h"
+ #include "chrome/browser/lifetime/browser_close_manager.h"
+@@ -55,6 +56,10 @@
+ #include "chrome/browser/sessions/session_data_service_factory.h"
+ #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
  
 +#if BUILDFLAG(ENABLE_SPARKLE)
 +#include "chrome/browser/mac/sparkle_glue.h"
@@ -668,7 +668,7 @@
  namespace chrome {
  
  namespace {
-@@ -113,6 +118,14 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -110,6 +115,14 @@ void AttemptRestartInternal(IgnoreUnload
  #else   // !BUILDFLAG(IS_CHROMEOS).
    // Set the flag to restore state after the restart.
    pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
