@@ -26,6 +26,7 @@ python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.l
 python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
 python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
 python3 "$_main_repo/utils/name_substitution.py" --sub -t "$_src_dir"
+python3 "$_main_repo/utils/i18n_apply.py" -t "$_src_dir"
 
 python3 "$_main_repo/utils/helium_version.py" \
     --tree "$_main_repo" \
