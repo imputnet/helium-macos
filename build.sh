@@ -60,7 +60,7 @@ cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$_src_dir/out/Default/
 if command -v sccache 2>&1 >/dev/null; then
   echo 'cc_wrapper="sccache"' >> "$_src_dir/out/Default/args.gn";
 elif command -v ccache 2>&1 >/dev/null; then
-  echo 'cc_wrapper="env CCACHE_SLOPPINESS=time_macros ccache"' >> "$_src_dir/out/Default/args.gn";
+  echo 'cc_wrapper="env CCACHE_COMPILERCHECK=content CCACHE_SLOPPINESS=time_macros ccache"' >> "$_src_dir/out/Default/args.gn";
 else
   echo 'warn: sccache or ccache is not available' >&2
 fi

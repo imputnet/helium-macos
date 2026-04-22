@@ -12,7 +12,7 @@ ___helium_setup_gn() {
     if command -v sccache 2>&1 >/dev/null; then
         echo 'cc_wrapper="sccache"' >> "$OUT_FILE"
     elif command -v ccache 2>&1 >/dev/null; then
-        echo 'cc_wrapper="env CCACHE_SLOPPINESS=time_macros ccache"' >> "$OUT_FILE"
+        echo 'cc_wrapper="env CCACHE_COMPILERCHECK=content CCACHE_SLOPPINESS=time_macros ccache"' >> "$OUT_FILE"
     else
         echo 'warn: sccache or ccache is not available' >&2
     fi
