@@ -114,6 +114,10 @@ ___helium_apply_translations() {
     python3 "$_main_repo/utils/i18n_apply.py" -t "$_src_dir"
 }
 
+___helium_generate_translations() {
+    python3 "$_main_repo/devutils/i18n.py" generate
+}
+
 ___helium_substitution() {
     if [ "$1" = "unsub" ]; then
         python3 "$_main_repo/utils/domain_substitution.py" revert \
@@ -268,6 +272,7 @@ __helium_menu() {
         sub|unsub) ___helium_substitution "$1";;
         namesub|nameunsub) ___helium_name_substitution "$1";;
         translate) ___helium_apply_translations;;
+        transgen) ___helium_generate_translations;;
 
         merge) ___helium_patches_merge;;
         unmerge) ___helium_patches_unmerge;;
@@ -297,6 +302,7 @@ __helium_menu() {
             echo "\tnamesub - apply only name substitutions" >&2
             echo "\tnameunsub - undo only name substitutions" >&2
             echo "\ttranslate - apply translations from i18n directory" >&2
+            echo "\ttransgen - generate source strings for translation" >&2
 
             echo "\n" >&2
             echo "\tmerge - merges all patches" >&2
