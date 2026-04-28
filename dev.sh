@@ -12,7 +12,7 @@ ___helium_setup_gn() {
     if command -v sccache 2>&1 >/dev/null; then
         echo 'cc_wrapper="sccache"' >> "$OUT_FILE"
     elif command -v ccache 2>&1 >/dev/null; then
-        echo 'cc_wrapper="env CCACHE_SLOPPINESS=time_macros ccache"' >> "$OUT_FILE"
+        echo 'cc_wrapper="env CCACHE_COMPILERCHECK=content CCACHE_SLOPPINESS=time_macros ccache"' >> "$OUT_FILE"
     else
         echo 'warn: sccache or ccache is not available' >&2
     fi
@@ -108,6 +108,14 @@ ___helium_name_substitution() {
         echo "unknown action: $1" >&2
         return
     fi
+}
+
+___helium_apply_translations() {
+    python3 "$_main_repo/utils/i18n_apply.py" -t "$_src_dir"
+}
+
+___helium_generate_translations() {
+    python3 "$_main_repo/devutils/i18n.py" generate
 }
 
 ___helium_substitution() {
@@ -263,6 +271,8 @@ __helium_menu() {
 
         sub|unsub) ___helium_substitution "$1";;
         namesub|nameunsub) ___helium_name_substitution "$1";;
+        translate) ___helium_apply_translations;;
+        transgen) ___helium_generate_translations;;
 
         merge) ___helium_patches_merge;;
         unmerge) ___helium_patches_unmerge;;
@@ -291,6 +301,8 @@ __helium_menu() {
             echo "\tunsub - undo google domain and name substitutions" >&2
             echo "\tnamesub - apply only name substitutions" >&2
             echo "\tnameunsub - undo only name substitutions" >&2
+            echo "\ttranslate - apply translations from i18n directory" >&2
+            echo "\ttransgen - generate source strings for translation" >&2
 
             echo "\n" >&2
             echo "\tmerge - merges all patches" >&2

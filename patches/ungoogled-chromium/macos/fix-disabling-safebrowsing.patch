@@ -62,7 +62,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5567,7 +5558,6 @@ static_library("ui_public_dependencies")
+@@ -5570,7 +5561,6 @@ static_library("ui_public_dependencies")
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
