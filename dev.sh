@@ -40,9 +40,9 @@ ___helium_setup_gn() {
         echo 'warn: sccache or ccache is not available' >&2
     fi
 
-    local TARGET_CPU="x64"
-    if [[ $_arch == "arm64" ]]; then
-        TARGET_CPU=arm64
+    local TARGET_CPU="arm64"
+    if [[ $_arch == "x86_64" ]]; then
+        TARGET_CPU="x64"
     fi
 
     echo 'target_cpu = "'"$TARGET_CPU"'"' >> "$OUT_FILE"
