@@ -5,8 +5,31 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/env.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
+___helium_setup_siso() {
+    if [ -x "$_siso_path" ]; then
+        return
+    fi
+
+    local siso_arch="mac-arm64"
+    if [[ $_arch == "x86_64" ]]; then
+        siso_arch="mac-amd64"
+    fi
+
+    local siso_package="build/siso/$siso_arch"
+
+    local siso_version=$(sed -n "s/.*'siso_version': '\([^']*\)'.*/\1/p" "$_src_dir/DEPS" | head -1)
+    if [ -z "$siso_version" ]; then
+        echo "error: couldn't find siso_version in DEPS" >&2
+        return 1
+    fi
+
+    mkdir -p "$_siso_dir"
+    printf '%s\n' "$siso_package $siso_version" |
+        "$_depot_tools_dir/cipd" ensure --root "$_siso_dir" --ensure-file -
+}
+
 ___helium_setup_gn() {
-    local OUT_FILE="$_src_dir/out/Default/args.gn"
+    local OUT_FILE="$_out_dir/args.gn"
     cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$OUT_FILE"
 
     if command -v sccache 2>&1 >/dev/null; then
@@ -24,6 +47,7 @@ ___helium_setup_gn() {
 
     echo 'target_cpu = "'"$TARGET_CPU"'"' >> "$OUT_FILE"
     echo 'devtools_skip_typecheck = false' >> "$OUT_FILE"
+    echo 'use_siso = true' >> "$OUT_FILE"
 
     sed -i '' s/is_official_build/is_component_build/ "$OUT_FILE"
 }
@@ -31,14 +55,15 @@ ___helium_setup_gn() {
 ___helium_info_pull() {
     "$_root_dir/retrieve_and_unpack_resource.sh" -d -g
 
-    mkdir -p "$_src_dir/out/Default"
+    mkdir -p "$_out_dir"
     cd "$_src_dir"
 }
 
 ___helium_configure() {
     cd "$_src_dir"
-    python3 ./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
-    ./out/Default/gn gen out/Default --fail-on-unused-args --export-compile-commands
+    ___helium_setup_siso
+    python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
+    "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
 
 ___helium_toolchain() {
@@ -145,11 +170,13 @@ ___helium_substitution() {
 }
 
 ___helium_build() {
-    cd "$_src_dir" && ninja -k 0 -C out/Default chrome chromedriver
+    cd "$_src_dir"
+    SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" \
+    -k 0 -C "$_out_dir" chrome chromedriver
 }
 
 ___helium_run() {
-    cd "$_src_dir" && ./out/Default/Helium.app/Contents/MacOS/Helium \
+    "$_out_dir/Helium.app/Contents/MacOS/Helium" \
     --user-data-dir="$HOME/Library/Application Support/net.imput.helium.dev" \
     --enable-ui-devtools \
     --use-mock-keychain \
@@ -236,7 +263,7 @@ ___helium_find_tidy_diff() {
 }
 
 ___helium_strip_compile_commands() {
-    _ccmd_path="$_src_dir/out/Default/compile_commands.json"
+    _ccmd_path="$_out_dir/compile_commands.json"
     [ "$_ccmd_stripped" = 1 ] && return;
     _ccmd_stripped=1
 
@@ -252,7 +279,7 @@ ___helium_tidy() {
         -regex '.*\.(cc|mm)' \
         -use-color \
         -p1 \
-        -path "$_src_dir/out/Default" \
+        -path "$_out_dir" \
         -quiet \
         -j$(nproc)
 }
