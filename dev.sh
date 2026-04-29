@@ -213,7 +213,8 @@ ___helium_validate() {
 
 ___helium_format() {
     cd "$_src_dir"
-    quilt diff | "$_clang_dir/share/clang/clang-format-diff.py" -p1 -i -style=file
+    quilt diff | "$_src_dir/third_party/clang-format/script/clang-format-diff.py" \
+    -p1 -i -style=file
 }
 
 ___helium_find_tidy_diff() {
