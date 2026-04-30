@@ -39,7 +39,7 @@ diff --git a/chrome/browser/ui/views/frame/themed_background.cc b/chrome/browser
 index f5f3d4e6c1cfa..ed893b91af2aa 100644
 --- a/chrome/browser/ui/views/frame/themed_background.cc
 +++ b/chrome/browser/ui/views/frame/themed_background.cc
-@@ -102,12 +102,7 @@ void ThemedBackground::PaintBackground(gfx::Canvas* canvas,
+@@ -102,12 +102,19 @@ void ThemedBackground::PaintBackground(gfx::Canvas* canvas,
                                         const views::View* view,
                                         const BrowserView* browser_view,
                                         ThemeChoice theme_choice) {
@@ -49,6 +49,18 @@ index f5f3d4e6c1cfa..ed893b91af2aa 100644
 -    canvas->DrawColor(view->GetColorProvider()->GetColor(
 -        GetThemeChoiceInfo(theme_choice, view).second));
 -  }
++  if (browser_view->IsZenModeEnabledForLayout() &&
++      browser_view->ShouldDrawVerticalTabStrip() &&
++      !browser_view->IsZenModeSideChromePinned()) {
++    bool painted =
++        PaintThemeCustomImage(canvas, view, browser_view, theme_choice);
++    if (!painted) {
++      canvas->DrawColor(view->GetColorProvider()->GetColor(
++          GetThemeChoiceInfo(theme_choice, view).second));
++    }
++    return;
++  }
++
 +  canvas->DrawColor(SK_ColorTRANSPARENT);
  }
  
@@ -57,7 +69,7 @@ diff --git a/chrome/browser/ui/views/side_panel/side_panel.cc b/chrome/browser/u
 index e1cee41274339..9c8d986418391 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel.cc
-@@ -236,14 +236,7 @@ class ContentParentBackground : public views::Background {
+@@ -236,14 +236,15 @@ class ContentParentBackground : public views::Background {
      SkRRect rrect;
      rrect.setRectRadii(gfx::RectToSkRect(view->GetLocalBounds()), sk_radii);
      SkPath path = SkPath::RRect(rrect);
@@ -69,6 +81,14 @@ index e1cee41274339..9c8d986418391 100644
 -      canvas->DrawColor(
 -          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
 -    }
++    if (browser_view_->IsZenModeEnabledForLayout() &&
++        browser_view_->ShouldDrawVerticalTabStrip() &&
++        !browser_view_->IsZenModeSideChromePinned()) {
++      canvas->DrawColor(
++          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
++      return;
++    }
++
 +    canvas->DrawColor(SK_ColorTRANSPARENT);
    }
  
