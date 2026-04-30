@@ -2,10 +2,25 @@ diff --git a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm b/chrome/br
 index 380a3c51c2ae0..7845dc78b4bb7 100644
 --- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
-@@ -429,8 +429,19 @@ void BrowserFrameViewMac::OnPaint(gfx::Canvas* canvas) {
+@@ -429,8 +429,36 @@ void BrowserFrameViewMac::OnPaint(gfx::Canvas* canvas) {
      return;
    }
  
++  auto* prefs = GetBrowserView()->browser()->profile()->GetPrefs();
++  bool transparency_enabled =
++      prefs && prefs->GetBoolean(prefs::kHeliumTransparencyEnabled);
++
++  if (!transparency_enabled) {
++    SkColor frame_color = GetFrameColor(BrowserFrameActiveState::kUseCurrent);
++    canvas->DrawColor(frame_color);
++    auto* theme_service = ThemeServiceFactory::GetForProfile(
++        GetBrowserView()->browser()->profile());
++    if (!theme_service->UsingSystemTheme()) {
++      PaintThemedFrame(canvas);
++    }
++    return;
++  }
++
 +  canvas->DrawColor(SK_ColorTRANSPARENT);
 +
    SkColor frame_color = GetFrameColor(BrowserFrameActiveState::kUseCurrent);
@@ -39,10 +54,25 @@ diff --git a/chrome/browser/ui/views/frame/themed_background.cc b/chrome/browser
 index f5f3d4e6c1cfa..ed893b91af2aa 100644
 --- a/chrome/browser/ui/views/frame/themed_background.cc
 +++ b/chrome/browser/ui/views/frame/themed_background.cc
-@@ -102,12 +102,19 @@ void ThemedBackground::PaintBackground(gfx::Canvas* canvas,
-                                        const views::View* view,
-                                        const BrowserView* browser_view,
-                                        ThemeChoice theme_choice) {
+@@ -5,10 +5,13 @@
+ 
+ #include <optional>
+ 
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/themes/theme_properties.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
++#include "chrome/common/pref_names.h"
+ #include "chrome/grit/theme_resources.h"
++#include "components/prefs/pref_service.h"
+ #include "ui/base/theme_provider.h"
+ #include "ui/color/color_id.h"
+ #include "ui/color/color_provider.h"
+@@ -102,12 +105,28 @@ void ThemedBackground::PaintBackground(gfx::Canvas* canvas,
+                                         const views::View* view,
+                                         const BrowserView* browser_view,
+                                         ThemeChoice theme_choice) {
 -  bool painted =
 -      PaintThemeCustomImage(canvas, view, browser_view, theme_choice);
 -  if (!painted) {
@@ -62,6 +92,13 @@ index f5f3d4e6c1cfa..ed893b91af2aa 100644
 +  }
 +
 +  canvas->DrawColor(SK_ColorTRANSPARENT);
++
++  // When transparency is disabled, fall back to an opaque frame color.
++  auto* prefs = browser_view->browser()->profile()->GetPrefs();
++  if (prefs && !prefs->GetBoolean(prefs::kHeliumTransparencyEnabled)) {
++    canvas->DrawColor(view->GetColorProvider()->GetColor(
++        GetThemeChoiceInfo(theme_choice, view).second));
++  }
  }
  
  std::optional<SkColor> ThemedBackground::GetBackgroundColor(
@@ -69,7 +106,7 @@ diff --git a/chrome/browser/ui/views/side_panel/side_panel.cc b/chrome/browser/u
 index e1cee41274339..9c8d986418391 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel.cc
-@@ -236,14 +236,15 @@ class ContentParentBackground : public views::Background {
+@@ -236,14 +236,24 @@ class ContentParentBackground : public views::Background {
      SkRRect rrect;
      rrect.setRectRadii(gfx::RectToSkRect(view->GetLocalBounds()), sk_radii);
      SkPath path = SkPath::RRect(rrect);
@@ -84,6 +121,15 @@ index e1cee41274339..9c8d986418391 100644
 +    if (browser_view_->IsZenModeEnabledForLayout() &&
 +        browser_view_->ShouldDrawVerticalTabStrip() &&
 +        !browser_view_->IsZenModeSideChromePinned()) {
++      canvas->DrawColor(
++          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
++      return;
++    }
++
++    auto* prefs = browser_view_->browser()->profile()->GetPrefs();
++    bool transparency_enabled =
++        prefs && prefs->GetBoolean(prefs::kHeliumTransparencyEnabled);
++    if (!transparency_enabled) {
 +      canvas->DrawColor(
 +          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
 +      return;
