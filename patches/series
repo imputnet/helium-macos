@@ -16,3 +16,4 @@ helium/macos/updater/fixup-sparkle-glue.patch
 helium/macos/updater/sparkle2-integration.patch
 helium/macos/updater/disable-default-updater.patch
 helium/macos/applescript-tab-select-command.patch
+helium/macos/open-shortcuts-settings-action.patch
