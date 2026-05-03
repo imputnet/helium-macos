@@ -2,9 +2,9 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
 
 --- a/base/mac/mac_util.h
 +++ b/base/mac/mac_util.h
-@@ -105,6 +105,9 @@ enum class SystemSettingsPane {
-   // Date & Time
-   kDateTime,
+@@ -108,6 +108,9 @@ enum class SystemSettingsPane {
+   // General > Login Items & Extensions > Extensions > Sharing
+   kGeneral_LoginItems_Extensions_Sharing,
  
 +  // Keyboard > Keyboard Shortcuts
 +  kKeyboardShortcuts,
@@ -14,8 +14,8 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
  
 --- a/base/mac/mac_util.mm
 +++ b/base/mac/mac_util.mm
-@@ -474,6 +474,17 @@ void OpenSystemSettingsPane(SystemSettin
-         pane_file = @"/System/Library/PreferencePanes/DateAndTime.prefPane";
+@@ -501,6 +501,17 @@ void OpenSystemSettingsPane(SystemSettin
+                            error:nil];
        }
        break;
 +    case SystemSettingsPane::kKeyboardShortcuts:

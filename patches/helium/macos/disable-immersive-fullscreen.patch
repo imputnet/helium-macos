@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
-@@ -1367,15 +1367,11 @@ std::vector<ContentsContainerView*> Brow
+@@ -1370,15 +1370,11 @@ std::vector<ContentsContainerView*> Brow
  
  #if BUILDFLAG(IS_MAC)
  bool BrowserView::UsesImmersiveFullscreenMode() const {
