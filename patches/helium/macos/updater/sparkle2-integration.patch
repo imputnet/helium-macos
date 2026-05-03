@@ -101,7 +101,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -502,6 +503,20 @@ if (is_win) {
+@@ -503,6 +504,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +122,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1139,6 +1154,10 @@ if (is_win) {
+@@ -1140,6 +1155,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1198,6 +1217,12 @@ if (is_win) {
+@@ -1199,6 +1218,12 @@ if (is_win) {
      bundle_deps +=
          [ "//third_party/search_engines_data:prepopulated_engines_bundle_data" ]
  
@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3316,11 +3317,9 @@ static_library("ui") {
+@@ -3370,11 +3371,9 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -388,7 +388,7 @@
  - (BOOL)tryToTerminateApplication:(NSApplication*)app {
 --- a/chrome/browser/chrome_browser_main_mac.mm
 +++ b/chrome/browser/chrome_browser_main_mac.mm
-@@ -31,6 +31,9 @@
+@@ -30,6 +30,9 @@
  #include "chrome/browser/first_run/first_run.h"
  #include "chrome/browser/mac/install_from_dmg.h"
  #include "chrome/browser/mac/metrics.h"
@@ -398,7 +398,7 @@
  #include "chrome/browser/ui/cocoa/main_menu_builder.h"
  #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
  #include "chrome/browser/updater/updater.h"
-@@ -177,6 +180,14 @@ void ChromeBrowserMainPartsMac::PreProfi
+@@ -179,6 +182,14 @@ void ChromeBrowserMainPartsMac::PreProfi
  
  void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
                                                  bool is_initial_profile) {
@@ -437,7 +437,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -6505,6 +6513,22 @@ static_library("browser") {
+@@ -6180,6 +6188,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]
@@ -495,9 +495,9 @@
  import("//build/config/chrome_build.gni")
 +import("//chrome/updater/sparkle.gni")
  
- declare_args() {
-   # By default, only branded builds allow for platform experience.
-@@ -13,5 +14,5 @@ declare_args() {
+ # IMPORTANT
+ # We are not accepting any new build flags in //chrome. See
+@@ -17,5 +18,5 @@ declare_args() {
  
    # Detect updates and notify the user for Google Chrome across all platforms.
    # Chromium does not use an auto-updater.
