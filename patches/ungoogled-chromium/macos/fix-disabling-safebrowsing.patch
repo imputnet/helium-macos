@@ -2,10 +2,10 @@
 
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -1412,10 +1412,6 @@ static_library("browser") {
-     "//chrome/browser/prefs:util_impl",
-     "//chrome/browser/profiles:profiles_extra_parts_impl",
+@@ -1174,10 +1174,6 @@ static_library("browser") {
      "//chrome/browser/profiles:profile_util_impl",
+     "//chrome/browser/profiles:profile_manager",
+     "//chrome/browser/profiles:profile_manager_impl",
 -    "//chrome/browser/safe_browsing",
 -    "//chrome/browser/safe_browsing:advanced_protection",
 -    "//chrome/browser/safe_browsing:metrics_collector",
@@ -13,9 +13,9 @@
      "//chrome/browser/search",
      "//chrome/browser/search_engine_choice:impl",
      "//chrome/browser/signin:impl",
-@@ -1823,7 +1819,6 @@ static_library("browser") {
-     "//chrome/browser/regional_capabilities",
-     "//chrome/browser/regional_capabilities:metrics_provider_impl",
+@@ -1644,7 +1640,6 @@ static_library("browser") {
+     "//chrome/browser/renderer_context_menu:impl",
+     "//chrome/browser/renderer_host",
      "//chrome/browser/resources/accessibility:resources",
 -    "//chrome/browser/safe_browsing",
      "//chrome/browser/safe_browsing:advanced_protection",
@@ -23,7 +23,7 @@
      "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -857,9 +857,6 @@ source_set("extensions") {
+@@ -833,9 +833,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -33,7 +33,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -893,7 +890,6 @@ source_set("extensions") {
+@@ -868,7 +865,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -43,7 +43,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -579,18 +579,9 @@ static_library("ui") {
+@@ -592,18 +592,9 @@ static_library("ui") {
      "//components/reading_list/core",
      "//components/renderer_context_menu",
      "//components/resources",
@@ -62,7 +62,7 @@
      "//components/schema_org/common:improved_mojom",
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
-@@ -5570,7 +5561,6 @@ static_library("ui_public_dependencies")
+@@ -5636,7 +5627,6 @@ group("ui_public_dependencies") {
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
@@ -126,28 +126,35 @@
    source->AddBoolean("requestsApVerdicts", requests_ap_verdicts);
  
    static constexpr webui::LocalizedString kStrings[] = {
---- a/chrome/browser/ui/views/download/download_danger_prompt_views.cc
-+++ b/chrome/browser/ui/views/download/download_danger_prompt_views.cc
-@@ -178,11 +178,15 @@ std::u16string DownloadDangerPromptViews
+--- a/chrome/browser/ui/extensions/download_danger_dialog.cc
++++ b/chrome/browser/ui/extensions/download_danger_dialog.cc
+@@ -19,6 +19,7 @@
+ #include "chrome/grit/branded_strings.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "components/download/public/common/download_item.h"
++#include "components/safe_browsing/buildflags.h"
+ #include "components/strings/grit/components_strings.h"
+ #include "content/public/browser/web_contents.h"
+ #include "extensions/buildflags/buildflags.h"
+@@ -98,11 +99,15 @@ std::u16string DownloadDangerDialogDeleg
                                          filename);
      case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT:
        return l10n_util::GetStringFUTF16(
--          safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-+    #if BUILDFLAG(FULL_SAFE_BROWSING)
-+        safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
-               profile_)
++#if BUILDFLAG(FULL_SAFE_BROWSING)
+           safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
+               profile)
                    ->IsUnderAdvancedProtection()
                ? IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT_IN_ADVANCED_PROTECTION
                : IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT,
-+    #else
-+          IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT
-+    #endif
++#else
++          IDS_PROMPT_UNCOMMON_DOWNLOAD_CONTENT,
++#endif
            filename);
      case download::DOWNLOAD_DANGER_TYPE_POTENTIALLY_UNWANTED:
        return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -7904,12 +7904,8 @@ test("unit_tests") {
+@@ -7853,12 +7853,8 @@ test("unit_tests") {
        "//chrome/browser/apps/app_shim",
        "//chrome/browser/renderer_host:history_swiper",
        "//chrome/common/notifications",
@@ -175,7 +182,7 @@
        "obfuscated_archive_analysis_delegate.cc",
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2374,15 +2374,6 @@ const PolicyToPreferenceMapEntry kSimple
+@@ -2393,15 +2393,6 @@ const PolicyToPreferenceMapEntry kSimple
      base::Value::Type::BOOLEAN },
  #endif
  
@@ -193,7 +200,7 @@
      ash::prefs::kAuthenticationFlowAutoReloadInterval,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -8104,33 +8104,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -8132,33 +8132,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));
