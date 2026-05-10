@@ -22,6 +22,7 @@
       dedicated Python environment for building Helium.
 1. Install Metal toolchain: `xcodebuild -downloadComponent MetalToolchain`
 1. Install Ninja via Homebrew: `brew install ninja`
+1. Install wget via Homebrew: `brew install wget`
 1. Install GNU coreutils and readline via Homebrew: `brew install coreutils readline`
 1. Unlink binutils to use the one provided with Xcode: `brew unlink binutils`
 1. Restart your terminal.
