@@ -14,19 +14,18 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
  
 --- a/base/mac/mac_util.mm
 +++ b/base/mac/mac_util.mm
-@@ -501,6 +501,17 @@ void OpenSystemSettingsPane(SystemSettin
+@@ -501,6 +501,16 @@ void OpenSystemSettingsPane(SystemSettin
                             error:nil];
        }
        break;
 +    case SystemSettingsPane::kKeyboardShortcuts:
 +      if (MacOSMajorVersion() >= 15) {
-+        url = @"x-apple.systempreferences:com.apple.Keyboard?Shortcuts";
++        url = @"x-apple.systempreferences:com.apple.Keyboard";
 +      } else if (MacOSMajorVersion() >= 13) {
 +        url = @"x-apple.systempreferences:com.apple.Keyboard-Settings."
-+              @"extension?Shortcuts";
++              @"extension";
 +      } else {
-+        url = @"x-apple.systempreferences:com.apple.preference.keyboard?"
-+              @"Shortcuts";
++        url = @"x-apple.systempreferences:com.apple.preference.keyboard";
 +      }
 +      break;
      case SystemSettingsPane::kNetwork_Proxies:
