@@ -193,7 +193,7 @@
      # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
 --- a/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 +++ b/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
-@@ -446,6 +446,8 @@
+@@ -464,6 +464,8 @@
  		72F9EC441D5E9ED8004AC8B6 /* SPUDownloadData.h in Headers */ = {isa = PBXBuildFile; fileRef = 72F9EC421D5E9ED8004AC8B6 /* SPUDownloadData.h */; settings = {ATTRIBUTES = (Public, ); }; };
  		72F9EC451D5E9ED8004AC8B6 /* SPUDownloadData.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F9EC431D5E9ED8004AC8B6 /* SPUDownloadData.m */; };
  		72F9EC481D5EA904004AC8B6 /* SPUUpdaterDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 72F9EC471D5EA7D3004AC8B6 /* SPUUpdaterDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -202,7 +202,7 @@
  		72FE54422E56A14100227A91 /* SUUpdateAlert.xib in Resources */ = {isa = PBXBuildFile; fileRef = 72FE54412E56A14100227A91 /* SUUpdateAlert.xib */; };
  		C23E885B1BE7B24F0050BB73 /* SparkleTestCodeSignApp.enc.dmg in Resources */ = {isa = PBXBuildFile; fileRef = C23E88591BE7AF890050BB73 /* SparkleTestCodeSignApp.enc.dmg */; };
  		EA1E281722B645AE004AA304 /* libbsdiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EA1E280F22B64522004AA304 /* libbsdiff.a */; };
-@@ -1381,9 +1383,11 @@
+@@ -1400,9 +1402,11 @@
  		72F9EC421D5E9ED8004AC8B6 /* SPUDownloadData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPUDownloadData.h; sourceTree = "<group>"; };
  		72F9EC431D5E9ED8004AC8B6 /* SPUDownloadData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SPUDownloadData.m; sourceTree = "<group>"; };
  		72F9EC471D5EA7D3004AC8B6 /* SPUUpdaterDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPUUpdaterDelegate.h; sourceTree = "<group>"; };
@@ -214,7 +214,7 @@
  		A5BF4F1B1BC7668B007A052A /* SUTestWebServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SUTestWebServer.h; sourceTree = "<group>"; };
  		A5BF4F1C1BC7668B007A052A /* SUTestWebServer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SUTestWebServer.m; sourceTree = "<group>"; };
  		C23E88591BE7AF890050BB73 /* SparkleTestCodeSignApp.enc.dmg */ = {isa = PBXFileReference; lastKnownFileType = file; path = SparkleTestCodeSignApp.enc.dmg; sourceTree = "<group>"; };
-@@ -2210,6 +2214,8 @@
+@@ -2239,6 +2243,8 @@
  				7269E49C2648FC6C0088C213 /* SPUUserUpdateState+Private.h */,
  				7269E4992648F7C00088C213 /* SPUUserUpdateState.m */,
  				725CB9561C7120410064365A /* SPUUserDriver.h */,
@@ -223,7 +223,7 @@
  			);
  			name = "User Driver";
  			sourceTree = "<group>";
-@@ -2545,6 +2551,7 @@
+@@ -2578,6 +2584,7 @@
  				3772FEA913DE0B6B00F79537 /* SUVersionDisplayProtocol.h in Headers */,
  				724BB3871D32A167005D534A /* SUXPCInstallerConnection.h in Headers */,
  				724BB3A81D33461B005D534A /* SUXPCInstallerStatus.h in Headers */,
@@ -231,7 +231,7 @@
  			);
  			runOnlyForDeploymentPostprocessing = 0;
  		};
-@@ -3620,6 +3627,7 @@
+@@ -3664,6 +3671,7 @@
  				724BB3881D32A167005D534A /* SUXPCInstallerConnection.m in Sources */,
  				724BB3A91D33461B005D534A /* SUXPCInstallerStatus.m in Sources */,
  				723AC011259DBDAA00BDB4FA /* SUReleaseNotesCommon.m in Sources */,
@@ -462,7 +462,7 @@
    if (is_android || is_mac || is_win || is_chromeos) {
 --- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 +++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
-@@ -144,4 +144,24 @@
+@@ -152,4 +152,24 @@ static BOOL SPUUpdateRequiresUserAttenti
      [_coreDriver abortUpdateAndShowNextUpdateImmediately:showNextUpdateImmediately error:error];
  }
  
