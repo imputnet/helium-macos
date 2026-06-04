@@ -1,6 +1,6 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html
-@@ -277,16 +277,6 @@
+@@ -278,16 +278,6 @@
              </template>
            </select>
          </div>
@@ -19,7 +19,7 @@
      <template is="dom-if" if="[[showManagedThemeDialog_]]" restamp>
 --- a/chrome/browser/resources/settings/system_page/system_page.html
 +++ b/chrome/browser/resources/settings/system_page/system_page.html
-@@ -53,6 +53,17 @@
+@@ -54,6 +54,17 @@
      </template>
      <!-- </if> -->
  
