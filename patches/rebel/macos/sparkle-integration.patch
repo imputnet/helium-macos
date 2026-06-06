@@ -668,7 +668,7 @@
  namespace chrome {
  
  namespace {
-@@ -110,6 +115,14 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -114,6 +119,14 @@ void AttemptRestartInternal(IgnoreUnload
  #else   // !BUILDFLAG(IS_CHROMEOS).
    // Set the flag to restore state after the restart.
    pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);

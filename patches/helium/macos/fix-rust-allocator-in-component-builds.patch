@@ -1,6 +1,6 @@
 --- a/build/config/BUILD.gn
 +++ b/build/config/BUILD.gn
-@@ -322,6 +322,10 @@ group("shared_library_deps") {
+@@ -318,6 +318,10 @@ group("shared_library_deps") {
    if (!toolchain_for_rust_host_build_tools) {
      public_deps = [ ":common_deps" ]
    }
