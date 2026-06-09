@@ -1,29 +1,5 @@
 # Fix GN safe_browsing and building with safebrowsing disabled on macOS
 
---- a/chrome/browser/BUILD.gn
-+++ b/chrome/browser/BUILD.gn
-@@ -423,10 +423,6 @@ static_library("browser") {
-     # c/b/metrics/process_memory_metrics_emitter.h is componentized.
-     "//chrome/browser/resource_coordinator:impl",
- 
--    "//chrome/browser/safe_browsing",
--    "//chrome/browser/safe_browsing:advanced_protection",
--    "//chrome/browser/safe_browsing:metrics_collector",
--    "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
-     "//chrome/browser/search",
-     "//chrome/browser/search_engine_choice:impl",
-     "//chrome/browser/signin:impl",
-@@ -934,10 +930,6 @@ static_library("browser") {
-     "//chrome/browser/resource_coordinator:impl",
-     "//chrome/browser/resource_coordinator:utils",
-     "//chrome/browser/resources/accessibility:resources",
--    "//chrome/browser/safe_browsing",
--    "//chrome/browser/safe_browsing:advanced_protection",
--    "//chrome/browser/safe_browsing:metrics_collector",
--    "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
-     "//chrome/browser/search",
-     "//chrome/browser/search/background",
-     "//chrome/browser/search_engine_choice",
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
 @@ -849,9 +849,6 @@ source_set("extensions") {
