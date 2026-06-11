@@ -53,7 +53,9 @@ ___helium_setup_gn() {
 }
 
 ___helium_info_pull() {
-    "$_root_dir/retrieve_and_unpack_resource.sh" -d -g
+    # fall back to git clone if tarball is unavailable
+    "$_root_dir/retrieve_and_unpack_resource.sh" -d -g || \
+      "$_root_dir/retrieve_and_unpack_resource.sh" -g
 
     mkdir -p "$_out_dir"
     cd "$_src_dir"
