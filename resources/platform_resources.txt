@@ -1,2 +1,26 @@
 assets/Assets.car chrome/app/theme/chromium/mac/Assets.car
 assets/app.icns chrome/app/theme/chromium/mac/app.icns
+
+# Air product logos — override helium-chromium/resources/branding/ versions
+assets/product_logo_128.png components/resources/default_100_percent/chromium/product_logo.png
+assets/product_logo_white.png components/resources/default_100_percent/chromium/product_logo_white.png
+assets/product_logo_200.png components/resources/default_200_percent/chromium/product_logo.png
+assets/product_logo_white_200.png components/resources/default_200_percent/chromium/product_logo_white.png
+assets/product_logo_22_mono.png chrome/app/theme/chromium/product_logo_22_mono.png
+assets/product_logo_16.png chrome/app/theme/chromium/product_logo_16.png
+assets/product_logo_24.png chrome/app/theme/chromium/product_logo_24.png
+assets/product_logo_48.png chrome/app/theme/chromium/product_logo_48.png
+assets/product_logo_64.png chrome/app/theme/chromium/product_logo_64.png
+assets/product_logo_128.png chrome/app/theme/chromium/product_logo_128.png
+assets/product_logo_256.png chrome/app/theme/chromium/product_logo_256.png
+assets/product_logo_16.png chrome/app/theme/default_100_percent/chromium/product_logo_16.png
+assets/product_logo_32.png chrome/app/theme/default_100_percent/chromium/product_logo_32.png
+assets/product_logo_32.png chrome/app/theme/default_200_percent/chromium/product_logo_16.png
+assets/product_logo_64.png chrome/app/theme/default_200_percent/chromium/product_logo_32.png
+assets/product_logo_24.png chrome/app/theme/chromium/linux/product_logo_24.png
+assets/product_logo_48.png chrome/app/theme/chromium/linux/product_logo_48.png
+assets/product_logo_64.png chrome/app/theme/chromium/linux/product_logo_64.png
+assets/product_logo_128.png chrome/app/theme/chromium/linux/product_logo_128.png
+assets/product_logo_256.png chrome/app/theme/chromium/linux/product_logo_256.png
+assets/product_logo_16.png chrome/app/theme/default_100_percent/chromium/linux/product_logo_16.png
+assets/product_logo_32.png chrome/app/theme/default_100_percent/chromium/linux/product_logo_32.png
