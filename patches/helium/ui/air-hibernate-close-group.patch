@@ -1,0 +1,80 @@
+Index: src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
+===================================================================
+--- src.orig/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
++++ src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
+@@ -32,6 +32,7 @@
+ #include "chrome/browser/tab_group_sync/feature_utils.h"
+ #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
++#include "chrome/browser/ui/helium/anchored_tab_hibernation.h"
+ #include "chrome/browser/ui/browser.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/browser_tabstrip.h"
+@@ -571,7 +572,7 @@ void TabGroupEditorBubbleView::RebuildMe
+         AddChildView(BuildMoveGroupToNewWindowButton()));
+     AddChildView(BuildSeparator());
+     simple_menu_items_.push_back(AddChildView(BuildUngroupButton()));
+-    simple_menu_items_.push_back(AddChildView(BuildCloseGroupButton()));
++    simple_menu_items_.push_back(AddChildView(BuildHibernateGroupButton()));
+   } else {
+     simple_menu_items_.push_back(AddChildView(BuildNewTabInGroupButton()));
+     simple_menu_items_.push_back(
+@@ -600,7 +601,7 @@ void TabGroupEditorBubbleView::RebuildMe
+       simple_menu_items_.push_back(AddChildView(BuildRecentActivityButton()));
+     }
+ 
+-    simple_menu_items_.push_back(AddChildView(BuildCloseGroupButton()));
++    simple_menu_items_.push_back(AddChildView(BuildHibernateGroupButton()));
+     AddChildView(BuildSeparator());
+ 
+     if (!IsGroupShared()) {
+@@ -707,10 +708,11 @@ TabGroupEditorBubbleView::BuildUngroupBu
+ }
+ 
+ std::unique_ptr<views::LabelButton>
+-TabGroupEditorBubbleView::BuildCloseGroupButton() {
++TabGroupEditorBubbleView::BuildHibernateGroupButton() {
+   std::unique_ptr<views::LabelButton> menu_item = CreateMenuItem(
+-      TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP, GetTextForCloseButton(),
+-      base::BindRepeating(&TabGroupEditorBubbleView::CloseGroupPressed,
++      TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP,
++      l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP),
++      base::BindRepeating(&TabGroupEditorBubbleView::HibernateGroupPressed,
+                           base::Unretained(this)),
+       ui::ImageModel::FromVectorIcon(kCloseGroupRefreshIcon, ui::kColorMenuIcon,
+                                      kDefaultIconSize),
+@@ -924,6 +926,13 @@ void TabGroupEditorBubbleView::ShareOrMa
+   }
+ }
+ 
++void TabGroupEditorBubbleView::HibernateGroupPressed() {
++  base::RecordAction(
++      base::UserMetricsAction("TabGroups_TabGroupBubble_CloseGroup"));
++  helium::HibernateTabGroup(browser_->tab_strip_model(), group_);
++  GetWidget()->Close();
++}
++
+ void TabGroupEditorBubbleView::CloseGroupPressed() {
+   base::RecordAction(
+       base::UserMetricsAction("TabGroups_TabGroupBubble_CloseGroup"));
+Index: src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
+===================================================================
+--- src.orig/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
++++ src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
+@@ -119,7 +119,7 @@ class TabGroupEditorBubbleView : public
+   std::unique_ptr<ColorPickerView> BuildColorPicker();
+   std::unique_ptr<views::LabelButton> BuildNewTabInGroupButton();
+   std::unique_ptr<views::LabelButton> BuildUngroupButton();
+-  std::unique_ptr<views::LabelButton> BuildCloseGroupButton();
++  std::unique_ptr<views::LabelButton> BuildHibernateGroupButton();
+   std::unique_ptr<views::LabelButton> BuildConvertToBookmarkButton();
+   std::unique_ptr<views::LabelButton> BuildDeleteGroupButton();
+   std::unique_ptr<views::LabelButton> BuildLeaveGroupButton();
+@@ -133,6 +133,7 @@ class TabGroupEditorBubbleView : public
+   void NewTabInGroupPressed();
+   void UngroupPressed();
+   void ShareOrManagePressed();
++  void HibernateGroupPressed();
+   void CloseGroupPressed();
+   void ConvertToBookmarkPressed();
+   void DeleteGroupPressed();

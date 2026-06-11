@@ -1,0 +1,376 @@
+Index: src/chrome/app/generated_resources.grd
+===================================================================
+--- src.orig/chrome/app/generated_resources.grd
++++ src/chrome/app/generated_resources.grd
+@@ -12625,7 +12625,7 @@ Check your passwords anytime in <ph name
+         </message>
+       </if>
+       <message name="IDS_TAB_SEARCH_SEARCH_TABS" desc="The label on the tab search search filed when user input is empty.">
+-        Search tabs
++        Search tabs, open URL...
+       </message>
+       <message name="IDS_TAB_SEARCH_NO_RESULTS_FOUND" desc="Indicator when no tabs are found filtered by user search input.">
+         No Results Found
+Index: src/chrome/browser/resources/tab_search/tab_search.html
+===================================================================
+--- src.orig/chrome/browser/resources/tab_search/tab_search.html
++++ src/chrome/browser/resources/tab_search/tab_search.html
+@@ -12,7 +12,7 @@
+ 
+     html,
+     body {
+-      width: 320px;
++      width: 560px;
+     }
+ 
+     body {
+Index: src/chrome/browser/resources/tab_search/tab_search_api_proxy.ts
+===================================================================
+--- src.orig/chrome/browser/resources/tab_search/tab_search_api_proxy.ts
++++ src/chrome/browser/resources/tab_search/tab_search_api_proxy.ts
+@@ -19,6 +19,8 @@ export interface TabSearchApiProxy {
+ 
+   closeWebUiTab(): void;
+ 
++  openNewTab(query: string): void;
++
+   getProfileData(): Promise<{profileData: ProfileData}>;
+ 
+   getIsSplit(): Promise<{isSplit: boolean}>;
+@@ -56,6 +58,10 @@ export class TabSearchApiProxyImpl imple
+     this.handler.closeWebUiTab();
+   }
+ 
++  openNewTab(query: string) {
++    this.handler.openNewTab(query);
++  }
++
+   getProfileData() {
+     return this.handler.getProfileData();
+   }
+Index: src/chrome/browser/resources/tab_search/tab_search_page.css
+===================================================================
+--- src.orig/chrome/browser/resources/tab_search/tab_search_page.css
++++ src/chrome/browser/resources/tab_search/tab_search_page.css
+@@ -12,6 +12,11 @@
+  * #include=mwb-shared-style-lit
+  * #css_wrapper_metadata_end */
+ 
++#tabSearchPage {
++  max-height: 480px;
++  overflow: hidden;
++}
++
+ #searchField {
+   align-items: center;
+   background-color: var(--mwb-background-color);
+@@ -79,6 +84,61 @@
+   display: none;
+ }
+ 
++#no-results {
++  padding: 4px 0;
++}
++
++.air-action {
++  align-items: center;
++  border-radius: 8px;
++  cursor: pointer;
++  display: flex;
++  gap: 12px;
++  margin: 2px 8px;
++  outline: none;
++  padding: 10px 12px;
++  transition: background-color 80ms;
++}
++
++.air-action:hover,
++.air-action:focus {
++  background-color: var(--cr-hover-background-color);
++}
++
++.air-action-icon {
++  align-items: center;
++  background-color: var(--cr-secondary-text-color);
++  border-radius: 6px;
++  color: var(--cr-card-background-color);
++  display: flex;
++  flex-shrink: 0;
++  font-size: 18px;
++  height: 32px;
++  justify-content: center;
++  opacity: 0.7;
++  width: 32px;
++}
++
++.air-action-text {
++  display: flex;
++  flex-direction: column;
++  min-width: 0;
++}
++
++.air-action-title {
++  color: var(--cr-primary-text-color);
++  font-size: 13px;
++  font-weight: 500;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++.air-action-subtitle {
++  color: var(--cr-secondary-text-color);
++  font-size: 11px;
++}
++
+ #feedback-text {
+   color: var(--cr-primary-text-color);
+   font-size: var(--mwb-primary-text-font-size);
+Index: src/chrome/browser/resources/tab_search/tab_search_page.html.ts
+===================================================================
+--- src.orig/chrome/browser/resources/tab_search/tab_search_page.html.ts
++++ src/chrome/browser/resources/tab_search/tab_search_page.html.ts
+@@ -97,7 +97,20 @@ export function getHtml(this: TabSearchP
+     </selectable-lazy-list>
+   </div>
+   <div id="no-results" ?hidden="${this.filteredItems_.length > 0}">
+-    $i18n{noResultsFound}
++    <div id="air-new-tab-action" class="air-action" @click="${this.onAirNewTabClick_}" @keydown="${this.onAirNewTabKeydown_}" tabindex="0" role="option">
++      <div class="air-action-icon">+</div>
++      <div class="air-action-text">
++        <span class="air-action-title">New Tab</span>
++        <span class="air-action-subtitle">Open a new tab</span>
++      </div>
++    </div>
++    <div id="air-search-action" class="air-action" ?hidden="${!this.airHasQuery_}" @click="${this.onAirSearchGoogleClick_}" @keydown="${this.onAirSearchGoogleKeydown_}" tabindex="0" role="option">
++      <div class="air-action-icon">⌕</div>
++      <div class="air-action-text">
++        <span class="air-action-title">${this.airQueryIsUrl_ ? `Open ${this.airQueryText_}` : `Search for "${this.airQueryText_}"`}</span>
++        <span class="air-action-subtitle">${this.airQueryIsUrl_ ? 'Navigate to URL' : 'Google Search'}</span>
++      </div>
++    </div>
+   </div>
+ </div>
+ <!--_html_template_end_-->`;
+Index: src/chrome/browser/resources/tab_search/tab_search_page.ts
+===================================================================
+--- src.orig/chrome/browser/resources/tab_search/tab_search_page.ts
++++ src/chrome/browser/resources/tab_search/tab_search_page.ts
+@@ -99,6 +99,9 @@ export class TabSearchPageElement extend
+       searchOptions_: {type: Object},
+       recentlyClosedDefaultItemDisplayCount_: {type: Number},
+       activeSelectionId_: {type: String},
++      airHasQuery_: {type: Boolean},
++      airQueryText_: {type: String},
++      airQueryIsUrl_: {type: Boolean},
+     };
+   }
+ 
+@@ -108,6 +111,9 @@ export class TabSearchPageElement extend
+   protected accessor listItemSize_: number|undefined;
+   protected accessor searchQueryMaxLength_: number = SEARCH_QUERY_MAX_LENGTH;
+   protected accessor filteredItems_: Array<TitleItem|TabData|TabGroupData> = [];
++  protected accessor airHasQuery_: boolean = false;
++  protected accessor airQueryText_: string = '';
++  protected accessor airQueryIsUrl_: boolean = false;
+   private accessor searchOptions_: SearchOptions = {
+     includeScore: true,
+     includeMatches: true,
+@@ -249,6 +255,11 @@ export class TabSearchPageElement extend
+   override onSearchTermInput() {
+     this.hasSearchText = this.getSearchInput().value !== '';
+     this.searchText_ = this.getSearchInput().value;
++    this.airHasQuery_ = this.searchText_.length > 0;
++    this.airQueryText_ = this.searchText_;
++    const q = this.searchText_;
++    this.airQueryIsUrl_ = q.includes('://') ||
++        (q.length > 3 && !q.includes(' ') && q.includes('.'));
+     // Reset the selected item whenever a search query is provided.
+     // updateFilteredTabs_ will set the correct tab index for initial selection.
+     const tabsList = this.$.tabsList;
+@@ -478,6 +489,37 @@ export class TabSearchPageElement extend
+         Math.round(Date.now() - this.windowShownTimestamp_));
+   }
+ 
++  protected onAirNewTabClick_() {
++    this.apiProxy_.openNewTab('');
++  }
++
++  protected onAirNewTabKeydown_(e: KeyboardEvent) {
++    if (e.key === 'Enter') {
++      this.apiProxy_.openNewTab('');
++    } else if (e.key === 'ArrowUp') {
++      this.$.searchInput.focus();
++      e.preventDefault();
++    } else if (e.key === 'ArrowDown' && this.airHasQuery_) {
++      const el = this.shadowRoot?.getElementById('air-search-action');
++      el?.focus();
++      e.preventDefault();
++    }
++  }
++
++  protected onAirSearchGoogleClick_() {
++    this.apiProxy_.openNewTab(this.searchText_);
++  }
++
++  protected onAirSearchGoogleKeydown_(e: KeyboardEvent) {
++    if (e.key === 'Enter') {
++      this.apiProxy_.openNewTab(this.searchText_);
++    } else if (e.key === 'ArrowUp') {
++      const el = this.shadowRoot?.getElementById('air-new-tab-action');
++      el?.focus();
++      e.preventDefault();
++    }
++  }
++
+   protected onItemClose_(e: Event) {
+     performance.mark('tab_search:close_tab:metric_begin');
+     const target = e.currentTarget as TabSearchItemElement;
+@@ -607,6 +649,13 @@ export class TabSearchPageElement extend
+     }
+ 
+     if (this.$.tabsList.selected === -1) {
++      // No tabs matching the search text criteria — route to action items.
++      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
++          this.filteredItems_.length === 0) {
++        const el = this.shadowRoot?.getElementById('air-new-tab-action');
++        el?.focus();
++        e.preventDefault();
++      }
+       return;
+     }
+ 
+Index: src/chrome/browser/ui/browser_command_controller.cc
+===================================================================
+--- src.orig/chrome/browser/ui/browser_command_controller.cc
++++ src/chrome/browser/ui/browser_command_controller.cc
+@@ -703,7 +703,7 @@ bool BrowserCommandController::ExecuteCo
+       CloseWindow(browser_);
+       break;
+     case IDC_NEW_TAB:
+-      NewTab(browser_);
++      ShowTabSearch(browser_);
+       break;
+     case IDC_NEW_TAB_TO_RIGHT: {
+       NewTabToRight(browser_);
+Index: src/chrome/browser/ui/views/tab_search_bubble_host.cc
+===================================================================
+--- src.orig/chrome/browser/ui/views/tab_search_bubble_host.cc
++++ src/chrome/browser/ui/views/tab_search_bubble_host.cc
+@@ -200,7 +200,21 @@ bool TabSearchBubbleHost::ShowTabSearchB
+       },
+       *bubble_created_time_));
+ 
+-  webui_bubble_manager_->ShowBubble(std::optional<gfx::Rect>(), kTabSearchBubbleElementId);
++  // Air: show centered at the top of the browser window, spotlight-style.
++  gfx::Rect anchor_rect;
++  auto* browser_view = BrowserView::GetBrowserViewForBrowser(
++      browser_window_interface_->GetBrowserForMigrationOnly());
++  if (browser_view && browser_view->GetWidget()) {
++    gfx::Rect window_bounds =
++        browser_view->GetWidget()->GetWindowBoundsInScreen();
++    const int kTopOffset = 80;
++    anchor_rect = gfx::Rect(window_bounds.x() + window_bounds.width() / 2,
++                            window_bounds.y() + kTopOffset, 1, 1);
++  }
++  webui_bubble_manager_->ShowBubble(
++      anchor_rect.IsEmpty() ? std::optional<gfx::Rect>() : anchor_rect,
++      views::BubbleBorder::TOP_CENTER,
++      kTabSearchBubbleElementId);
+ 
+   auto* tracker =
+       feature_engagement::TrackerFactory::GetForBrowserContext(profile_);
+Index: src/chrome/browser/ui/webui/tab_search/tab_search.mojom
+===================================================================
+--- src.orig/chrome/browser/ui/webui/tab_search/tab_search.mojom
++++ src/chrome/browser/ui/webui/tab_search/tab_search.mojom
+@@ -211,6 +211,10 @@ interface PageHandler {
+ 
+   // Notify the backend that the UI is ready to be shown.
+   MaybeShowUI();
++
++  // Air: close the panel and open a new tab. If |query| is non-empty, open a
++  // Google search for that query instead.
++  OpenNewTab(string query);
+ };
+ 
+ // WebUI-side handler for requests from the browser.
+Index: src/chrome/browser/ui/webui/tab_search/tab_search_page_handler.cc
+===================================================================
+--- src.orig/chrome/browser/ui/webui/tab_search/tab_search_page_handler.cc
++++ src/chrome/browser/ui/webui/tab_search/tab_search_page_handler.cc
+@@ -16,6 +16,9 @@
+ 
+ #include "base/check.h"
+ #include "base/functional/bind.h"
++#include "base/strings/escape.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "ui/base/page_transition_types.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/time/time.h"
+@@ -385,6 +388,38 @@ void TabSearchPageHandler::MaybeShowUI()
+   }
+ }
+ 
++void TabSearchPageHandler::OpenNewTab(const std::string& query) {
++  auto embedder = webui_controller_->embedder();
++  if (embedder) {
++    embedder->CloseUI();
++  }
++  if (!browser_) return;
++
++  GURL url;
++  if (query.empty()) {
++    url = GURL(chrome::kChromeUINewTabURL);
++  } else {
++    // Detect URL-like input: has a scheme already, or looks like a bare domain
++    // (contains a dot, no spaces, length > 3).
++    bool has_scheme = query.find("://") != std::string::npos;
++    bool looks_like_domain = query.find(' ') == std::string::npos &&
++                             query.find('.') != std::string::npos &&
++                             query.size() > 3;
++    if (has_scheme) {
++      url = GURL(query);
++    } else if (looks_like_domain) {
++      url = GURL("https://" + query);
++    }
++    if (!url.is_valid() || url.host().empty()) {
++      url = GURL("https://www.google.com/search?q=" +
++                 base::EscapeQueryParamValue(query, /*use_plus=*/false));
++    }
++  }
++  NavigateParams params(browser_, url, ui::PAGE_TRANSITION_TYPED);
++  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  Navigate(&params);
++}
++
+ tab_search::mojom::ProfileDataPtr TabSearchPageHandler::CreateProfileData() {
+   auto profile_data = tab_search::mojom::ProfileData::New();
+ 
+Index: src/chrome/browser/ui/webui/tab_search/tab_search_page_handler.h
+===================================================================
+--- src.orig/chrome/browser/ui/webui/tab_search/tab_search_page_handler.h
++++ src/chrome/browser/ui/webui/tab_search/tab_search_page_handler.h
+@@ -85,6 +85,8 @@ class TabSearchPageHandler
+   void SaveRecentlyClosedExpandedPref(bool expanded) override;
+   void StartTabGroupTutorial() override;
+   void MaybeShowUI() override;
++  void OpenNewTab(const std::string& query) override;
++
+   // TabStripApiBatchedObserver:
+   void OnTabEvents(
+       const std::vector<tabs_api::mojom::TabsEventPtr>& events) override;
+Index: src/chrome/browser/ui/webui/tab_search/tab_search_ui.cc
+===================================================================
+--- src.orig/chrome/browser/ui/webui/tab_search/tab_search_ui.cc
++++ src/chrome/browser/ui/webui/tab_search/tab_search_ui.cc
+@@ -114,7 +114,7 @@ TabSearchUI::TabSearchUI(content::WebUI*
+   source->AddResourcePath("alert_indicators/tab_media_glic_active.svg",
+                           IDR_GLIC_TAB_MEDIA_GLIC_ACTIVE);
+ 
+-  ui::Accelerator accelerator(ui::VKEY_A, ui::EF_SHIFT_DOWN | ui::EF_PLATFORM_ACCELERATOR);
++  ui::Accelerator accelerator(ui::VKEY_T, ui::EF_PLATFORM_ACCELERATOR);
+   source->AddString("shortcutText", accelerator.GetShortcutText());
+   source->AddString("newTabPageUrl", chrome::kChromeUINewTabURL);
+ 

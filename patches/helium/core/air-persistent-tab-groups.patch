@@ -1,0 +1,107 @@
+Index: src/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
+===================================================================
+--- src.orig/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
++++ src/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
+@@ -276,7 +276,13 @@ LocalTabGroupListener::MaybeRemoveWebCon
+   // TODO(crbug.com/352802808): Use a PostTask to prevent re-entrancy when the
+   // group is removed.
+   const bool was_last_tab_in_group = saved_group->saved_tabs().size() == 1;
+-  service_->RemoveTab(local_id_, local_tab_id);
++  if (!was_last_tab_in_group) {
++    service_->RemoveTab(local_id_, local_tab_id);
++  }
++  // Air: When the last tab is closed, don't permanently delete the saved group.
++  // The caller (TabGroupedStateChanged) will call DisconnectLocalTabGroup on
++  // kGroupDeleted, which only clears local IDs and preserves the group for
++  // restoration on next startup.
+ 
+   if (most_recent_shared_tab_update_store) {
+     most_recent_shared_tab_update_store->SetLastUpdatedTab(local_id_,
+Index: src/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
+===================================================================
+--- src.orig/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
++++ src/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
+@@ -116,7 +116,7 @@ void SavedTabGroupModelListener::OnTabGr
+   }
+ 
+   PersistCustomTitlesBeforeClosingGroup(service_, group_id);
+-  DisconnectLocalTabGroup(group_id, ClosingSource::kDeletedByUser);
++  DisconnectLocalTabGroup(group_id, ClosingSource::kClosedByUser);
+ }
+ 
+ void SavedTabGroupModelListener::OnTabGroupChanged(
+Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
+===================================================================
+--- src.orig/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
++++ src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
+@@ -8,7 +8,9 @@
+ #include <map>
+ 
+ #include "base/containers/flat_set.h"
++#include "base/functional/bind.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/time/time.h"
+ #include "base/uuid.h"
+ #include "components/sessions/core/serialized_navigation_entry.h"
+@@ -462,6 +464,39 @@ TabGroupId TabGroupSyncDelegateDesktop::
+ 
+ void TabGroupSyncDelegateDesktop::OnInitialized() {
+   StartRecordingHourlyMetrics();
++
++  // Air: defer group restoration so it runs after the current observer
++  // iteration (ProfileObserver with kDisallowReentrancy) unwinds.
++  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++      FROM_HERE,
++      base::BindOnce(&TabGroupSyncDelegateDesktop::RestoreSavedTabGroups,
++                     weak_ptr_factory_.GetWeakPtr()));
++}
++
++void TabGroupSyncDelegateDesktop::RestoreSavedTabGroups() {
++  Browser* browser = nullptr;
++  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
++      [this, &browser](BrowserWindowInterface* bwi) -> bool {
++        if (bwi->GetProfile() == profile_) {
++          browser = bwi->GetBrowserForMigrationOnly();
++          return false;
++        }
++        return true;
++      });
++  if (!browser) return;
++
++  for (const SavedTabGroup* group : service_->ReadAllGroups()) {
++    if (!group || group->local_group_id().has_value()) continue;
++    if (group->saved_tabs().empty()) continue;
++
++    std::map<tabs::TabInterface*, base::Uuid> tab_guid_mapping =
++        OpenTabsAndMapToUuids(browser, *group);
++    if (!tab_guid_mapping.empty()) {
++      AddOpenedTabsToGroup(browser->tab_strip_model(),
++                           std::move(tab_guid_mapping), *group,
++                           /*switch_focus=*/false);
++    }
++  }
+ }
+ 
+ void TabGroupSyncDelegateDesktop::OnWillBeDestroyed() {
+Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
+===================================================================
+--- src.orig/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
++++ src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
+@@ -64,6 +64,8 @@ class TabGroupSyncDelegateDesktop : publ
+   void RecordHourlyMetrics();
+ 
+  private:
++  // Posted task: restores saved groups after startup observer iterations unwind.
++  void RestoreSavedTabGroups();
+   // Opens the tabs in `saved_group` in `browser`. These tabs are not grouped.
+   std::map<tabs::TabInterface*, base::Uuid> OpenTabsAndMapToUuids(
+       Browser* const browser,
+@@ -95,6 +97,7 @@ class TabGroupSyncDelegateDesktop : publ
+   base::ScopedObservation<TabGroupSyncService, TabGroupSyncService::Observer>
+       service_observation_{this};
+ 
++  base::WeakPtrFactory<TabGroupSyncDelegateDesktop> weak_ptr_factory_{this};
+ };
+ 
+ }  // namespace tab_groups
