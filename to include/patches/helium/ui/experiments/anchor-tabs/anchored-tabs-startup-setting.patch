@@ -1,15 +1,15 @@
 --- a/chrome/app/settings_strings.grdp
 +++ b/chrome/app/settings_strings.grdp
-@@ -1061,6 +1061,9 @@
-     <message name="IDS_SETTINGS_ON_STARTUP_CONTINUE" desc="Radio button option to continue where you left off.">
-       Continue where you left off
-     </message>
-+    <message name="IDS_SETTINGS_ON_STARTUP_CONTINUE_WITH_ANCHORING" desc="Experimental radio button option to continue where you left off with anchored tab behavior enabled.">
-+      [Experimental] Continue where you left off with tab anchoring
-+    </message>
-     <message name="IDS_SETTINGS_ON_STARTUP_OPEN_SPECIFIC" desc="Radio button option to open a specific set of pages.">
-       Open a specific page or set of pages
-     </message>
+@@ -1071,6 +1071,9 @@
+   <message name="IDS_SETTINGS_ON_STARTUP_CONTINUE" desc="Radio button option to continue where you left off.">
+     Continue where you left off
+   </message>
++  <message name="IDS_SETTINGS_ON_STARTUP_CONTINUE_WITH_ANCHORING" desc="Experimental radio button option to continue where you left off with anchored tab behavior enabled.">
++    [Experimental] Continue where you left off with tab anchoring
++  </message>
+   <message name="IDS_SETTINGS_ON_STARTUP_OPEN_SPECIFIC" desc="Radio button option to open a specific set of pages.">
+     Open a specific page or set of pages
+   </message>
 --- a/chrome/browser/prefs/session_startup_pref.cc
 +++ b/chrome/browser/prefs/session_startup_pref.cc
 @@ -29,6 +29,8 @@ int TypeToPrefValue(SessionStartupPref::
@@ -198,7 +198,7 @@
          // treated as permanent cookies and site data needed to restore the
 --- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
 +++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
-@@ -1329,6 +1329,8 @@ void AddOnStartupStrings(content::WebUID
+@@ -1332,6 +1332,8 @@ void AddOnStartupStrings(content::WebUID
        {"onStartup", IDS_SETTINGS_ON_STARTUP},
        {"onStartupOpenNewTab", IDS_SETTINGS_ON_STARTUP_OPEN_NEW_TAB},
        {"onStartupContinue", IDS_SETTINGS_ON_STARTUP_CONTINUE},
@@ -207,7 +207,7 @@
        {"onStartupOpenSpecific", IDS_SETTINGS_ON_STARTUP_OPEN_SPECIFIC},
        {"onStartupContinueAndOpenSpecific",
         IDS_SETTINGS_ON_STARTUP_CONTINUE_AND_OPEN_SPECIFIC},
-@@ -1352,6 +1354,8 @@ void AddOnStartupStrings(content::WebUID
+@@ -1355,6 +1357,8 @@ void AddOnStartupStrings(content::WebUID
    html_source->AddBoolean("isForegroundLaunchFeatureEnabled",
                            features::IsForegroundLaunchEnabled());
  #endif
@@ -229,11 +229,11 @@
  // The URLs to restore on startup or when the home button is pressed. The URLs
 --- a/tools/metrics/histograms/metadata/settings/enums.xml
 +++ b/tools/metrics/histograms/metadata/settings/enums.xml
-@@ -335,6 +335,7 @@ chromium-metrics-reviews@google.com.
+@@ -338,6 +338,7 @@ chromium-metrics-reviews@google.com.
    <int value="4" label="Open URLs"/>
    <int value="5" label="Open new tab page"/>
    <int value="6" label="Restore the last session and open URLs"/>
 +  <int value="7" label="Restore the last session with tab anchoring"/>
  </enum>
  
- <!-- LINT.IfChange(SettingsAiPageAiSuggestionsInteractions)-->
+ <!-- LINT.IfChange(SettingsAiPageComposeInteractions) -->

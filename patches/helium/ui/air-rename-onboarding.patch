@@ -1,7 +1,5 @@
-Index: src/chrome/app/settings_strings.grdp
-===================================================================
---- src.orig/chrome/app/settings_strings.grdp
-+++ src/chrome/app/settings_strings.grdp
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
 @@ -1352,7 +1352,7 @@
            Please check with your network administrator to make sure that the firewall is not blocking downloads from Google servers.
          </message>
@@ -115,10 +113,8 @@ Index: src/chrome/app/settings_strings.grdp
      </message>
      <message name="IDS_SETTINGS_ENABLE_DO_NOT_TRACK_DIALOG_LEARN_MORE_ACCESSIBILITY_LABEL" desc="The accessibility label for a link to learn more about Do Not Track">
        Learn more about Do Not Track
-Index: src/components/helium_onboarding/index.html
-===================================================================
---- src.orig/components/helium_onboarding/index.html
-+++ src/components/helium_onboarding/index.html
+--- a/components/helium_onboarding/index.html
++++ b/components/helium_onboarding/index.html
 @@ -5,7 +5,7 @@
      <meta charset="UTF-8" />
      <link rel="icon" type="image/png" href="/favicon.png" />
@@ -128,10 +124,8 @@ Index: src/components/helium_onboarding/index.html
  </head>
  
  <body>
-Index: src/components/helium_onboarding/src/lib/strings.ts
-===================================================================
---- src.orig/components/helium_onboarding/src/lib/strings.ts
-+++ src/components/helium_onboarding/src/lib/strings.ts
+--- a/components/helium_onboarding/src/lib/strings.ts
++++ b/components/helium_onboarding/src/lib/strings.ts
 @@ -9,48 +9,48 @@ export const s = {
          letsGo: "Let's go!"
      },

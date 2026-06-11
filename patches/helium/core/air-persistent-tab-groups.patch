@@ -1,7 +1,5 @@
-Index: src/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
-===================================================================
---- src.orig/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
-+++ src/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
+--- a/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
 @@ -276,7 +276,13 @@ LocalTabGroupListener::MaybeRemoveWebCon
    // TODO(crbug.com/352802808): Use a PostTask to prevent re-entrancy when the
    // group is removed.
@@ -17,10 +15,8 @@ Index: src/chrome/browser/ui/tabs/saved_tab_groups/local_tab_group_listener.cc
  
    if (most_recent_shared_tab_update_store) {
      most_recent_shared_tab_update_store->SetLastUpdatedTab(local_id_,
-Index: src/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
-===================================================================
---- src.orig/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
-+++ src/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
+--- a/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listener.cc
 @@ -116,7 +116,7 @@ void SavedTabGroupModelListener::OnTabGr
    }
  
@@ -30,10 +26,8 @@ Index: src/chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_model_listene
  }
  
  void SavedTabGroupModelListener::OnTabGroupChanged(
-Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
-===================================================================
---- src.orig/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
-+++ src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
+--- a/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
++++ b/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.cc
 @@ -8,7 +8,9 @@
  #include <map>
  
@@ -44,7 +38,7 @@ Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_deskt
  #include "base/time/time.h"
  #include "base/uuid.h"
  #include "components/sessions/core/serialized_navigation_entry.h"
-@@ -462,6 +464,39 @@ TabGroupId TabGroupSyncDelegateDesktop::
+@@ -446,6 +448,39 @@ TabGroupId TabGroupSyncDelegateDesktop::
  
  void TabGroupSyncDelegateDesktop::OnInitialized() {
    StartRecordingHourlyMetrics();
@@ -84,11 +78,9 @@ Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_deskt
  }
  
  void TabGroupSyncDelegateDesktop::OnWillBeDestroyed() {
-Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
-===================================================================
---- src.orig/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
-+++ src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
-@@ -64,6 +64,8 @@ class TabGroupSyncDelegateDesktop : publ
+--- a/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
++++ b/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_desktop.h
+@@ -63,6 +63,8 @@ class TabGroupSyncDelegateDesktop : publ
    void RecordHourlyMetrics();
  
   private:
@@ -97,10 +89,11 @@ Index: src/chrome/browser/ui/tabs/saved_tab_groups/tab_group_sync_delegate_deskt
    // Opens the tabs in `saved_group` in `browser`. These tabs are not grouped.
    std::map<tabs::TabInterface*, base::Uuid> OpenTabsAndMapToUuids(
        Browser* const browser,
-@@ -95,6 +97,7 @@ class TabGroupSyncDelegateDesktop : publ
+@@ -93,6 +95,8 @@ class TabGroupSyncDelegateDesktop : publ
+ 
    base::ScopedObservation<TabGroupSyncService, TabGroupSyncService::Observer>
        service_observation_{this};
- 
++
 +  base::WeakPtrFactory<TabGroupSyncDelegateDesktop> weak_ptr_factory_{this};
  };
  

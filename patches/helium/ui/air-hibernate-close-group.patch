@@ -1,7 +1,5 @@
-Index: src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
-===================================================================
---- src.orig/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
-+++ src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
+--- a/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
++++ b/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
 @@ -32,6 +32,7 @@
  #include "chrome/browser/tab_group_sync/feature_utils.h"
  #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
@@ -57,10 +55,8 @@ Index: src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.cc
  void TabGroupEditorBubbleView::CloseGroupPressed() {
    base::RecordAction(
        base::UserMetricsAction("TabGroups_TabGroupBubble_CloseGroup"));
-Index: src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
-===================================================================
---- src.orig/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
-+++ src/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
+--- a/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
++++ b/chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h
 @@ -119,7 +119,7 @@ class TabGroupEditorBubbleView : public
    std::unique_ptr<ColorPickerView> BuildColorPicker();
    std::unique_ptr<views::LabelButton> BuildNewTabInGroupButton();

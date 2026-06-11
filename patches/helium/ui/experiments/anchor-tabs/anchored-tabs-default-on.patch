@@ -1,7 +1,5 @@
-Index: src/chrome/browser/ui/ui_features.cc
-===================================================================
---- src.orig/chrome/browser/ui/ui_features.cc
-+++ src/chrome/browser/ui/ui_features.cc
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
 @@ -36,8 +36,9 @@ bool IsHeliumAnchoredTabsStartupModeEnab
      return false;
    }

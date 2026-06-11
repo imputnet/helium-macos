@@ -1,7 +1,5 @@
-Index: src/chrome/app/chromium_strings.grd
-===================================================================
---- src.orig/chrome/app/chromium_strings.grd
-+++ src/chrome/app/chromium_strings.grd
+--- a/chrome/app/chromium_strings.grd
++++ b/chrome/app/chromium_strings.grd
 @@ -1031,7 +1031,7 @@ Chromium is unable to recover your setti
        </message>
  
@@ -20,10 +18,8 @@ Index: src/chrome/app/chromium_strings.grd
        </message>
  
        <!-- User menu errors -->
-Index: src/chrome/app/generated_resources.grd
-===================================================================
---- src.orig/chrome/app/generated_resources.grd
-+++ src/chrome/app/generated_resources.grd
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
 @@ -3174,7 +3174,7 @@ are declared in tools/grit/grit_args.gni
        </message>
        <message name="IDS_DOWNLOAD_BUBBLE_INTERRUPTED_SUBPAGE_SUMMARY_HELIUM_SERVICES_DISABLED"
@@ -51,7 +47,7 @@ Index: src/chrome/app/generated_resources.grd
            </message>
            <message name="IDS_IMPORT_FULL_DISK_ACCESS_DIALOG_LINK" desc="Help link text in the dialog shown when Full Disk Access is needed to import from Safari.">
              Learn how to grant Full Disk Access from your System Preferences.
-@@ -13994,7 +13994,7 @@ Check your passwords anytime in <ph name
+@@ -13982,7 +13982,7 @@ Check your passwords anytime in <ph name
            Installed because of dependent extension(s).
          </message>
          <message name="IDS_EXTENSIONS_INSTALL_LOCATION_HELIUM" desc="The text explaining the the installation location is a Helium component.">
@@ -60,10 +56,8 @@ Index: src/chrome/app/generated_resources.grd
          </message>
  
          <!-- Extension blocklist state -->
-Index: src/chrome/app/settings_chromium_strings.grdp
-===================================================================
---- src.orig/chrome/app/settings_chromium_strings.grdp
-+++ src/chrome/app/settings_chromium_strings.grdp
+--- a/chrome/app/settings_chromium_strings.grdp
++++ b/chrome/app/settings_chromium_strings.grdp
 @@ -302,7 +302,7 @@
      When you type in the address bar or search box, Chromium sends what you type to your default search engine to get better suggestions. This is off in Incognito.
    </message>
@@ -73,10 +67,8 @@ Index: src/chrome/app/settings_chromium_strings.grdp
    </message>
    <message name="IDS_SETTINGS_SEARCH_AGGREGATOR_PREF_DESC" desc="The description of the 'Show suggestions and results from your organization' checkbox, which enables/disables sending omnibox input to the user's organization's search aggregator to get additional suggestions. Note that this setting is controlled by enterprise policy and, while a checkbox is shown, it is always enabled and cannot be disabled.">
      When you type in the address bar or search box, Chromium sends what you type to your organization's search, AI, and agent tools to get suggestions.
-Index: src/chrome/app/theme/chromium/BRANDING
-===================================================================
---- src.orig/chrome/app/theme/chromium/BRANDING
-+++ src/chrome/app/theme/chromium/BRANDING
+--- a/chrome/app/theme/chromium/BRANDING
++++ b/chrome/app/theme/chromium/BRANDING
 @@ -1,10 +1,10 @@
 -COMPANY_FULLNAME=The Helium Authors
 -COMPANY_SHORTNAME=The Helium Authors
