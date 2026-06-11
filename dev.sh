@@ -323,7 +323,7 @@ __helium_menu() {
             echo "\t         equivalent of: [presetup, merge, push, configure]" >&2
             echo "\tpresetup - downloads sources, sets up GN, and prepares third-party dependencies" >&2
             echo "\tconfigure - generates build configuration and tools" >&2
-            echo "\tresources - generates and copies helium resources (such as icons)" >&2
+            echo "\tresources - generates and copies Air resources (such as icons)" >&2
 
             echo "\n" >&2
             echo "\tsub - apply google domain and name substitutions" >&2
@@ -350,7 +350,7 @@ __helium_menu() {
 
             echo "\n" >&2
             echo "\tbuild - builds a development binary" >&2
-            echo "\trun - runs a development build of helium with dev data dir & ui devtools enabled" >&2
+            echo "\trun - runs a development build of Air with dev data dir & ui devtools enabled" >&2
             echo "\treset - nukes everything" >&2
     esac
 }
