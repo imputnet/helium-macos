@@ -1,0 +1,237 @@
+--- /dev/null
++++ b/chrome/browser/ui/tabs/air_spaces_manager.cc
+@@ -0,0 +1,154 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#include "chrome/browser/ui/tabs/air_spaces_manager.h"
++
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "base/values.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/prefs/pref_registry_simple.h"
++#include "components/prefs/pref_service.h"
++
++namespace {
++const char kAirSpacesPrefKey[] = "air_browser.spaces";
++const char kAirActiveSpacePrefKey[] = "air_browser.active_space";
++}  // namespace
++
++namespace air {
++
++AirSpacesManager::AirSpacesManager(Profile* profile) : profile_(profile) {
++  LoadFromPrefs();
++}
++
++AirSpacesManager::~AirSpacesManager() = default;
++
++Space AirSpacesManager::CreateSpace(const std::u16string& name,
++                                     tab_groups::TabGroupColorId color,
++                                     const std::string& icon) {
++  Space space;
++  space.id = GenerateSpaceId();
++  space.name = name;
++  space.color = color;
++  space.icon = icon;
++  spaces_.push_back(space);
++  SaveToPrefs();
++  for (auto& observer : observers_) {
++    observer.OnSpaceCreated(space);
++  }
++  return space;
++}
++
++void AirSpacesManager::SwitchToSpace(const std::string& space_id,
++                                      TabStripModel* tab_strip) {
++  DCHECK(tab_strip);
++  if (active_space_id_ == space_id) {
++    return;
++  }
++  active_space_id_ = space_id;
++  profile_->GetPrefs()->SetString(kAirActiveSpacePrefKey, space_id);
++  auto it = space_to_group_.find(space_id);
++  if (it != space_to_group_.end()) {
++    for (int i = 0; i < tab_strip->count(); ++i) {
++      std::optional<tab_groups::TabGroupId> group =
++          tab_strip->GetTabGroupForTab(i);
++      if (group.has_value() && group.value() == it->second) {
++        tab_strip->ActivateTabAt(i);
++        break;
++      }
++    }
++  }
++  for (auto& observer : observers_) {
++    observer.OnActiveSpaceChanged(space_id);
++  }
++}
++
++void AirSpacesManager::RenameSpace(const std::string& space_id,
++                                    const std::u16string& new_name) {
++  for (auto& space : spaces_) {
++    if (space.id == space_id) {
++      space.name = new_name;
++      SaveToPrefs();
++      for (auto& observer : observers_) {
++        observer.OnSpaceRenamed(space_id, new_name);
++      }
++      return;
++    }
++  }
++}
++
++void AirSpacesManager::DeleteSpace(const std::string& space_id,
++                                    TabStripModel* tab_strip) {
++  auto group_it = space_to_group_.find(space_id);
++  if (group_it != space_to_group_.end() && tab_strip) {
++    tab_strip->CloseAllTabsInGroup(group_it->second);
++    space_to_group_.erase(group_it);
++  }
++  std::erase_if(spaces_, [&space_id](const Space& s) {
++    return s.id == space_id;
++  });
++  if (active_space_id_ == space_id) {
++    active_space_id_ = spaces_.empty() ? "" : spaces_.front().id;
++    profile_->GetPrefs()->SetString(kAirActiveSpacePrefKey, active_space_id_);
++  }
++  SaveToPrefs();
++  for (auto& observer : observers_) {
++    observer.OnSpaceDeleted(space_id);
++  }
++}
++
++std::optional<tab_groups::TabGroupId> AirSpacesManager::GetTabGroupForSpace(
++    const std::string& space_id) const {
++  auto it = space_to_group_.find(space_id);
++  if (it != space_to_group_.end()) {
++    return it->second;
++  }
++  return std::nullopt;
++}
++
++void AirSpacesManager::AddObserver(AirSpacesManagerObserver* observer) {
++  observers_.AddObserver(observer);
++}
++
++void AirSpacesManager::RemoveObserver(AirSpacesManagerObserver* observer) {
++  observers_.RemoveObserver(observer);
++}
++
++void AirSpacesManager::LoadFromPrefs() {
++  const base::Value::List& list =
++      profile_->GetPrefs()->GetList(kAirSpacesPrefKey);
++  spaces_.clear();
++  for (const auto& item : list) {
++    const base::Value::Dict* dict = item.GetIfDict();
++    if (!dict) continue;
++    Space space;
++    if (const std::string* id = dict->FindString("id")) space.id = *id;
++    if (const std::string* name = dict->FindString("name"))
++      space.name = base::UTF8ToUTF16(*name);
++    if (const std::string* icon = dict->FindString("icon")) space.icon = *icon;
++    int color_int = dict->FindInt("color").value_or(0);
++    space.color = static_cast<tab_groups::TabGroupColorId>(color_int);
++    spaces_.push_back(std::move(space));
++  }
++  active_space_id_ = profile_->GetPrefs()->GetString(kAirActiveSpacePrefKey);
++}
++
++void AirSpacesManager::SaveToPrefs() {
++  base::Value::List list;
++  for (const auto& space : spaces_) {
++    base::Value::Dict dict;
++    dict.Set("id", space.id);
++    dict.Set("name", base::UTF16ToUTF8(space.name));
++    dict.Set("icon", space.icon);
++    dict.Set("color", static_cast<int>(space.color));
++    list.Append(std::move(dict));
++  }
++  profile_->GetPrefs()->SetList(kAirSpacesPrefKey, std::move(list));
++}
++
++std::string AirSpacesManager::GenerateSpaceId() {
++  return base::Uuid::GenerateRandomV4().AsLowercaseString();
++}
++
++}  // namespace air
+--- /dev/null
++++ b/chrome/browser/ui/tabs/air_spaces_manager.h
+@@ -0,0 +1,77 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#ifndef CHROME_BROWSER_UI_TABS_AIR_SPACES_MANAGER_H_
++#define CHROME_BROWSER_UI_TABS_AIR_SPACES_MANAGER_H_
++
++#include <map>
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/memory/raw_ptr.h"
++#include "base/observer_list.h"
++#include "components/keyed_service/core/keyed_service.h"
++#include "components/tab_groups/tab_group_color.h"
++#include "components/tab_groups/tab_group_id.h"
++
++class Profile;
++class TabStripModel;
++
++namespace air {
++
++struct Space {
++  std::string id;
++  std::u16string name;
++  tab_groups::TabGroupColorId color;
++  std::string icon;
++};
++
++class AirSpacesManagerObserver {
++ public:
++  virtual void OnSpaceCreated(const Space& space) {}
++  virtual void OnSpaceDeleted(const std::string& space_id) {}
++  virtual void OnSpaceRenamed(const std::string& space_id,
++                               const std::u16string& new_name) {}
++  virtual void OnActiveSpaceChanged(const std::string& space_id) {}
++};
++
++class AirSpacesManager : public KeyedService {
++ public:
++  explicit AirSpacesManager(Profile* profile);
++  ~AirSpacesManager() override;
++
++  AirSpacesManager(const AirSpacesManager&) = delete;
++  AirSpacesManager& operator=(const AirSpacesManager&) = delete;
++
++  const std::vector<Space>& GetSpaces() const { return spaces_; }
++  const std::string& GetActiveSpaceId() const { return active_space_id_; }
++
++  Space CreateSpace(const std::u16string& name,
++                    tab_groups::TabGroupColorId color,
++                    const std::string& icon = "");
++  void SwitchToSpace(const std::string& space_id, TabStripModel* tab_strip);
++  void RenameSpace(const std::string& space_id, const std::u16string& new_name);
++  void DeleteSpace(const std::string& space_id, TabStripModel* tab_strip);
++
++  std::optional<tab_groups::TabGroupId> GetTabGroupForSpace(
++      const std::string& space_id) const;
++
++  void AddObserver(AirSpacesManagerObserver* observer);
++  void RemoveObserver(AirSpacesManagerObserver* observer);
++
++ private:
++  void LoadFromPrefs();
++  void SaveToPrefs();
++  std::string GenerateSpaceId();
++
++  raw_ptr<Profile> profile_;
++  std::vector<Space> spaces_;
++  std::string active_space_id_;
++  std::map<std::string, tab_groups::TabGroupId> space_to_group_;
++  base::ObserverList<AirSpacesManagerObserver> observers_;
++};
++
++}  // namespace air
++
++#endif  // CHROME_BROWSER_UI_TABS_AIR_SPACES_MANAGER_H_

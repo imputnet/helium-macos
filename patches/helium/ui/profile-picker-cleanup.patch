@@ -1,0 +1,51 @@
+--- a/chrome/browser/resources/signin/profile_picker/profile_picker_app.html.ts
++++ b/chrome/browser/resources/signin/profile_picker/profile_picker_app.html.ts
+@@ -8,8 +8,6 @@ import type {ProfilePickerAppElement} fr
+ 
+ export function getHtml(this: ProfilePickerAppElement) {
+   return html`<!--_html_template_start_-->
+-<img id="banner-right" alt="">
+-<img id="banner-left" alt="">
+ 
+ <cr-view-manager id="viewManager">
+   <profile-picker-main-view id="mainView" slot="view">
+--- a/chrome/browser/resources/signin/profile_picker/profile_picker_main_view.css
++++ b/chrome/browser/resources/signin/profile_picker/profile_picker_main_view.css
+@@ -137,11 +137,6 @@ cr-icon[icon='profiles:add'] {
+   --iron-icon-stroke-color: var(--google-grey-700);
+ }
+ 
+-#browseAsGuestButton {
+-  margin-inline-start: var(--footer-spacing);
+-  padding: 8px 16px;
+-}
+-
+ #browseAsGuestButton > cr-icon {
+   margin-inline-end: 0;
+   --iron-icon-height: 20px;
+@@ -152,10 +147,10 @@ cr-checkbox {
+   --cr-checkbox-label-color: var(--cr-secondary-text-color);
+   --cr-checkbox-label-padding-start: 8px;
+   justify-content: flex-end;
+-  margin-inline-end: var(--footer-spacing);
+-  margin-inline-start: auto;
+-  padding-inline-end: 5px;
+-  padding-inline-start: 5px;
++}
++
++.footer {
++  justify-content: space-evenly;
+ }
+ 
+ #ask-on-startup-container {
+--- a/chrome/browser/resources/signin/profile_picker/profile_picker_main_view.html.ts
++++ b/chrome/browser/resources/signin/profile_picker/profile_picker_main_view.html.ts
+@@ -15,7 +15,7 @@ ${isGlicVersion() ? html`
+ ` : ''}
+ <div class="flex-container">
+   <div class="title-container">
+-    <img id="pickerLogo" @click="${this.onProductLogoClick_}"
++    <img id="pickerLogo"
+         src="picker_logo.svg" role="presentation">
+     <h1 class="title" .innerHTML="${this.getTitle_()}"></h1>
+     <div class="subtitle" .innerHTML="${this.getSubtitle_()}"></div>

@@ -1,0 +1,319 @@
+--- a/ui/webui/resources/cr_elements/cr_button/cr_button.css
++++ b/ui/webui/resources/cr_elements/cr_button/cr_button.css
+@@ -40,12 +40,13 @@
+   user-select: none;
+   -webkit-tap-highlight-color: transparent;
+   border: var(--cr-button-border, 1px solid var(--cr-button-border-color));
+-  border-radius: 100px;
++  border-radius: 8px;
+   background: var(--cr-button-background-color);
+   color: var(--cr-button-text-color);
+   font-weight: 500;
+   line-height: 20px;
+   isolation: isolate;
++  white-space: nowrap;
+ }
+ 
+ :host(.action-button) {
+--- a/ui/webui/resources/cr_elements/cr_drawer/cr_drawer.html.ts
++++ b/ui/webui/resources/cr_elements/cr_drawer/cr_drawer.html.ts
+@@ -12,16 +12,6 @@ export function getHtml(this: CrDrawerEl
+     @click="${this.onDialogClick_}" @close="${this.onDialogClose_}">
+   <div id="container" @click="${this.onContainerClick_}">
+     <div class="drawer-header">
+-      <slot name="header-icon">
+-        <picture>
+-          <source media="(prefers-color-scheme: dark)"
+-              srcset="//resources/images/chrome_logo_dark.svg">
+-          <img id="product-logo"
+-              srcset="chrome://theme/current-channel-logo@1x 1x,
+-                      chrome://theme/current-channel-logo@2x 2x"
+-              role="presentation">
+-        </picture>
+-      </slot>
+       <div id="heading" tabindex="-1">${this.heading}</div>
+     </div>
+     <slot name="body"></slot>
+--- a/ui/webui/resources/cr_elements/cr_icon_button/cr_icon_button.css
++++ b/ui/webui/resources/cr_elements/cr_icon_button/cr_icon_button.css
+@@ -18,7 +18,7 @@
+   --cr-icon-button-width: var(--cr-icon-button-size);
+   /* Copied from paper-fab.html. Prevents square touch highlight. */
+   -webkit-tap-highlight-color: transparent;
+-  border-radius: 50%;
++  border-radius: 6px;
+   color: var(--cr-icon-button-stroke-color,
+       var(--cr-icon-button-fill-color));
+   cursor: pointer;
+--- a/ui/webui/resources/cr_elements/cr_nav_menu_item_style_lit.css
++++ b/ui/webui/resources/cr_elements/cr_nav_menu_item_style_lit.css
+@@ -25,28 +25,28 @@
+   /* Sizes icons for cr-icons. */
+   --cr-icon-ripple-size: 20px;
+   align-items: center;
+-  border-end-end-radius: 100px;
+-  border-start-end-radius: 100px;
++  border-radius: 8px;
+   box-sizing: border-box;
+   color: var(--cr-nav-menu-item-color);
+   display: flex;
+   font-size: 14px;
+   font-weight: 500;
+   line-height: 14px;
+-  margin-inline-end: 2px;
+-  margin-inline-start: 1px;
++  margin-inline-end: 6px;
++  margin-inline-start: 6px;
+   min-height: 40px;
+   overflow: hidden;
+   padding-block-end: 10px;
+   padding-block-start: 10px;
+-  padding-inline-start: 23px;
+-  padding-inline-end: 16px;
++  padding-inline-start: 18px;
++  padding-inline-end: 12px;
+   position: relative;
+   text-decoration: none;
+ }
+ 
+ :host-context(cr-drawer) .cr-nav-menu-item {
+   margin-inline-end: 8px;
++  margin-inline-start: 8px;
+ }
+ 
+ .cr-nav-menu-item:hover {
+@@ -90,7 +90,7 @@
+ .cr-nav-menu-item cr-icon,
+ .cr-nav-menu-item iron-icon {
+   flex-shrink: 0;
+-  margin-inline-end: 20px;
++  margin-inline-end: 16px;
+   pointer-events: none;
+   vertical-align: top;
+ }
+--- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.css
++++ b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.css
+@@ -52,7 +52,7 @@ h1 {
+   box-sizing: border-box;
+   display: flex;
+   /* 12px to match #rightSpacer + 6px to align with icons in menus. */
+-  padding-inline-start: calc(12px + 6px);
++  padding-inline-start: 16px;
+   width: var(--cr-toolbar-left-spacer-width, auto);
+ }
+ 
+@@ -76,6 +76,7 @@ cr-icon-button {
+ 
+ #rightSpacer {
+   padding-inline-end: 12px;
++  padding-inline-start: 12px;
+ }
+ 
+ :host([narrow]) #centeredContent {
+@@ -132,12 +133,6 @@ picture {
+   margin-inline-end: 16px;
+ }
+ 
+-:host([always-show-logo]) #leftSpacer,
+-:host(:not([narrow])) #leftSpacer {
+-  /* 12px to match #rightSpacer + 9px to align with icons in menus. */
+-  padding-inline-start: calc(12px + 9px);
+-}
+-
+ :host([always-show-logo]) :is(picture, #product-logo),
+ :host(:not([narrow])) :is(picture, #product-logo) {
+   height: 24px;
+--- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
++++ b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar.html.ts
+@@ -17,16 +17,6 @@ export function getHtml(this: CrToolbarE
+           aria-label="${this.menuLabel || nothing}"
+           title="${this.menuLabel}">
+       </cr-icon-button>` : ''}
+-    <slot name="product-logo">
+-      <picture>
+-        <source media="(prefers-color-scheme: dark)"
+-            srcset="//resources/images/chrome_logo_dark.svg">
+-        <img id="product-logo"
+-            srcset="chrome://theme/current-channel-logo@1x 1x,
+-                    chrome://theme/current-channel-logo@2x 2x"
+-            role="presentation">
+-      </picture>
+-    </slot>
+     <h1>${this.pageName}</h1>
+   </div>
+ </div>
+--- a/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar_search_field.css
++++ b/ui/webui/resources/cr_elements/cr_toolbar/cr_toolbar_search_field.css
+@@ -53,7 +53,7 @@ cr-icon-button {
+       var(--color-toolbar-search-field-icon,
+       var(--cr-secondary-text-color)));
+   --cr-icon-button-size: var(--cr-toolbar-icon-container-size, 28px);
+-  --cr-icon-button-icon-size: 20px;
++  --cr-icon-button-icon-size: 16px;
+   margin: var(--cr-toolbar-icon-margin, 0);
+ }
+ 
+@@ -170,7 +170,7 @@ input[type='search']::-webkit-search-can
+   padding: 0 6px;
+   position: relative;
+   width: var(--cr-toolbar-field-width, 680px);
+-  --cr-toolbar-search-field-border-radius: 100px;
++  --cr-toolbar-search-field-border-radius: 6px;
+ }
+ 
+ @media (prefers-color-scheme: dark) {
+@@ -199,7 +199,6 @@ input[type='search']::-webkit-search-can
+ 
+ :host([search-focused_]:not([narrow])) {
+   outline: 2px solid var(--cr-focus-outline-color);
+-  outline-offset: 2px;
+ }
+ 
+ :host(:not([narrow])) #stateBackground {
+@@ -253,4 +252,5 @@ input[type='search']::-webkit-search-can
+   height: 100%;
+   position: relative;
+   z-index: 2;
++  gap: 6px;
+ }
+--- a/ui/webui/resources/cr_elements/cr_shared_vars.css
++++ b/ui/webui/resources/cr_elements/cr_shared_vars.css
+@@ -112,6 +112,8 @@ html {
+   --cr-shadow-ambient-color_:
+       color-mix(in srgb, var(--cr-shadow-color) 15%, transparent);
+ 
++
++  --cr-elevation-0: var(--cr-shadow-ambient-color_) 0 0px 0px 1px;
+   --cr-elevation-1: var(--cr-shadow-key-color_) 0 1px 2px 0,
+                     var(--cr-shadow-ambient-color_) 0 1px 3px 1px;
+   --cr-elevation-2: var(--cr-shadow-key-color_) 0 1px 2px 0,
+@@ -123,7 +125,7 @@ html {
+   --cr-elevation-5: var(--cr-shadow-key-color_) 0 4px 4px 0,
+                     var(--cr-shadow-ambient-color_) 0 8px 12px 6px;
+ 
+-  --cr-card-shadow: var(--cr-elevation-2);
++  --cr-card-shadow: var(--cr-elevation-0);
+ 
+   --cr-focused-item-color: var(--google-grey-300);
+   --cr-form-field-label-color: var(--google-grey-700);
+@@ -131,7 +133,7 @@ html {
+   --cr-iph-anchor-highlight-color: rgba(var(--google-blue-600-rgb), 0.1);
+   --cr-menu-background-color: white;
+   --cr-menu-background-focus-color: var(--google-grey-400);
+-  --cr-menu-shadow: var(--cr-elevation-2);
++  --cr-menu-shadow: var(--cr-elevation-1);
+   --cr-separator-color: rgba(0, 0, 0, .06);
+   --cr-title-text-color: rgb(90, 90, 90);
+   --cr-scrollable-border-color: var(--google-grey-300);
+--- a/ui/webui/resources/cr_components/theme_color_picker/theme_color.css
++++ b/ui/webui/resources/cr_components/theme_color_picker/theme_color.css
+@@ -8,7 +8,7 @@
+  * #css_wrapper_metadata_end */
+ 
+ :host {
+-  --cr-theme-color-border-radius: 50%;
++  --cr-theme-color-border-radius: 8px;
+   box-sizing: border-box;
+   cursor: pointer;
+   display: block;
+--- a/ui/webui/resources/cr_components/theme_color_picker/theme_color_picker.css
++++ b/ui/webui/resources/cr_components/theme_color_picker/theme_color_picker.css
+@@ -46,6 +46,6 @@ cr-theme-color {
+   background-color: var(
+       --color-theme-color-picker-option-background,
+       var(--cr-fallback-color-neutral-container));
+-  border-radius: 12px;
++  border-radius: 16px;
+   padding: var(--cr-theme-color-padding);
+ }
+--- a/ui/webui/resources/cr_elements/cr_scrollable_lit.css
++++ b/ui/webui/resources/cr_elements/cr_scrollable_lit.css
+@@ -56,9 +56,9 @@
+ 
+ .cr-scrollable-top-shadow,
+ .cr-scrollable-bottom-shadow {
+-  box-shadow: inset 0 5px 6px -3px rgba(0, 0, 0, .4);
++  box-shadow: var(--cr-elevation-0) inset;
+   display: block;
+-  height: 8px;
++  height: 1px;
+   opacity: 0;
+   top: anchor(top);
+   transition: opacity 500ms;
+--- a/ui/webui/resources/cr_elements/cr_toast/cr_toast.css
++++ b/ui/webui/resources/cr_elements/cr_toast/cr_toast.css
+@@ -25,9 +25,9 @@
+   box-sizing: border-box;
+   display: flex;
+   line-height: 20px;
+-  margin: 24px;
++  margin: 18px;
+   max-width: var(--cr-toast-max-width, 568px);
+-  min-height: 52px;
++  min-height: 40px;
+   min-width: 288px;
+   opacity: 0;
+   padding: 0 16px;
+--- a/ui/webui/resources/cr_components/customize_color_scheme_mode/segmented_button.css
++++ b/ui/webui/resources/cr_components/customize_color_scheme_mode/segmented_button.css
+@@ -9,15 +9,17 @@
+  * #css_wrapper_metadata_end */
+ 
+ :host {
+-  --segmented-button-height: 44px;
++  --segmented-button-height: 40px;
+   --segmented-button-width: 100%;
+   --segmented-button-padding: 2px;
++  --segmented-button-radius: 11px;
++  --segmented-button-child-radius: 8px;
+ }
+ 
+ cr-radio-group {
+   border: 1px var(--color-segmented-button-border,
+       var(--cr-fallback-color-tonal-outline)) solid;
+-  border-radius: var(--segmented-button-height);
++  border-radius: var(--segmented-button-radius);
+   box-sizing: border-box;
+   display: grid;
+   grid-auto-columns: 1fr;
+@@ -25,6 +27,7 @@ cr-radio-group {
+   height: var(--segmented-button-height);
+   padding: var(--segmented-button-padding);
+   width: var(--segmented-button-width);
++  gap: var(--segmented-button-padding);
+ }
+ 
+ :host ::slotted(*) {
+--- a/ui/webui/resources/cr_components/customize_color_scheme_mode/segmented_button_option.css
++++ b/ui/webui/resources/cr_components/customize_color_scheme_mode/segmented_button_option.css
+@@ -9,7 +9,7 @@
+  * #css_wrapper_metadata_end */
+ 
+ #button {
+-  border-radius: var(--segmented-button-height);
++  border-radius: var(--segmented-button-child-radius);
+   box-sizing: border-box;
+   color: var(--color-segmented-button-foreground-unchecked,
+       var(--cr-fallback-color-on-surface-subtle));
+@@ -32,7 +32,7 @@
+ }
+ 
+ #button #overlay {
+-  border-radius: var(--segmented-button-height);
++  border-radius: var(--segmented-button-child-radius);
+   box-sizing: border-box;
+   height: 100%;
+   left: 0;
+--- a/ui/webui/resources/cr_components/theme_color_picker/theme_hue_slider_dialog.css
++++ b/ui/webui/resources/cr_components/theme_color_picker/theme_hue_slider_dialog.css
+@@ -20,7 +20,9 @@ dialog {
+       var(--cr-fallback-color-on-surface));
+   height: 137px;
+   overflow: hidden;
+-  margin: 0;
++
++  /* Visual offset due to one less theme option than upstream */
++  margin: 0 0 0 96px;
+   padding: 0;
+   width: 296px;
+ }

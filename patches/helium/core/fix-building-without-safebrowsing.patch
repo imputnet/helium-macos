@@ -1,0 +1,11 @@
+--- a/components/resources/BUILD.gn
++++ b/components/resources/BUILD.gn
+@@ -100,7 +100,7 @@ grit("components_resources") {
+     deps += [ "//components/resources/ssl/ssl_error_assistant:make_ssl_error_assistant_protobuf" ]
+   }
+ 
+-  if (safe_browsing_mode > 0) {
++  if (true) {
+     deps += [
+       "//components/safe_browsing/content/resources:make_file_types_protobuf",
+     ]

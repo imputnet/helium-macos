@@ -1,0 +1,478 @@
+--- a/chrome/browser/importer/external_process_importer_host.cc
++++ b/chrome/browser/importer/external_process_importer_host.cc
+@@ -133,7 +133,7 @@ void ExternalProcessImporterHost::OnTemp
+ void ExternalProcessImporterHost::ShowWarningDialog() {
+   DCHECK(!headless_);
+   importer::ShowImportLockDialog(
+-      parent_window_,
++      parent_view_, parent_window_,
+       base::BindOnce(&ExternalProcessImporterHost::OnImportLockDialogEnd,
+                      weak_ptr_factory_.GetWeakPtr()));
+ }
+@@ -157,7 +157,8 @@ void ExternalProcessImporterHost::OnImpo
+ 
+ bool ExternalProcessImporterHost::CheckForFirefoxLock(
+     const user_data_importer::SourceProfile& source_profile) {
+-  if (source_profile.importer_type != user_data_importer::TYPE_FIREFOX) {
++  if (source_profile.importer_type != user_data_importer::TYPE_FIREFOX &&
++      source_profile.importer_type != user_data_importer::TYPE_ZEN) {
+     return true;
+   }
+ 
+--- a/chrome/browser/importer/importer_list.cc
++++ b/chrome/browser/importer/importer_list.cc
+@@ -92,6 +92,52 @@ void DetectSafariProfiles(
+ }
+ #endif  // BUILDFLAG(IS_MAC)
+ 
++void DetectZenProfiles(
++    const std::string locale,
++    std::vector<user_data_importer::SourceProfile>* profiles) {
++  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
++                                                base::BlockingType::MAY_BLOCK);
++#if BUILDFLAG(IS_WIN)
++  // zen uses the same prefix as firefox, which is very convenient for us
++  const std::string zen_install_id =
++      shell_integration::GetFirefoxProgIdSuffix();
++#else
++  const std::string zen_install_id;
++#endif  // BUILDFLAG(IS_WIN)
++  std::vector<FirefoxDetail> details = GetZenDetails(zen_install_id);
++
++  for (const auto& detail : details) {
++    base::FilePath app_path;
++    if (detail.path.empty()) {
++      continue;
++    }
++
++    int version;
++    GetFirefoxVersionAndPathFromProfile(detail.path, &version, &app_path);
++
++    user_data_importer::SourceProfile zen;
++    zen.importer_name = u"Zen";
++    zen.profile = detail.name;
++    zen.importer_type = user_data_importer::TYPE_ZEN;
++    zen.source_path = detail.path;
++#if BUILDFLAG(IS_WIN)
++    zen.app_path = GetFirefoxInstallPathFromRegistry();
++#endif
++    if (zen.app_path.empty()) {
++      if (app_path.empty()) {
++        continue;
++      }
++
++      zen.app_path = app_path;
++    }
++
++    zen.services_supported =
++        user_data_importer::HISTORY | user_data_importer::FAVORITES;
++    zen.locale = locale;
++    profiles->push_back(zen);
++  }
++}
++
+ // |locale|: The application locale used for lookups in Firefox's
+ // locale-specific search engines feature (see firefox_importer.cc for
+ // details).
+@@ -100,6 +146,7 @@ void DetectFirefoxProfiles(
+     std::vector<user_data_importer::SourceProfile>* profiles) {
+   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                 base::BlockingType::MAY_BLOCK);
++  DetectZenProfiles(locale, profiles);
+ #if BUILDFLAG(IS_WIN)
+   const std::string firefox_install_id =
+       shell_integration::GetFirefoxProgIdSuffix();
+--- a/chrome/common/importer/firefox_importer_utils_linux.cc
++++ b/chrome/common/importer/firefox_importer_utils_linux.cc
+@@ -41,11 +41,16 @@ constexpr const base::FilePath::CharType
+     kFlatpakFirefoxProfileStorageBasePath =
+         FILE_PATH_LITERAL(".var/app/org.mozilla.firefox");
+ 
++constexpr const base::FilePath::CharType* const
++    kFlatpakZenProfileStorageBasePath =
++        FILE_PATH_LITERAL(".var/app/app.zen_browser.zen");
++
+ // Search-priority-ordered array of base paths relative to the user $HOME
+ // directory where the .mozilla directory may be located.
+ constexpr const base::FilePath::CharType* const
+     kFirefoxProfileStorageBasePaths[] = {kStandardFirefoxProfileStorageBasePath,
+                                          kSnapFirefoxProfileStorageBasePath,
++                                         kFlatpakZenProfileStorageBasePath,
+                                          kFlatpakFirefoxProfileStorageBasePath};
+ 
+ // The subpath to the profiles.ini file relative to a profile storage base path.
+@@ -59,12 +64,18 @@ constexpr const base::FilePath::CharType
+ constexpr const base::FilePath::StringViewType kFirefoxProfilesXdgIniSubpath =
+     kFirefoxProfilesIniSubpath + 1;
+ 
+-base::FilePath GetXdgProfilesINI() {
++constexpr const base::FilePath::CharType* const kZenProfilesIniSubpath =
++    FILE_PATH_LITERAL(".zen/profiles.ini");
++
++constexpr const base::FilePath::StringViewType kZenProfilesXdgIniSubpath =
++    kZenProfilesIniSubpath + 1;
++
++base::FilePath GetXdgProfilesINIImpl(
++  const base::FilePath::StringViewType ini_subpath) {
+   auto env = base::Environment::Create();
+   base::FilePath xdg_config_dir = base::nix::GetXDGDirectory(
+       env.get(), base::nix::kXdgConfigHomeEnvVar, base::nix::kDotConfigDir);
+-  base::FilePath ini_file =
+-      xdg_config_dir.Append(kFirefoxProfilesXdgIniSubpath);
++  base::FilePath ini_file = xdg_config_dir.Append(ini_subpath);
+   if (base::PathExists(ini_file)) {
+     return ini_file;
+   }
+@@ -72,11 +83,11 @@ base::FilePath GetXdgProfilesINI() {
+   return {};
+ }
+ 
+-}  // namespace
+-
+-base::FilePath GetProfilesINI() {
++base::FilePath GetProfilesINIImpl(const base::FilePath::CharType* ini_subpath,
++                                  base::FilePath::StringViewType xdg_subpath) {
+   // First, check the XDG-style (~/.config/mozilla/firefox) path.
+-  if (auto xdg_ini_file = GetXdgProfilesINI(); !xdg_ini_file.empty()) {
++  if (auto xdg_ini_file = GetXdgProfilesINIImpl(xdg_subpath);
++      !xdg_ini_file.empty()) {
+     return xdg_ini_file;
+   }
+ 
+@@ -93,8 +104,7 @@ base::FilePath GetProfilesINI() {
+ 
+   for (const auto* profile_storage_base : kFirefoxProfileStorageBasePaths) {
+     base::FilePath ini_file = home;
+-    ini_file = ini_file.Append(profile_storage_base)
+-                   .Append(kFirefoxProfilesIniSubpath);
++    ini_file = ini_file.Append(profile_storage_base).Append(ini_subpath);
+     if (base::PathExists(ini_file)) {
+       return ini_file;
+     }
+@@ -102,3 +112,14 @@ base::FilePath GetProfilesINI() {
+ 
+   return base::FilePath();
+ }
++
++}  // namespace
++
++base::FilePath GetProfilesINI() {
++  return GetProfilesINIImpl(kFirefoxProfilesIniSubpath,
++                            kFirefoxProfilesXdgIniSubpath);
++}
++
++base::FilePath GetZenProfilesINI() {
++  return GetProfilesINIImpl(kZenProfilesIniSubpath, kZenProfilesXdgIniSubpath);
++}
+--- a/chrome/common/importer/firefox_importer_utils_mac.mm
++++ b/chrome/common/importer/firefox_importer_utils_mac.mm
+@@ -7,15 +7,22 @@
+ #include "base/files/file_util.h"
+ #include "base/path_service.h"
+ 
+-base::FilePath GetProfilesINI() {
++base::FilePath _GetProfilesINI(const char* folder) {
+   base::FilePath app_data_path;
+   if (!base::PathService::Get(base::DIR_APP_DATA, &app_data_path)) {
+     return base::FilePath();
+   }
+-  base::FilePath ini_file =
+-      app_data_path.Append("Firefox").Append("profiles.ini");
++  base::FilePath ini_file = app_data_path.Append(folder).Append("profiles.ini");
+   if (!base::PathExists(ini_file)) {
+     return base::FilePath();
+   }
+   return ini_file;
+ }
++
++base::FilePath GetProfilesINI() {
++  return _GetProfilesINI("Firefox");
++}
++
++base::FilePath GetZenProfilesINI() {
++  return _GetProfilesINI("zen");
++}
+--- a/chrome/common/importer/firefox_importer_utils_win.cc
++++ b/chrome/common/importer/firefox_importer_utils_win.cc
+@@ -68,16 +68,24 @@ base::FilePath GetFirefoxInstallPathFrom
+   return (result != ERROR_SUCCESS) ? base::FilePath() : base::FilePath(buffer);
+ }
+ 
+-base::FilePath GetProfilesINI() {
++base::FilePath _GetProfilesINI(const char* folder) {
+   base::FilePath ini_file;
+   // The default location of the profile folder containing user data is
+   // under the "Application Data" folder in Windows XP, Vista, and 7.
+-  if (!base::PathService::Get(base::DIR_ROAMING_APP_DATA, &ini_file))
++  if (!base::PathService::Get(base::DIR_ROAMING_APP_DATA, &ini_file)) {
+     return base::FilePath();
++  }
+ 
+-  ini_file = ini_file.AppendASCII("Mozilla");
+-  ini_file = ini_file.AppendASCII("Firefox");
++  ini_file = ini_file.AppendASCII(folder);
+   ini_file = ini_file.AppendASCII("profiles.ini");
+ 
+   return base::PathExists(ini_file) ? ini_file : base::FilePath();
+ }
++
++base::FilePath GetProfilesINI() {
++  return _GetProfilesINI("Mozilla\\Firefox");
++}
++
++base::FilePath GetZenProfilesINI() {
++  return _GetProfilesINI("zen");
++}
+--- a/chrome/common/importer/firefox_importer_utils.cc
++++ b/chrome/common/importer/firefox_importer_utils.cc
+@@ -29,7 +29,8 @@ namespace {
+ 
+ // Retrieves the file system path of the profile name.
+ base::FilePath GetProfilePath(const base::DictValue& root,
+-                              const std::string& profile_name) {
++                              const std::string& profile_name,
++                              const base::FilePath& base_dir) {
+   std::string path_str;
+   const std::string* is_relative =
+       root.FindStringByDottedPath(profile_name + ".IsRelative");
+@@ -50,26 +51,39 @@ base::FilePath GetProfilePath(const base
+   // path of profiles.ini. IsRelative=0 refers to a custom profile
+   // location.
+   if (*is_relative == "1")
+-    path = GetProfilesINI().DirName().Append(path);
++    path = base_dir.Append(path);
+ 
+   return path;
+ }
+ 
+ } // namespace
+ 
+-std::vector<FirefoxDetail> GetFirefoxDetails(
+-    const std::string& firefox_install_id) {
+-  base::FilePath ini_file = GetProfilesINI();
++std::vector<FirefoxDetail> GetFirefoxDetailsImpl(
++    const std::string& firefox_install_id,
++    base::FilePath ini_file) {
+   std::string content;
+   base::ReadFileToString(ini_file, &content);
+   DictionaryValueINIParser ini_parser;
+   ini_parser.Parse(content);
+-  return GetFirefoxDetailsFromDictionary(ini_parser.root(), firefox_install_id);
++  return GetFirefoxDetailsFromDictionary(ini_parser.root(), firefox_install_id,
++                                         ini_file.DirName());
++}
++
++std::vector<FirefoxDetail> GetFirefoxDetails(
++    const std::string& firefox_install_id) {
++  base::FilePath ini_file = GetProfilesINI();
++  return GetFirefoxDetailsImpl(firefox_install_id, ini_file);
++}
++
++std::vector<FirefoxDetail> GetZenDetails(const std::string& zen_install_id) {
++  base::FilePath ini_file = GetZenProfilesINI();
++  return GetFirefoxDetailsImpl(zen_install_id, ini_file);
+ }
+ 
+ std::vector<FirefoxDetail> GetFirefoxDetailsFromDictionary(
+     const base::DictValue& root,
+-    const std::string& firefox_install_id) {
++    const std::string& firefox_install_id,
++    const base::FilePath& base_dir) {
+   std::vector<FirefoxDetail> profile_details;
+ 
+   for (int i = 0; ; ++i) {
+@@ -84,7 +98,7 @@ std::vector<FirefoxDetail> GetFirefoxDet
+       continue;
+ 
+     FirefoxDetail details;
+-    details.path = GetProfilePath(root, current_profile);
++    details.path = GetProfilePath(root, current_profile, base_dir);
+     std::u16string name;
+     if (const std::string* name_utf8 =
+             root.FindStringByDottedPath(current_profile + ".Name")) {
+--- a/chrome/common/importer/firefox_importer_utils.h
++++ b/chrome/common/importer/firefox_importer_utils.h
+@@ -41,13 +41,16 @@ struct FirefoxDetail {
+ std::vector<FirefoxDetail> GetFirefoxDetails(
+     const std::string& firefox_install_id);
+ 
++std::vector<FirefoxDetail> GetZenDetails(const std::string& zen_install_id);
++
+ // Returns the path to the Firefox profile, using a custom dictionary.
+ // If |firefox_install_id| is not empty returns the default profile associated
+ // with that id.
+ // Exposed for testing.
+ std::vector<FirefoxDetail> GetFirefoxDetailsFromDictionary(
+     const base::DictValue& root,
+-    const std::string& firefox_install_id);
++    const std::string& firefox_install_id,
++    const base::FilePath& base_dir);
+ 
+ // Detects version of Firefox and installation path for the given Firefox
+ // profile.
+@@ -58,6 +61,7 @@ bool GetFirefoxVersionAndPathFromProfile
+ // Gets the full path of the profiles.ini file. This file records the profiles
+ // that can be used by Firefox. Returns an empty path if failed.
+ base::FilePath GetProfilesINI();
++base::FilePath GetZenProfilesINI();
+ 
+ // Returns the home page set in Firefox in a particular profile.
+ GURL GetHomepage(const base::FilePath& profile_path);
+--- a/chrome/utility/importer/importer_creator.cc
++++ b/chrome/utility/importer/importer_creator.cc
+@@ -38,6 +38,7 @@ scoped_refptr<Importer> CreateImporterBy
+       return new BookmarksFileImporter();
+ #if !BUILDFLAG(IS_CHROMEOS)
+     case user_data_importer::TYPE_FIREFOX:
++    case user_data_importer::TYPE_ZEN:
+       return new FirefoxImporter();
+ #endif
+ #if BUILDFLAG(IS_MAC)
+--- a/components/user_data_importer/common/importer_type.h
++++ b/components/user_data_importer/common/importer_type.h
+@@ -38,6 +38,7 @@ enum ImporterType {
+   TYPE_BRAVE = 71,
+   TYPE_DIA = 72,
+   TYPE_PERPLEXITY_COMET = 73,
++  TYPE_ZEN = 74,
+ };
+ 
+ }  // namespace user_data_importer
+--- a/chrome/browser/ui/webui/settings/import_data_handler.cc
++++ b/chrome/browser/ui/webui/settings/import_data_handler.cc
+@@ -110,6 +110,11 @@ void ImportDataHandler::StartImport(
+   importer_host_ = new ExternalProcessImporterHost();
+   importer_host_->set_observer(this);
+   Profile* profile = Profile::FromWebUI(web_ui());
++
++  importer_host_->set_parent_window(
++      web_ui()->GetWebContents()->GetTopLevelNativeWindow());
++  importer_host_->set_parent_view(web_ui()->GetWebContents()->GetNativeView());
++
+   importer_host_->StartImportSettings(source_profile, profile, imported_items,
+                                       new ProfileWriter(profile));
+ 
+--- a/chrome/utility/importer/firefox_importer.cc
++++ b/chrome/utility/importer/firefox_importer.cc
+@@ -28,6 +28,7 @@
+ #include "components/user_data_importer/utility/bookmark_parser.h"
+ #include "sql/database.h"
+ #include "sql/statement.h"
++#include "ui/base/l10n/l10n_util.h"
+ #include "url/gurl.h"
+ 
+ #if !BUILDFLAG(IS_MAC)
+@@ -115,6 +116,7 @@ void FirefoxImporter::StartImport(
+   bridge_ = bridge;
+   source_path_ = source_profile.source_path;
+   app_path_ = source_profile.app_path;
++  browser_name_ = source_profile.importer_name;
+ 
+ #if BUILDFLAG(IS_POSIX)
+   locale_ = source_profile.locale;
+@@ -380,8 +382,8 @@ void FirefoxImporter::ImportBookmarks()
+ 
+   // Write into profile.
+   if (!bookmarks.empty() && !cancelled()) {
+-    const std::u16string& first_folder_name =
+-        bridge_->GetLocalizedString(IDS_BOOKMARK_GROUP_FROM_FIREFOX);
++    std::u16string first_folder_name = l10n_util::GetStringFUTF16(
++        IDS_IMPORTED_FROM_BOOKMARK_FOLDER, browser_name_);
+     bridge_->AddBookmarks(bookmarks, first_folder_name);
+   }
+   if (!search_engines.empty() && !cancelled()) {
+--- a/chrome/utility/importer/firefox_importer.h
++++ b/chrome/utility/importer/firefox_importer.h
+@@ -63,6 +63,9 @@ class FirefoxImporter : public Importer
+   FRIEND_TEST_ALL_PREFIXES(FirefoxImporterTest, ImportBookmarksV25);
+ 
+   void ImportBookmarks();
++  void ImportZenPins(
++      sql::Database& db,
++      std::vector<user_data_importer::ImportedBookmarkEntry>& bookmarks_out);
+ 
+ #if !BUILDFLAG(IS_MAC)
+   void ImportPasswords();
+@@ -125,6 +128,8 @@ class FirefoxImporter : public Importer
+   std::string locale_;
+ #endif
+ 
++  std::u16string browser_name_;
++
+   base::WeakPtrFactory<FirefoxImporter> weak_ptr_factory_{this};
+ };
+ 
+--- a/chrome/browser/importer/importer_lock_dialog.h
++++ b/chrome/browser/importer/importer_lock_dialog.h
+@@ -17,15 +17,17 @@ namespace importer {
+ // downstream embedders can specify tailored messages in their implementations.
+ // After closing the dialog, the ImportHost receives a callback
+ // with the message either to skip the import, or to continue the process.
+-void ShowImportLockDialog(gfx::NativeWindow parent,
+-                          base::OnceCallback<void(bool)> callback,
+-                          int importer_lock_title_id = IDS_IMPORTER_LOCK_TITLE,
+-                          int importer_lock_text_id = IDS_IMPORTER_LOCK_TEXT);
+-void ShowImportLockDialog(gfx::NativeView parent_view,
+-                          gfx::NativeWindow parent,
+-                          base::OnceCallback<void(bool)> callback,
+-                          int importer_lock_title_id = IDS_IMPORTER_LOCK_TITLE,
+-                          int importer_lock_text_id = IDS_IMPORTER_LOCK_TEXT);
++void ShowImportLockDialog(
++    gfx::NativeWindow parent,
++    base::OnceCallback<void(bool)> callback,
++    int importer_lock_title_id = IDS_EXTENSIONS_IMPORTER_LOCK_TITLE,
++    int importer_lock_text_id = IDS_EXTENSIONS_IMPORTER_LOCK_TEXT);
++void ShowImportLockDialog(
++    gfx::NativeView parent_view,
++    gfx::NativeWindow parent,
++    base::OnceCallback<void(bool)> callback,
++    int importer_lock_title_id = IDS_EXTENSIONS_IMPORTER_LOCK_TITLE,
++    int importer_lock_text_id = IDS_EXTENSIONS_IMPORTER_LOCK_TEXT);
+ 
+ }  // namespace importer
+ 
+--- a/chrome/browser/ui/views/importer/import_lock_dialog_view.h
++++ b/chrome/browser/ui/views/importer/import_lock_dialog_view.h
+@@ -19,15 +19,17 @@ class ImportLockDialogView : public view
+   ImportLockDialogView(const ImportLockDialogView&) = delete;
+   ImportLockDialogView& operator=(const ImportLockDialogView&) = delete;
+ 
+-  static void Show(gfx::NativeWindow parent,
+-                   base::OnceCallback<void(bool)> callback,
+-                   int importer_lock_title_id = IDS_IMPORTER_LOCK_TITLE,
+-                   int importer_lock_text_id = IDS_IMPORTER_LOCK_TEXT);
+-  static void Show(gfx::NativeView parent_view,
+-                   gfx::NativeWindow parent,
+-                   base::OnceCallback<void(bool)> callback,
+-                   int importer_lock_title_id = IDS_IMPORTER_LOCK_TITLE,
+-                   int importer_lock_text_id = IDS_IMPORTER_LOCK_TEXT);
++  static void Show(
++      gfx::NativeWindow parent,
++      base::OnceCallback<void(bool)> callback,
++      int importer_lock_title_id = IDS_EXTENSIONS_IMPORTER_LOCK_TITLE,
++      int importer_lock_text_id = IDS_EXTENSIONS_IMPORTER_LOCK_TEXT);
++  static void Show(
++      gfx::NativeView parent_view,
++      gfx::NativeWindow parent,
++      base::OnceCallback<void(bool)> callback,
++      int importer_lock_title_id = IDS_EXTENSIONS_IMPORTER_LOCK_TITLE,
++      int importer_lock_text_id = IDS_EXTENSIONS_IMPORTER_LOCK_TEXT);
+   ui::mojom::ModalType GetModalType() const override;
+ 
+  private:
+--- a/chrome/common/importer/profile_import_process_param_traits_macros.h
++++ b/chrome/common/importer/profile_import_process_param_traits_macros.h
+@@ -23,11 +23,11 @@
+ #if BUILDFLAG(IS_WIN)
+ IPC_ENUM_TRAITS_MIN_MAX_VALUE(user_data_importer::ImporterType,
+                               user_data_importer::TYPE_UNKNOWN,
+-                              user_data_importer::TYPE_PERPLEXITY_COMET)
++                              user_data_importer::TYPE_ZEN)
+ #else
+ IPC_ENUM_TRAITS_MIN_MAX_VALUE(user_data_importer::ImporterType,
+                               user_data_importer::TYPE_UNKNOWN,
+-                              user_data_importer::TYPE_PERPLEXITY_COMET)
++                              user_data_importer::TYPE_ZEN)
+ #endif
+ 
+ IPC_ENUM_TRAITS_MIN_MAX_VALUE(user_data_importer::ImportItem,

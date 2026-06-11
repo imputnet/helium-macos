@@ -17,3 +17,8 @@ helium/macos/updater/sparkle2-integration.patch
 helium/macos/updater/disable-default-updater.patch
 helium/macos/applescript-tab-select-command.patch
 helium/macos/open-shortcuts-settings-action.patch
+
+helium/ui/experiments/anchor-tabs/anchored-tabs-rename-restore.patch
+helium/ui/experiments/anchor-tabs/anchored-tabs-startup-setting.patch
+helium/ui/experiments/anchor-tabs/anchored-tabs-group-hibernation.patch
+helium/ui/experiments/anchor-tabs/anchored-tabs-default-on.patch

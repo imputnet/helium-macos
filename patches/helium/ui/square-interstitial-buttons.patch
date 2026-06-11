@@ -1,0 +1,30 @@
+--- a/components/security_interstitials/core/common/resources/interstitial_common.css
++++ b/components/security_interstitials/core/common/resources/interstitial_common.css
+@@ -4,14 +4,14 @@
+ 
+ button {
+   border: 0;
+-  border-radius: 20px;
++  border-radius: 8px;
+   box-sizing: border-box;
+   color: var(--primary-button-text-color);
+   cursor: pointer;
+   float: right;
+   font-size: .875em;
+   margin: 0;
+-  padding: 8px 16px;
++  padding: 8px 14px;
+   transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+   user-select: none;
+ }
+--- a/components/security_interstitials/core/common/resources/interstitial_core.css
++++ b/components/security_interstitials/core/common/resources/interstitial_core.css
+@@ -46,7 +46,7 @@ body {
+   color: var(--secondary-button-text-color);
+   float: none;
+   margin: 0;
+-  padding: 8px 16px;
++  padding: 8px 14px;
+ }
+ 
+ .hidden {

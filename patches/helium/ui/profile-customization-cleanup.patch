@@ -1,0 +1,35 @@
+--- a/chrome/browser/resources/signin/profile_customization/profile_customization_app.css
++++ b/chrome/browser/resources/signin/profile_customization/profile_customization_app.css
+@@ -30,9 +30,8 @@
+ }
+ 
+ .in-dialog-design #header {
+-  background: center 18px no-repeat
+-      url(./images/profile_customization_illustration.svg);
+-  height: 170px;
++  background: none;
++  height: 130px;
+ }
+ 
+ :host([is-refreshed-ui_]) .in-dialog-design #header {
+@@ -52,7 +51,7 @@
+ 
+ .in-dialog-design #avatarContainer {
+   --avatar-size: 76px;
+-  top: 91px;
++  top: 60px;
+ }
+ 
+ :host([is-refreshed-ui_]) .in-dialog-design #avatarContainer {
+@@ -288,11 +287,6 @@ cr-profile-avatar-selector {
+     border: 1px solid var(--google-grey-500);
+   }
+ 
+-  :host(:not([is-refreshed-ui_])) .in-dialog-design #header {
+-    background-image:
+-        url(./images/profile_customization_illustration_dark.svg);
+-  }
+-
+   #nameInput {
+     --cr-input-placeholder-color: rgba(var(--google-grey-200-rgb), .5);
+   }

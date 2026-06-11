@@ -1,0 +1,233 @@
+--- a/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_impl.cc
+@@ -294,7 +294,6 @@ void BrowserViewLayoutImpl::ConfigureTop
+     // correctly.
+     background->SetVisible(true);
+     background->SetPrimaryColor(ui::kColorFrameActive);
+-    background->SetCorners(CustomCornersBackground::Corners());
+   } else {
+     // No need to paint otherwise.
+     background->SetVisible(false);
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -1319,219 +1319,7 @@ void BrowserViewTabbedLayoutImpl::Config
+   } else {
+     background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
+   }
+-
+-  // By default, this is just a flat background.
+-  CustomCornersBackground::Corners corners;
+-
+-  // Rounded corners are drawn in vertical tab strip mode when not maximized or
+-  // fullscreen.
+-  if (delegate().ShouldDrawVerticalTabStrip() &&
+-      delegate().GetBrowserWindowState() == WindowState::kNormal) {
+-    corners.upper_trailing = background->GetWindowCorner(/*upper=*/true);
+-    const bool vertical_tab_strip_reaches_top =
+-        GetVerticalTabStripCollapsedState() !=
+-            VerticalTabStripCollapsedState::kCollapsed ||
+-        params.leading_exclusion.IsEmpty();
+-    if (!vertical_tab_strip_reaches_top) {
+-      corners.upper_leading = background->GetWindowCorner(/*upper=*/true);
+-    }
+-  }
+-
+-  background->SetCorners(corners);
+ }
+ 
+ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
+-    const BrowserLayoutParams& params) {
+-  const auto tab_strip_type = GetTabStripType();
+-  const auto window_state = delegate().GetBrowserWindowState();
+-
+-  // Set vertical tabstrip corners.
+-  if (tab_strip_type == TabStripType::kVertical) {
+-    // Vertical tabstrip goes all the way to the top of the window if it is not
+-    // collapsed or there are no caption buttons on the leading edge.
+-    const VerticalTabStripAnimation animation =
+-        CalculateVerticalTabStripAnimation(params, window_state);
+-    auto* const vertical_tabs_background =
+-        static_cast<CustomCornersBackground*>(
+-            views().vertical_tab_strip_region_view->background());
+-    CHECK(vertical_tabs_background);
+-
+-    if (features::IsGlassFrameEnabled()) {
+-      float background_alpha = 0.0f;
+-      if (animation.tab_strip_width != 0.0) {
+-        background_alpha = 1.0f - animation.tab_strip_width;
+-      } else {
+-        background_alpha =
+-            delegate().IsVerticalTabStripCollapsed() ? 1.0f : 0.0f;
+-      }
+-      vertical_tabs_background->SetAlpha(background_alpha);
+-    }
+-
+-    // Ensure that corners of the window remain rounded.
+-    CustomCornersBackground::Corners vertical_tabs_corners;
+-    if (window_state == WindowState::kNormal) {
+-      if (animation.top_offset == 0) {
+-        vertical_tabs_corners.upper_leading =
+-            vertical_tabs_background->GetWindowCorner(/*upper=*/true);
+-      }
+-      vertical_tabs_corners.lower_leading =
+-          vertical_tabs_background->GetWindowCorner(/*upper=*/false);
+-    }
+-
+-    // When the vertical tabs are below the toolbar but next to the bookmarks
+-    // bar, draw a curved corner.
+-    if (animation.top_corner < 0.0) {
+-      vertical_tabs_corners.upper_trailing.type =
+-          views().vertical_tab_strip_region_view->is_expanded_on_hover()
+-              ? CustomCornersBackground::CornerType::kRounded
+-              : CustomCornersBackground::CornerType::kRoundedWithBackground;
+-      vertical_tabs_corners.upper_trailing.radius = base::ClampRound(
+-          vertical_tabs_background->default_radius() * -animation.top_corner);
+-    }
+-
+-    // When the vertical tabs are expanded for hover, it may have a concave
+-    // corner.
+-    double vertical_tabs_bottom_corner_amount = 0.0;
+-    int vertical_tabs_bottom_corner_size = 0;
+-    if (animation.bottom_corner < 0.0) {
+-      vertical_tabs_bottom_corner_amount = -animation.bottom_corner;
+-      vertical_tabs_corners.lower_trailing.type =
+-          CustomCornersBackground::CornerType::kRounded;
+-      vertical_tabs_bottom_corner_size =
+-          base::ClampRound(vertical_tabs_background->default_radius() *
+-                           vertical_tabs_bottom_corner_amount);
+-      vertical_tabs_corners.lower_trailing.radius =
+-          vertical_tabs_bottom_corner_size;
+-    }
+-
+-    vertical_tabs_background->SetCorners(vertical_tabs_corners);
+-
+-    // When the projects panel is animating open or closed and does not appear
+-    // elevated, the background of vertical tabs should fade to match the
+-    // background color of the panel.
+-    if (delegate().IsProjectsPanelVisible()) {
+-      CustomFloatingCorner* const vertical_tabs_top_corner =
+-          views().vertical_tab_strip_top_corner;
+-      CustomFloatingCorner* const vertical_tabs_bottom_corner =
+-          views().vertical_tab_strip_bottom_corner;
+-      if (!views().projects_panel_container->is_elevated()) {
+-        auto projects_panel_reveal_amount =
+-            views().projects_panel_container->GetResizeAnimationValue();
+-        CustomCorners::FadeBackground const fade_background{
+-            .color = projects_panel::kProjectsPanelBackgroundColor,
+-            .opacity = static_cast<float>(projects_panel_reveal_amount)};
+-        vertical_tabs_background->SetFadeBackground(fade_background);
+-        vertical_tabs_top_corner->SetFadeBackground(fade_background);
+-        vertical_tabs_bottom_corner->SetFadeBackground(fade_background);
+-      } else {
+-        vertical_tabs_background->SetFadeBackground(std::nullopt);
+-        vertical_tabs_top_corner->SetFadeBackground(std::nullopt);
+-        vertical_tabs_bottom_corner->SetFadeBackground(std::nullopt);
+-      }
+-    }
+-
+-    // Apply shadow for expand-on-hover.
+-    auto* const shadow_frame =
+-        views().vertical_tab_strip_region_view->shadow_frame();
+-    if (vertical_tabs_bottom_corner_amount > 0.0) {
+-      shadow_frame->SetShadowCornerRadius(vertical_tabs_bottom_corner_size);
+-      shadow_frame->SetShadowOpacity(vertical_tabs_bottom_corner_amount);
+-      shadow_frame->SetShadowVisible(true);
+-    } else {
+-      shadow_frame->SetShadowVisible(false);
+-    }
+-
+-    CustomCornersBackground::Outline vertical_tabs_outline;
+-    vertical_tabs_outline.color = kColorVerticalTabStripShadow;
+-    // Vertical tabs outline fades partially during expand-on-hover to be
+-    // replaced with shadow.
+-    vertical_tabs_outline.opacity =
+-        1.0 - kVerticalTabStripOutlineFadeOnHover *
+-                  vertical_tabs_bottom_corner_amount;
+-    // Vertical tabs outline always draws trailing edge.
+-    vertical_tabs_outline.trailing = true;
+-    // Top edge is drawn if the layout is below the top of the parent.
+-    if (animation.expand_on_hover ||
+-        views().vertical_tab_strip_region_view->y() > 0 ||
+-        animation.top_corner < 0.0) {
+-      vertical_tabs_outline.top = true;
+-    }
+-    if (animation.expand_on_hover) {
+-      vertical_tabs_outline.bottom = true;
+-    }
+-    vertical_tabs_background->SetOutline(vertical_tabs_outline);
+-  }
+-
+-  // Set toolbar corners.
+-  auto* const toolbar_background =
+-      static_cast<CustomCornersBackground*>(views().toolbar->background());
+-  CustomCornersBackground::Corners toolbar_corners;
+-  switch (tab_strip_type) {
+-    case TabStripType::kHorizontal: {
+-      // Trailing curve is always shown for normal horizontal tabstrip.
+-      toolbar_corners.upper_trailing.type =
+-          CustomCornersBackground::CornerType::kRoundedWithBackground;
+-
+-      // If there is anything on the leading side or the first tab is not
+-      // selected, then the corner radius is shown, otherwise we hide the
+-      // corner radius.
+-      if (!delegate().IsActiveTabAtLeadingWindowEdge()) {
+-        toolbar_corners.upper_leading.type =
+-            CustomCornersBackground::CornerType::kRoundedWithBackground;
+-      }
+-      break;
+-    }
+-    case TabStripType::kVertical: {
+-      if (!is_fullscreen(window_state)) {
+-        // Curve trailing corner when it goes all the way to the edge of the
+-        // browser.
+-        if (params.trailing_exclusion.IsEmpty()) {
+-          toolbar_corners.upper_trailing =
+-              toolbar_background->GetWindowCorner(/*upper=*/true);
+-        }
+-      }
+-      break;
+-    }
+-    default:
+-      // This can happen in content fullscreen on Mac, but otherwise doesn't
+-      // happen.
+-      break;
+-  }
+-  toolbar_background->SetCorners(toolbar_corners);
+-
+-  if (views().main_background_region &&
+-      views().main_background_region->GetVisible()) {
+-    auto* const background = static_cast<CustomCornersBackground*>(
+-        views().main_background_region->background());
+-    CustomCornersBackground::Corners main_background_corners;
+-
+-    // Frame-colored corners are shown at the top in horizontal tabstrip mode.
+-    // This doesn't apply in fullscreen, as the tabstrip is not in the window.
+-    if (tab_strip_type == TabStripType::kHorizontal &&
+-        !is_fullscreen(window_state)) {
+-      // If (due to narrow width) the top container is not laid out in the main
+-      // area, it also doesn't get rounded corners.
+-      if (views().main_background_region->y() <= views().top_container->y()) {
+-        if (!delegate().IsActiveTabAtLeadingWindowEdge()) {
+-          main_background_corners.upper_leading.type =
+-              CustomCornersBackground::CornerType::kRoundedWithBackground;
+-        }
+-        main_background_corners.upper_trailing.type =
+-            CustomCornersBackground::CornerType::kRoundedWithBackground;
+-      }
+-    }
+-
+-    // Need to ensure the bottom of the window is properly rounded for normal
+-    // windows.
+-    if (window_state == WindowState::kNormal) {
+-      if (tab_strip_type != TabStripType::kVertical) {
+-        main_background_corners.lower_leading =
+-            background->GetWindowCorner(/*upper=*/false);
+-      }
+-      main_background_corners.lower_trailing =
+-          background->GetWindowCorner(/*upper=*/false);
+-    }
+-
+-    background->SetCorners(main_background_corners);
+-  }
+-}
++    const BrowserLayoutParams& params) {}

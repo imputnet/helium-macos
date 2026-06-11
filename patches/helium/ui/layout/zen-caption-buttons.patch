@@ -1,0 +1,160 @@
+--- a/chrome/browser/ui/views/frame/browser_frame_view.h
++++ b/chrome/browser/ui/views/frame/browser_frame_view.h
+@@ -156,6 +156,11 @@ class BrowserFrameView : public views::F
+   // frame. Mainly used by special browsers such as PWAs.
+   virtual void UpdateThrobber(bool running) = 0;
+ 
++  // Sets the rendering opacity of caption buttons (0 = invisible, 1 = fully
++  // visible).  Used by zen mode to fade buttons with the toolbar while keeping
++  // them in the layout for exclusion area calculations.
++  virtual void SetCaptionButtonsOpacity(float opacity) {}
++
+   // Signals that the frame's minimum size may have changed. This prompts the
+   // widget to update its size constraints by re-querying `GetMinimumSize()`.
+   // This is typically called when child views (e.g. tab strip, toolbar,
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.h
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.h
+@@ -61,6 +61,7 @@ class BrowserFrameViewMac : public Brows
+   int NonClientHitTest(const gfx::Point& point) override;
+   void UpdateMinimumSize() override;
+   void WindowControlsOverlayEnabledChanged() override;
++  void SetCaptionButtonsOpacity(float opacity) override;
+ 
+   // views::View:
+   gfx::Size GetMinimumSize() const override;
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -344,6 +344,18 @@ gfx::RoundedCornersF BrowserFrameViewMac
+   return gfx::RoundedCornersF();
+ }
+ 
++void BrowserFrameViewMac::SetCaptionButtonsOpacity(float opacity) {
++  NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
++  if (!window) {
++    return;
++  }
++  for (NSWindowButton button :
++       {NSWindowCloseButton, NSWindowMiniaturizeButton, NSWindowZoomButton}) {
++    NSButton* button_view = [window standardWindowButton:button];
++    [button_view setAlphaValue:opacity];
++  }
++}
++
+ ///////////////////////////////////////////////////////////////////////////////
+ // BrowserFrameViewMac, views::FrameView implementation:
+ 
+--- a/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
++++ b/chrome/browser/ui/views/frame/opaque_browser_frame_view.cc
+@@ -120,6 +120,7 @@ class CaptionButtonBackgroundImageSource
+ 
+ bool HitTestCaptionButton(views::Button* button, const gfx::Point& point) {
+   return button && button->GetVisible() &&
++         button->GetCanProcessEventsWithinSubtree() &&
+          button->GetMirroredBounds().Contains(point);
+ }
+ 
+@@ -527,6 +528,28 @@ bool OpaqueBrowserFrameView::ShouldShowC
+   return GetShowWindowTitleBar();
+ }
+ 
++void OpaqueBrowserFrameView::SetCaptionButtonsOpacity(float opacity) {
++  auto apply = [opacity](views::Button* view) {
++    if (!view) {
++      return;
++    }
++    view->SetCanProcessEventsWithinSubtree(opacity > 0.0f);
++    if (opacity < 1.0f) {
++      if (!view->layer()) {
++        view->SetPaintToLayer();
++        view->layer()->SetFillsBoundsOpaquely(false);
++      }
++      view->layer()->SetOpacity(opacity);
++    } else if (view->layer()) {
++      view->DestroyLayer();
++    }
++  };
++  apply(minimize_button_);
++  apply(maximize_button_);
++  apply(restore_button_);
++  apply(close_button_);
++}
++
+ bool OpaqueBrowserFrameView::IsRegularOrGuestSession() const {
+   return GetBrowserView()->GetRegularOrGuestSession();
+ }
+--- a/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
++++ b/chrome/browser/ui/views/frame/opaque_browser_frame_view.h
+@@ -63,6 +63,7 @@ class OpaqueBrowserFrameView : public Br
+   int GetTopInset(bool restored) const override;
+   void UpdateThrobber(bool running) override;
+   void WindowControlsOverlayEnabledChanged() override;
++  void SetCaptionButtonsOpacity(float opacity) override;
+   gfx::Size GetMinimumSize() const override;
+   void PaintAsActiveChanged() override;
+   void OnThemeChanged() override;
+--- a/chrome/browser/ui/views/frame/browser_caption_button_container_win.cc
++++ b/chrome/browser/ui/views/frame/browser_caption_button_container_win.cc
+@@ -37,6 +37,7 @@ std::unique_ptr<WindowsCaptionButton> Cr
+ bool HitTestCaptionButton(WindowsCaptionButton* button,
+                           const gfx::Point& point) {
+   return button && button->GetVisible() &&
++         button->GetCanProcessEventsWithinSubtree() &&
+          button->GetMirroredBounds().Contains(point);
+ }
+ 
+@@ -136,6 +137,19 @@ int BrowserCaptionButtonContainer::NonCl
+   return is_win11_maximize ? HTMAXBUTTON : HTCLIENT;
+ }
+ 
++void BrowserCaptionButtonContainer::SetCaptionButtonsCanProcessEvents(
++    bool can_process_events) {
++  auto apply = [can_process_events](WindowsCaptionButton* view) {
++    if (view) {
++      view->SetCanProcessEventsWithinSubtree(can_process_events);
++    }
++  };
++  apply(minimize_button_);
++  apply(maximize_button_);
++  apply(restore_button_);
++  apply(close_button_);
++}
++
+ void BrowserCaptionButtonContainer::OnWindowControlsOverlayEnabledChanged() {
+   if (frame_view_->GetBrowserView()->IsWindowControlsOverlayEnabled()) {
+     SetBackground(
+--- a/chrome/browser/ui/views/frame/browser_caption_button_container_win.h
++++ b/chrome/browser/ui/views/frame/browser_caption_button_container_win.h
+@@ -36,6 +36,8 @@ class BrowserCaptionButtonContainer : pu
+   // See also ClientView::NonClientHitTest.
+   int NonClientHitTest(const gfx::Point& point) const;
+ 
++  void SetCaptionButtonsCanProcessEvents(bool can_process_events);
++
+   void OnWindowControlsOverlayEnabledChanged();
+ 
+  private:
+--- a/chrome/browser/ui/views/frame/browser_frame_view_win.cc
++++ b/chrome/browser/ui/views/frame/browser_frame_view_win.cc
+@@ -468,6 +468,12 @@ void BrowserFrameViewWin::UpdateWindowTi
+   }
+ }
+ 
++void BrowserFrameViewWin::SetCaptionButtonsOpacity(float) {
++  caption_button_container_->SetCaptionButtonsCanProcessEvents(
++      !GetBrowserView()->IsZenModeEnabledForLayout() ||
++      GetBrowserView()->GetTopChromeRevealRatio() > 0.0f);
++}
++
+ void BrowserFrameViewWin::ResetWindowControls() {
+   BrowserFrameView::ResetWindowControls();
+   caption_button_container_->ResetWindowControls();
+--- a/chrome/browser/ui/views/frame/browser_frame_view_win.h
++++ b/chrome/browser/ui/views/frame/browser_frame_view_win.h
+@@ -42,6 +42,7 @@ class BrowserFrameViewWin : public Brows
+   int GetTopInset(bool restored) const override;
+   SkColor GetCaptionColor(BrowserFrameActiveState active_state) const override;
+   void UpdateThrobber(bool running) override;
++  void SetCaptionButtonsOpacity(float opacity) override;
+   gfx::Size GetMinimumSize() const override;
+   void WindowControlsOverlayEnabledChanged() override;
+ 

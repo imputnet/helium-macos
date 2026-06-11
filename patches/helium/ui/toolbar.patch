@@ -1,0 +1,44 @@
+--- a/chrome/browser/ui/views/toolbar/toolbar_button.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_button.cc
+@@ -164,7 +164,7 @@ void ToolbarButton::ClearHighlight() {
+ 
+ int ToolbarButton::GetRoundedCornerRadius() const {
+   return ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+-      views::Emphasis::kMaximum, GetTargetSize());
++      views::Emphasis::kHigh, GetTargetSize());
+ }
+ 
+ float ToolbarButton::GetCornerRadiusFor(ToolbarButton::Edge edge) const {
+--- a/chrome/browser/ui/views/toolbar/toolbar_icon_container_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_icon_container_view.cc
+@@ -46,7 +46,7 @@ void ToolbarIconContainerView::RoundRect
+   gfx::Canvas* canvas = paint_recorder.canvas();
+ 
+   const int radius = ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+-      views::Emphasis::kMaximum, layer_.size());
++      views::Emphasis::kHigh, layer_.size());
+   cc::PaintFlags flags;
+   flags.setAntiAlias(true);
+   flags.setStyle(cc::PaintFlags::kStroke_Style);
+--- a/chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.cc
+@@ -41,7 +41,7 @@ class ToolbarButtonHighlightPathGenerato
+     rect.Inset(GetToolbarInkDropInsets(view));
+ 
+     const int radii = ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
+-        views::Emphasis::kMaximum, rect.size());
++        views::Emphasis::kHigh, rect.size());
+ 
+     return SkPath::RRect(
+         SkRRect::MakeRectXY(gfx::RectToSkRect(rect), radii, radii));
+--- a/chrome/browser/ui/views/toolbar/split_tabs_button.cc
++++ b/chrome/browser/ui/views/toolbar/split_tabs_button.cc
+@@ -167,7 +167,7 @@ void SplitTabsToolbarButton::UpdateButto
+   const bool is_active_tab_in_split = IsActiveTabInSplit();
+   UpdateButtonIcon();
+   UpdateStatusIndicator(is_active_tab_in_split);
+-  SetVisible(pin_state_.GetValue() || is_active_tab_in_split);
++  SetVisible(pin_state_.GetValue());
+   UpdateAccessibilityRole(is_active_tab_in_split);
+   UpdateAccessibilityLabel(is_active_tab_in_split);
+ }

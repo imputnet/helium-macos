@@ -1,0 +1,22 @@
+--- a/chrome/browser/resources/settings/site_settings/notifications_page.ts
++++ b/chrome/browser/resources/settings/site_settings/notifications_page.ts
+@@ -97,7 +97,7 @@ export class NotificationsPageElement ex
+       shouldShowSafetyHub_: {
+         type: Boolean,
+         value() {
+-          return !loadTimeData.getBoolean('isGuest');
++          return false;
+         },
+       },
+ 
+--- a/chrome/browser/resources/settings/route.ts
++++ b/chrome/browser/resources/settings/route.ts
+@@ -22,7 +22,7 @@ function addPrivacyChildRoutes(r: Partia
+ 
+   const visibility = pageVisibility || {};
+ 
+-  if (visibility.safetyHub !== false) {
++  if (visibility.safetyHub = false) {
+     r.SAFETY_HUB = r.PRIVACY.createChild('/safetyCheck');
+   }
+ 

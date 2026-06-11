@@ -1,0 +1,222 @@
+--- a/chrome/browser/resources/pdf/elements/viewer_page_selector.css
++++ b/chrome/browser/resources/pdf/elements/viewer_page_selector.css
+@@ -14,7 +14,6 @@
+   color: #fff;
+   direction: ltr;
+   display: flex;
+-  font-size: 0.81rem;
+   text-align: center;
+ 
+   --page-selector-spacing: 4px;
+@@ -46,3 +45,8 @@ input {
+ #divider {
+   margin: 0 var(--page-selector-spacing);
+ }
++
++#content,
++input {
++  font-size: 12px;
++}
+--- a/chrome/browser/resources/pdf/elements/viewer_thumbnail.css
++++ b/chrome/browser/resources/pdf/elements/viewer_thumbnail.css
+@@ -29,18 +29,22 @@
+   margin-inline-end: auto;
+   margin-inline-start: auto;
+   width: 108px;
++  outline-offset: 3px;
++  border-radius: 1px;
+ }
+ 
+ :host([is-active]) #thumbnail {
+-  box-shadow: 0 0 0 6px var(--focus-border-color);
++  outline: 2px solid var(--focus-border-color);
+ }
+ 
+ :host(:focus-visible) #thumbnail {
+-  box-shadow: 0 0 0 2px var(--focus-border-color);
++  outline: 2px solid var(--focus-border-color);
++  outline-offset: 4px;
+ }
+ 
+ :host([is-active]:focus-visible) #thumbnail {
+-  box-shadow: 0 0 0 8px var(--focus-border-color);
++  outline: 2px solid var(--focus-border-color);
++  outline-offset: 3px;
+ }
+ 
+ #canvas-container {
+--- a/chrome/browser/resources/pdf/elements/viewer_toolbar.css
++++ b/chrome/browser/resources/pdf/elements/viewer_toolbar.css
+@@ -10,7 +10,7 @@
+  * #css_wrapper_metadata_end */
+ 
+ :host {
+-  --viewer-pdf-toolbar-height: 56px;
++  --viewer-pdf-toolbar-height: 36px;
+   position: relative;
+ }
+ 
+@@ -25,13 +25,13 @@
+   color: white;
+   display: flex;
+   height: var(--viewer-pdf-toolbar-height);
+-  padding: 0 16px;
++  padding: 0 8px;
+ }
+ 
+ #title {
+-  font-size: 0.87rem;
++  font-size: 13px;
+   font-weight: 500;
+-  margin-inline-start: 16px;
++  margin-inline-start: 7px;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+@@ -131,6 +131,7 @@ input {
+   padding: 0 4px;
+   text-align: center;
+   width: 5ch;
++  font-size: 12px;
+ }
+ 
+ #fit {
+--- a/chrome/browser/resources/pdf/elements/viewer_pdf_sidenav.ts
++++ b/chrome/browser/resources/pdf/elements/viewer_pdf_sidenav.ts
+@@ -58,8 +58,17 @@ export class ViewerPdfSidenavElement ext
+       bookmarks: {type: Array},
+       clockwiseRotations: {type: Number},
+       docLength: {type: Number},
++      iconsVisible_: {
++        type: Boolean,
++        reflect: true,
++        attribute: 'icons-visible',
++      },
+       strings: {type: Object},
+-      selectedTab_: {type: Number},
++      selectedTab_: {
++        type: Number,
++        reflect: true,
++        attribute: 'selected-tab',
++      },
+       tabs_: {type: Array},
+     };
+   }
+@@ -70,6 +79,7 @@ export class ViewerPdfSidenavElement ext
+   accessor clockwiseRotations: number = 0;
+   accessor docLength: number = 0;
+   accessor strings: {[key: string]: string}|undefined;
++  private accessor iconsVisible_: boolean = false;
+   private accessor selectedTab_: number = 0;
+   protected accessor tabs_: Tab[] = [];
+ 
+@@ -79,6 +89,7 @@ export class ViewerPdfSidenavElement ext
+     if (changedProperties.has('bookmarks') ||
+         changedProperties.has('attachments')) {
+       this.tabs_ = this.computeTabs_();
++      this.iconsVisible_ = !this.hideIcons_();
+     }
+   }
+ 
+--- a/chrome/browser/resources/pdf/pdf_viewer.css
++++ b/chrome/browser/resources/pdf/pdf_viewer.css
+@@ -14,6 +14,8 @@
+ 
+ :host {
+   --viewer-pdf-sidenav-width: 300px;
++  --viewer-pdf-sidenav-min-width: 180px;
++  --viewer-pdf-sidenav-icons-width: 64px;
+   display: flex;
+   flex-direction: column;
+   height: 100%;
+@@ -53,7 +55,23 @@ viewer-toolbar {
+   overflow: hidden;
+   transition: transform 250ms cubic-bezier(.6, 0, 0, 1), visibility 250ms;
+   visibility: visible;
+-  width: var(--viewer-pdf-sidenav-width);
++  width: var(--viewer-pdf-sidenav-min-width);
++}
++
++#sidenav-container:not([closed]):has(
++    viewer-pdf-sidenav[selected-tab='0'][icons-visible]) {
++  width: calc(
++      var(--viewer-pdf-sidenav-min-width) +
++      var(--viewer-pdf-sidenav-icons-width));
++}
++
++#sidenav-container:not([closed]):has(
++    viewer-pdf-sidenav[selected-tab='1'][icons-visible]),
++#sidenav-container:not([closed]):has(
++    viewer-pdf-sidenav[selected-tab='2'][icons-visible]) {
++  width: calc(
++      var(--viewer-pdf-sidenav-width) +
++      var(--viewer-pdf-sidenav-icons-width));
+ }
+ 
+ #sidenav-container.floating {
+--- a/chrome/browser/resources/pdf/elements/viewer_thumbnail_bar.css
++++ b/chrome/browser/resources/pdf/elements/viewer_thumbnail_bar.css
+@@ -14,11 +14,11 @@
+   box-sizing: border-box;
+   height: 100%;
+   overflow: auto;
++  padding-top: 6px;
+   padding-bottom: 24px;
+-  padding-inline-end: var(--viewer-thumbnail-bar-padding-inline-end);
+   text-align: center;
+ }
+ 
+ viewer-thumbnail {
+-  padding-top: 24px;
++  padding-top: 18px;
+ }
+--- a/chrome/browser/resources/pdf/elements/viewer_pdf_sidenav.css
++++ b/chrome/browser/resources/pdf/elements/viewer_pdf_sidenav.css
+@@ -17,15 +17,14 @@
+   background-color: var(--viewer-side-background-color);
+   display: flex;
+   height: 100%;
+-  min-width: var(--viewer-pdf-sidenav-width);
+   overflow: hidden;
+-  width: var(--viewer-pdf-sidenav-width);
++  width: 100%;
+ }
+ 
+ #icons {
+   display: flex;
+   flex-direction: column;
+-  min-width: 64px;
++  min-width: var(--viewer-pdf-sidenav-icons-width);
+ }
+ 
+ /* These are dummy styles currently - replace with real content. */
+@@ -33,6 +32,7 @@
+   color: white;
+   flex: 1;
+   overflow-x: hidden;
++  min-width: 0;
+ }
+ 
+ #icons:not([hidden]) + #content {
+--- a/chrome/browser/resources/pdf/elements/viewer_toolbar.html
++++ b/chrome/browser/resources/pdf/elements/viewer_toolbar.html
+@@ -96,19 +96,6 @@ import {AnnotationMode} from '../constan
+     </span>` : ''}
+   </div>
+   <div id="end">
+-<if expr="enable_pdf_save_to_drive">
+-    ${this.pdfSaveToDriveEnabled ? html`
+-    <viewer-save-to-drive-controls id="save-to-drive"
+-        .hasEdits="${this.hasEdits}"
+-        .hasEnteredAnnotationMode="${this.hasEnteredAnnotationMode}"
+-<if expr="enable_pdf_ink2">
+-        .hasInk2Edits="${this.hasInk2Edits}"
+-</if>
+-        .isFormFieldFocused="${this.isFormFieldFocused_()}"
+-        .progress="${this.saveToDriveProgress}"
+-        .state="${this.saveToDriveState}">
+-    </viewer-save-to-drive-controls>` : ''}
+-</if>
+     <viewer-download-controls id="downloads"
+         .hasEdits="${this.hasEdits}"
+         .hasEnteredAnnotationMode="${this.hasEnteredAnnotationMode}"

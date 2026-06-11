@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/views/tabs/tab_strip_control_button.cc
++++ b/chrome/browser/ui/views/tabs/tab_strip_control_button.cc
+@@ -194,7 +194,7 @@ void TabStripControlButton::UpdateIcon()
+ }
+ 
+ int TabStripControlButton::GetCornerRadius() const {
+-  return TabStripControlButton::kButtonSize.width() / 2;
++  return 8;
+ }
+ 
+ int TabStripControlButton::GetFlatCornerRadius() const {
+--- a/chrome/browser/ui/views/tabs/tab_search_button.cc
++++ b/chrome/browser/ui/views/tabs/tab_search_button.cc
+@@ -21,7 +21,7 @@
+ #include "ui/views/view_class_properties.h"
+ 
+ namespace {
+-constexpr int kCRTabSearchCornerRadius = 10;
++constexpr int kCRTabSearchCornerRadius = 8;
+ constexpr int kCRTabSearchFlatCornerRadius = 4;
+ }  // namespace
+ 
+@@ -39,14 +39,6 @@ TabSearchButton::TabSearchButton(
+   SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_TAB_SEARCH));
+   GetViewAccessibility().SetName(
+       l10n_util::GetStringUTF16(IDS_ACCNAME_TAB_SEARCH));
+-
+-  SetForegroundFrameActiveColorId(kColorNewTabButtonForegroundFrameActive);
+-  SetForegroundFrameInactiveColorId(kColorNewTabButtonForegroundFrameInactive);
+-  SetBackgroundFrameActiveColorId(kColorNewTabButtonCRBackgroundFrameActive);
+-  SetBackgroundFrameInactiveColorId(
+-      kColorNewTabButtonCRBackgroundFrameInactive);
+-
+-  UpdateColors();
+ }
+ 
+ TabSearchButton::~TabSearchButton() = default;

@@ -1,0 +1,74 @@
+--- a/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc
++++ b/chrome/browser/ui/views/toolbar/browser_app_menu_button.cc
+@@ -251,13 +251,8 @@ void BrowserAppMenuButton::AnimationProg
+ }
+ 
+ void BrowserAppMenuButton::UpdateInkdrop() {
+-  if (IsLabelPresentAndVisible()) {
+-    ConfigureToolbarInkdropForRefresh2023(this, kColorAppMenuChipInkDropHover,
+-                                          kColorAppMenuChipInkDropRipple);
+-  } else {
+-    ConfigureToolbarInkdropForRefresh2023(this, kColorToolbarInkDropHover,
+-                                          kColorToolbarInkDropRipple);
+-  }
++  ConfigureToolbarInkdropForRefresh2023(this, kColorToolbarInkDropHover,
++                                        kColorToolbarInkDropRipple);
+ }
+ 
+ bool BrowserAppMenuButton::IsLabelPresentAndVisible() const {
+@@ -276,14 +271,6 @@ bool BrowserAppMenuButton::IsLabelPresen
+ }
+ 
+ SkColor BrowserAppMenuButton::GetForegroundColor(ButtonState state) const {
+-  if (IsLabelPresentAndVisible()) {
+-    const auto* const color_provider = GetColorProvider();
+-    if (type_and_severity_.use_primary_colors) {
+-      return color_provider->GetColor(kColorAppMenuExpandedForegroundPrimary);
+-    }
+-    return color_provider->GetColor(kColorAppMenuExpandedForegroundDefault);
+-  }
+-
+   return ToolbarButton::GetForegroundColor(state);
+ }
+ 
+@@ -296,37 +283,19 @@ void BrowserAppMenuButton::UpdateTextAnd
+ }
+ 
+ bool BrowserAppMenuButton::ShouldPaintBorder() const {
+-  return false;
++  return true;
+ }
+ 
+ void BrowserAppMenuButton::UpdateLayoutInsets() {
+-  if (IsLabelPresentAndVisible()) {
+-    SetLayoutInsets(::GetLayoutInsets(BROWSER_APP_MENU_CHIP_PADDING));
+-  } else {
+-    SetLayoutInsets(::GetLayoutInsets(TOOLBAR_BUTTON));
+-  }
++  SetLayoutInsets(::GetLayoutInsets(TOOLBAR_BUTTON));
+ }
+ 
+ std::optional<SkColor> BrowserAppMenuButton::GetHighlightTextColor() const {
+-  if (IsLabelPresentAndVisible()) {
+-    const auto* const color_provider = GetColorProvider();
+-    if (type_and_severity_.use_primary_colors) {
+-      return color_provider->GetColor(kColorAppMenuExpandedForegroundPrimary);
+-    }
+-    return color_provider->GetColor(kColorAppMenuExpandedForegroundDefault);
+-  }
+   return std::nullopt;
+ }
+ 
+ std::optional<SkColor> BrowserAppMenuButton::GetHighlightColor() const {
+-  const auto* const color_provider = GetColorProvider();
+-  if (type_and_severity_.severity == AppMenuIconController::Severity::kNone) {
+-    return std::nullopt;
+-  } else {
+-    return color_provider->GetColor(type_and_severity_.use_primary_colors
+-                                        ? kColorAppMenuHighlightPrimary
+-                                        : kColorAppMenuHighlightDefault);
+-  }
++  return std::nullopt;
+ }
+ 
+ void BrowserAppMenuButton::OnTouchUiChanged() {

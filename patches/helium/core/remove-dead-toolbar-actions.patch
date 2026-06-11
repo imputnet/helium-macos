@@ -1,0 +1,99 @@
+--- a/chrome/browser/ui/webui/side_panel/customize_chrome/customize_toolbar/customize_toolbar_handler.cc
++++ b/chrome/browser/ui/webui/side_panel/customize_chrome/customize_toolbar/customize_toolbar_handler.cc
+@@ -44,28 +44,12 @@ MojoActionForChromeAction(actions::Actio
+       return side_panel::customize_chrome::mojom::ActionId::kShowBookmarks;
+     case kActionSidePanelShowHistoryCluster:
+       return side_panel::customize_chrome::mojom::ActionId::kShowHistoryCluster;
+-    case kActionSidePanelShowReadAnything:
+-      return side_panel::customize_chrome::mojom::ActionId::kShowReadAnything;
+-    case kActionSidePanelShowReadingList:
+-      return side_panel::customize_chrome::mojom::ActionId::kShowReadingList;
+-    case kActionSidePanelShowLensOverlayResults:
+-      return side_panel::customize_chrome::mojom::ActionId::kShowLensOverlay;
+-    case kActionSidePanelShowSearchCompanion:
+-      return side_panel::customize_chrome::mojom::ActionId::
+-          kShowSearchCompanion;
+     case kActionHome:
+       return side_panel::customize_chrome::mojom::ActionId::kHome;
+     case kActionForward:
+       return side_panel::customize_chrome::mojom::ActionId::kForward;
+     case kActionNewIncognitoWindow:
+       return side_panel::customize_chrome::mojom::ActionId::kNewIncognitoWindow;
+-    case kActionShowPasswordsBubbleOrPage:
+-      return side_panel::customize_chrome::mojom::ActionId::
+-          kShowPasswordManager;
+-    case kActionShowPaymentsBubbleOrPage:
+-      return side_panel::customize_chrome::mojom::ActionId::kShowPaymentMethods;
+-    case kActionShowAddressesBubbleOrPage:
+-      return side_panel::customize_chrome::mojom::ActionId::kShowAddresses;
+     case kActionShowDownloads:
+       return side_panel::customize_chrome::mojom::ActionId::kShowDownloads;
+     case kActionClearBrowsingData:
+@@ -109,29 +93,12 @@ std::optional<actions::ActionId> ChromeA
+       return kActionSidePanelShowBookmarks;
+     case side_panel::customize_chrome::mojom::ActionId::kShowHistoryCluster:
+       return kActionSidePanelShowHistoryCluster;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowReadAnything:
+-      return kActionSidePanelShowReadAnything;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowReadingList:
+-      return kActionSidePanelShowReadingList;
+-    case side_panel::customize_chrome::mojom::ActionId::
+-        kShowTabsFromOtherDevices:
+-      return kActionSidePanelShowTabsFromOtherDevices;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowLensOverlay:
+-      return kActionSidePanelShowLensOverlayResults;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowSearchCompanion:
+-      return kActionSidePanelShowSearchCompanion;
+     case side_panel::customize_chrome::mojom::ActionId::kHome:
+       return kActionHome;
+     case side_panel::customize_chrome::mojom::ActionId::kForward:
+       return kActionForward;
+     case side_panel::customize_chrome::mojom::ActionId::kNewIncognitoWindow:
+       return kActionNewIncognitoWindow;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowPasswordManager:
+-      return kActionShowPasswordsBubbleOrPage;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowPaymentMethods:
+-      return kActionShowPaymentsBubbleOrPage;
+-    case side_panel::customize_chrome::mojom::ActionId::kShowAddresses:
+-      return kActionShowAddressesBubbleOrPage;
+     case side_panel::customize_chrome::mojom::ActionId::kShowDownloads:
+       return kActionShowDownloads;
+     case side_panel::customize_chrome::mojom::ActionId::kClearBrowsingData:
+@@ -340,18 +307,8 @@ void CustomizeToolbarHandler::ListAction
+   add_action(kActionNewIncognitoWindow,
+              side_panel::customize_chrome::mojom::CategoryId::kNavigation);
+ 
+-  add_action(kActionShowPasswordsBubbleOrPage,
+-             side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+-  add_action(kActionShowPaymentsBubbleOrPage,
+-             side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+-  add_action(kActionShowAddressesBubbleOrPage,
+-             side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+   add_action(kActionSidePanelShowBookmarks,
+              side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+-  add_action(kActionSidePanelShowReadingList,
+-             side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+-  add_action(kActionSidePanelShowTabsFromOtherDevices,
+-             side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+   add_action(kActionSidePanelShowHistoryCluster,
+              side_panel::customize_chrome::mojom::CategoryId::kYourChrome);
+   add_action(kActionShowDownloads,
+@@ -366,18 +323,12 @@ void CustomizeToolbarHandler::ListAction
+   }
+   add_action(kActionPrint,
+              side_panel::customize_chrome::mojom::CategoryId::kTools);
+-  add_action(kActionSidePanelShowLensOverlayResults,
+-             side_panel::customize_chrome::mojom::CategoryId::kTools);
+-  add_action(kActionSidePanelShowSearchCompanion,
+-             side_panel::customize_chrome::mojom::CategoryId::kTools);
+   add_action(kActionShowTranslate,
+              side_panel::customize_chrome::mojom::CategoryId::kTools);
+   add_action(kActionQrCodeGenerator,
+              side_panel::customize_chrome::mojom::CategoryId::kTools);
+   add_action(kActionRouteMedia,
+              side_panel::customize_chrome::mojom::CategoryId::kTools);
+-  add_action(kActionSidePanelShowReadAnything,
+-             side_panel::customize_chrome::mojom::CategoryId::kTools);
+   add_action(kActionCopyUrl,
+              side_panel::customize_chrome::mojom::CategoryId::kTools);
+   add_action(kActionSendTabToSelf,

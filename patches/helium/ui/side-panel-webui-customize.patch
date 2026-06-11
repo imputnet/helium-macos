@@ -1,0 +1,419 @@
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -7963,6 +7963,9 @@ Keep your key file in a safe place. You
+       <message name="IDS_NTP_CUSTOMIZE_CHROME_CHANGE_THEME_LABEL" desc="The label for the action button for changing Chrome theme in the New Tab Page customize chrome side panel.">
+         Change theme
+       </message>
++      <message name="IDS_NTP_CUSTOMIZE_CHROME_CHANGE_WALLPAPER_LABEL" desc="The label for the action button for changing Chrome wallpaper in the New Tab Page customize chrome side panel.">
++        Change wallpaper
++      </message>
+       <message name="IDS_NTP_CUSTOMIZE_FOOTER_HEADER" desc="The toggle for the Footer title in the customization menu on the New Tab Page." meaning="The footer which shows at the bottom of the New Tab page.">
+         Footer
+       </message>
+--- a/chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_ui.cc
++++ b/chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_ui.cc
+@@ -111,6 +111,7 @@ CustomizeChromeUI::CustomizeChromeUI(con
+       {"extensionsHeader", IDS_NTP_CUSTOMIZE_MENU_EXTENSIONS_LABEL},
+       // Appearance strings.
+       {"changeTheme", IDS_NTP_CUSTOMIZE_CHROME_CHANGE_THEME_LABEL},
++      {"changeWallpaper", IDS_NTP_CUSTOMIZE_CHROME_CHANGE_WALLPAPER_LABEL},
+       {"chromeWebStore", IDS_EXTENSION_WEB_STORE_TITLE},
+       {"classicChrome", IDS_NTP_CUSTOMIZE_NO_BACKGROUND_LABEL},
+       {"colorsContainerLabel", IDS_NTP_THEMES_CONTAINER_LABEL},
+--- a/chrome/browser/resources/side_panel/customize_chrome/customize_toolbar/toolbar.html.ts
++++ b/chrome/browser/resources/side_panel/customize_chrome/customize_toolbar/toolbar.html.ts
+@@ -8,31 +8,15 @@ import type {ToolbarElement} from './too
+ 
+ export function getHtml(this: ToolbarElement) {
+   return html`<!--_html_template_start_-->
+-<div class="sp-card">
+-  <sp-heading id="heading" @back-button-click="${this.onBackButtonClick_}"
++<div class="sp-card" id="pinningSelectionCard">
++  <sp-heading id="heading" class="separator" @back-button-click="${this.onBackButtonClick_}"
+       back-button-aria-label="$i18n{backButton}"
+       back-button-title="$i18n{backButton}">
+     <h2 slot="heading">$i18n{toolbarHeader}</h2>
+   </sp-heading>
+-  <div id="miniToolbarBackground">
+-    <svg id="miniToolbar" src="icons/mini_toolbar.svg">
+-      <use href="icons/mini_toolbar.svg#miniToolbar"></use>
+-    </svg>
+-  </div>
+-  <div class="intro-text">$i18n{chooseToolbarIconsLabel}</div>
+-  <cr-button id="resetToDefaultButton" class="floating-button"
+-      @click="${this.onResetToDefaultClick_}"
+-      ?disabled="${this.resetToDefaultDisabled_}">
+-    <div id="resetToDefaultIcon" class="cr-icon" slot="prefix-icon"></div>
+-    $i18n{resetToDefaultButtonLabel}
+-  </cr-button>
+-</div>
+-<hr class="sp-cards-separator">
+-<div class="sp-card" id="pinningSelectionCard">
+   ${
+       this.categories_.map(
+           (category, categoryIndex) => html`
+-    <h3 class="choose-icons-row category-title">${category.displayName}</h3>
+     ${
+               this.actions_.map(
+                   (action) => action.category === category.id ?
+@@ -76,13 +60,13 @@ export function getHtml(this: ToolbarEle
+                   html`<hr class="sp-hr">` :
+                   ''}
+   `)}
+-</div>
+-<hr class="sp-cards-separator">
+-<div class="sp-card" id="tipCard">
+-  <svg id="tipIcon" src="icons/lightbulb_outline.svg">
+-    <use href="icons/lightbulb_outline.svg#lightbulbOutline"></use>
+-  </svg>
+-  $i18n{reorderTipLabel}
++  <hr class="sp-hr">
++  <cr-button id="resetToDefaultButton"
++      @click="${this.onResetToDefaultClick_}"
++      ?disabled="${this.resetToDefaultDisabled_}">
++    <div id="resetToDefaultIcon" class="cr-icon" slot="prefix-icon"></div>
++    $i18n{resetToDefaultButtonLabel}
++  </cr-button>
+ </div>
+ <!--_html_template_end_-->`;
+ }
+--- a/chrome/browser/resources/side_panel/customize_chrome/theme_snapshot.html.ts
++++ b/chrome/browser/resources/side_panel/customize_chrome/theme_snapshot.html.ts
+@@ -13,15 +13,6 @@ export function getHtml(this: ThemeSnaps
+ ${this.themeType_ === CustomizeThemeType.CUSTOM_THEME ? html`
+   <div class="snapshot-container"
+       theme-type="${CustomizeThemeType.CUSTOM_THEME}">
+-    <div class="image-background" id="customThemeImageBackground"
+-        @click="${this.onThemeSnapshotClick_}">
+-      <img class="image" id="customThemeImage" is="cr-auto-img"
+-          .autoSrc="${this.theme_!.backgroundImage!.snapshotUrl}"
+-          draggable="false"
+-          aria-labelledby="customThemeTitle">
+-      <div class="overlay"></div>
+-      <cr-ripple></cr-ripple>
+-    </div>
+     <div id="customThemeTitle" class="theme-title">
+      ${this.theme_!.backgroundImage!.title}
+     </div>
+@@ -30,15 +21,6 @@ ${this.themeType_ === CustomizeThemeType
+ ${this.themeType_ === CustomizeThemeType.CLASSIC_CHROME ? html`
+   <div class="snapshot-container"
+       theme-type="${CustomizeThemeType.CLASSIC_CHROME}">
+-    <div class="image-background image" id="classicChromeBackground"
+-        @click="${this.onThemeSnapshotClick_}">
+-      <svg id="miniNewTabPage" aria-labelledby="classicChromeThemeTitle"
+-          viewBox="0 0 240 126" preserveAspectRatio="xMidYMid meet">
+-        <use href="icons/mini_new_tab_page.svg#miniNewTabPage"></use>
+-      </svg>
+-      <div class="overlay"></div>
+-      <cr-ripple></cr-ripple>
+-    </div>
+     <div id="classicChromeThemeTitle" class="theme-title">
+       $i18n{classicChrome}
+     </div>
+--- a/chrome/browser/resources/side_panel/customize_chrome/app.css
++++ b/chrome/browser/resources/side_panel/customize_chrome/app.css
+@@ -23,22 +23,18 @@
+   display: block;
+ }
+ 
+-sp-heading {
+-  margin: 8px 16px;
+-}
+-
+ .sp-card {
+   font-size: 12px;
+   font-weight: 500;
+   line-height: 16px;
+-  max-width: calc(360px - 2 * var(--sp-body-padding));
++  max-width: calc(360px - var(--sp-body-padding));
+ }
+ 
+ #toolbarButton {
+   border: none;
+   color: var(--cr-primary-text-color);
+   display: flex;
+-  height: 52px;
++  height: 48px;
+   justify-content: space-between;
+   padding: 8px 16px;
+ }
+--- a/chrome/browser/resources/side_panel/customize_chrome/app.html.ts
++++ b/chrome/browser/resources/side_panel/customize_chrome/app.html.ts
+@@ -14,7 +14,7 @@ export function getHtml(this: AppElement
+     selected="${this.page_}" attr-for-selected="page-name">
+   <div page-name="overview" id="overviewPage">
+     <div id="appearance" class="section sp-card">
+-      <sp-heading hide-back-button>
++      <sp-heading hide-back-button class="separator">
+         <h2 slot="heading">$i18n{appearanceHeader}</h2>
+       </sp-heading>
+       <customize-chrome-appearance @edit-theme-click="${this.onEditThemeClick_}"
+@@ -45,9 +45,6 @@ export function getHtml(this: AppElement
+     ` : ''}
+      ${this.isSourceTabFirstPartyNtp_() ? html`<hr class="sp-cards-separator">
+     <div id="shortcuts" class="section sp-card">
+-      <sp-heading hide-back-button>
+-        <h2 slot="heading">$i18n{shortcutsHeader}</h2>
+-      </sp-heading>
+       <customize-chrome-shortcuts></customize-chrome-shortcuts>
+     </div>`: ''}
+     ${(this.modulesEnabled_ && this.isSourceTabFirstPartyNtp_()) ? html`
+--- a/chrome/browser/resources/side_panel/customize_chrome/appearance.css
++++ b/chrome/browser/resources/side_panel/customize_chrome/appearance.css
+@@ -13,9 +13,14 @@
+ 
+ #editButtonsContainer {
+   display: flex;
++  flex-direction: column;
++  align-items: center;
+   gap: 8px;
+-  margin: 0 16px 16px;
+-  width: calc(100% - 32px);
++  margin: 8px 0;
++}
++
++#editButtonsContainer .sp-hr {
++  margin-bottom: 6px;
+ }
+ 
+ #thirdPartyManageLinkButton {
+@@ -24,8 +29,10 @@
+   width: 100%;
+ }
+ 
+-#editThemeButton {
+-  flex-grow: 1;
++#editThemeButton,
++#setClassicChromeButton {
++  width: calc(100% - 32px);
++  margin: 0 16px;
+ }
+ 
+ #wallpaperSearchButton {
+@@ -52,8 +59,13 @@
+   width: 20px;
+ }
+ 
+-#setClassicChromeButton {
++#setClassicChromeIcon {
++  --cr-icon-color: currentColor;
+   --cr-icon-image: url(icons/reset.svg);
++  height: 12px;
++  width: 12px;
++  margin-inline-end: 0;
++  margin-inline-start: 0;
+ }
+ 
+ #uploadedImageButton {
+@@ -80,6 +92,7 @@ customize-color-scheme-mode,
+ customize-color-scheme-mode {
+   display: block;
+   margin: 16px;
++  margin-top: 0;
+ }
+ 
+ cr-theme-color-picker {
+@@ -91,10 +104,6 @@ cr-theme-color-picker {
+   margin-top: 16px;
+ }
+ 
+-.theme-button:not([hidden]) ~ #editButtonsContainer {
+-  margin: 20px 16px;
+-}
+-
+ .link-out-button {
+   --cr-icon-image: url('chrome://resources/images/open_in_new.svg');
+ }
+--- a/chrome/browser/resources/side_panel/customize_chrome/appearance.html.ts
++++ b/chrome/browser/resources/side_panel/customize_chrome/appearance.html.ts
+@@ -11,58 +11,11 @@ export function getHtml(this: Appearance
+   return html`<!--_html_template_start_-->
+ <customize-chrome-theme-snapshot id="themeSnapshot"
+     @edit-theme-click="${this.onEditThemeClick_}"
+-    ?hidden="${!this.showThemeSnapshot_}">
++    hidden>
+ </customize-chrome-theme-snapshot>
+-<customize-chrome-hover-button id="thirdPartyThemeLinkButton"
+-    class="link-out-button theme-button"
+-    ?hidden="${!this.thirdPartyThemeId_}"
+-    @click="${this.onThirdPartyThemeLinkButtonClick_}"
+-    label="${this.thirdPartyThemeName_}"
+-    label-description="$i18n{currentTheme}">
+-</customize-chrome-hover-button>
+-<customize-chrome-hover-button id="uploadedImageButton" class="theme-button"
+-    ?hidden="${!this.showUploadedImageButton_}"
+-    @click="${this.onUploadedImageButtonClick_}"
+-    label="$i18n{yourUploadedImage}"
+-    label-description="$i18n{currentTheme}">
+-</customize-chrome-hover-button>
+-<customize-chrome-hover-button id="searchedImageButton" class="theme-button"
+-    ?hidden="${!this.showSearchedImageButton_}"
+-    @click="${this.onSearchedImageButtonClick_}"
+-    label="$i18n{yourSearchedImage}"
+-    label-description="$i18n{currentTheme}">
+-</customize-chrome-hover-button>
+-${this.showManagedButton_ ? html`
+-  <customize-chrome-hover-button id="thirdPartyManageLinkButton"
+-      aria-button-label="${this.i18n('newTabPageManagedByA11yLabel',
+-                           this.managedByName_)}"
+-      class="link-out-button theme-button"
+-      @click="${this.onNewTabPageManageByButtonClick_}"
+-      label="${this.managedByName_}"
+-      label-description="${this.managedByDesc_}">
+-  </customize-chrome-hover-button>
+-  `: ''}
+-<div id="editButtonsContainer" ?hidden="${!this.showEditTheme_}">
+-  <cr-button id="editThemeButton" @click="${this.onEditThemeClick_}"
+-      class="floating-button">
+-    <div id="editThemeIcon" class="cr-icon edit-theme-icon" slot="prefix-icon"
+-        ?hidden="${this.wallpaperSearchButtonEnabled_}"></div>
+-    ${this.editThemeButtonText_}
+-  </cr-button>
+-  ${this.wallpaperSearchButtonEnabled_ ? html`
+-    <cr-button id="wallpaperSearchButton"
+-        @click="${this.onWallpaperSearchClick_}" class="floating-button">
+-      <div id="wallpaperSearchIcon" class="cr-icon edit-theme-icon"
+-          slot="prefix-icon"></div>
+-      $i18n{wallpaperSearchTileLabel}
+-    </cr-button>
+-  ` : ''}
+-</div>
+-<hr class="sp-hr" ?hidden="${!this.showEditTheme_}">
+ <customize-color-scheme-mode></customize-color-scheme-mode>
+ <cr-theme-color-picker id="chromeColors" ?hidden="${!this.showColorPicker_}">
+ </cr-theme-color-picker>
+-<hr class="sp-hr" ?hidden="${!this.showBottomDivider_}">
+ <div id="followThemeToggle" class="sp-card-content"
+     ?hidden="${!this.showDeviceThemeToggle_}">
+   <div id="followThemeToggleTitle">$i18n{followThemeToggle}</div>
+@@ -71,11 +24,29 @@ ${this.showManagedButton_ ? html`
+       @change="${this.onFollowThemeToggleChange_}">
+   </cr-toggle>
+ </div>
+-<customize-chrome-hover-button id="setClassicChromeButton"
+-    ?hidden="${!this.showClassicChromeButton_}"
+-    label="$i18n{resetToClassicChrome}"
+-    @click="${this.onSetClassicChromeClick_}">
++<customize-chrome-hover-button id="thirdPartyThemeLinkButton"
++    class="link-out-button theme-button"
++    ?hidden="${!this.thirdPartyThemeId_}"
++    @click="${this.onThirdPartyThemeLinkButtonClick_}"
++    label="${this.thirdPartyThemeName_}"
++    label-description="$i18n{currentTheme}">
+ </customize-chrome-hover-button>
++<div id="editButtonsContainer" ?hidden="${!this.showEditTheme_}">
++  <hr class="sp-hr">
++  <cr-button id="editThemeButton"
++      ?hidden="${!this.showEditTheme_}"
++      @click="${this.onUploadedImageButtonClick_}">
++    <div id="editThemeIcon" class="cr-icon edit-theme-icon" slot="prefix-icon"
++        ?hidden="${this.wallpaperSearchButtonEnabled_}"></div>
++    $i18n{changeWallpaper}
++  </cr-button>
++  <cr-button id="setClassicChromeButton"
++      ?hidden="${!this.showClassicChromeButton_}"
++      @click="${this.onSetClassicChromeClick_}">
++    <div id="setClassicChromeIcon" class="cr-icon" slot="prefix-icon"></div>
++    $i18n{resetToDefaultButtonLabel}
++  </cr-button>
++</div>
+ ${this.showManagedDialog_ ? html`
+   <managed-dialog @close="${this.onManagedDialogClose_}"
+       title="$i18n{managedColorsTitle}"
+--- a/chrome/browser/resources/side_panel/customize_chrome/customize_toolbar/toolbar.css
++++ b/chrome/browser/resources/side_panel/customize_chrome/customize_toolbar/toolbar.css
+@@ -15,21 +15,14 @@
+   font-weight: 500;
+   line-height: 16px;
+   padding: var(--sp-card-padding);
+-  max-width: calc(360px - 2 * var(--sp-body-padding) - 2 * var(
+-      --sp-card-inline-padding));
+ }
+ 
+ #pinningSelectionCard {
+   /* Remove horizontal padding for highlight */
+-  padding: 16px 0 0 0;
+-  max-width: calc(360px - 2 * var(--sp-body-padding));
++  padding: 8px 0;
+   overflow: hidden;
+ }
+ 
+-.sp-card sp-heading {
+-  padding: 0;
+-}
+-
+ .choose-icons-row-container {
+   align-items: center;
+   display: flex;
+@@ -49,7 +42,7 @@
+ 
+ .sp-hr {
+   width: auto;
+-  margin: 8px 16px;
++  margin: 6px 16px;
+ }
+ 
+ .choose-icons-row {
+@@ -87,8 +80,8 @@
+ }
+ 
+ #resetToDefaultButton {
+-  margin: 0 0 8px 0;
+-  width: 100%;
++  margin: 8px 16px;
++  width: calc(100% - 32px);
+ }
+ 
+ #resetToDefaultIcon {
+@@ -105,7 +98,7 @@
+   color: var(--cr-secondary-text-color);
+   font-weight: 400;
+   text-align: center;
+-  padding: 0 0 16px;
++  padding: 8px 0 16px 0;
+ }
+ 
+ #tipCard {
+--- a/chrome/browser/resources/side_panel/customize_chrome/shortcuts.css
++++ b/chrome/browser/resources/side_panel/customize_chrome/shortcuts.css
+@@ -29,10 +29,9 @@ cr-radio-group {
+ 
+ .option {
+   display: flex;
+-  align-items: flex-start;
++  align-items: center;
+   gap: 16px;
+   padding: var(--sp-card-padding);
+-  padding-inline-start: 32px;
+ }
+ 
+ .sub-options .option {
+--- a/chrome/browser/resources/side_panel/customize_chrome/hover_button.css
++++ b/chrome/browser/resources/side_panel/customize_chrome/hover_button.css
+@@ -20,6 +20,7 @@
+   margin-top: 8px;
+   padding: 8px 16px;
+   width: 100%;
++  align-items: center;
+ }
+ 
+ #hoverButton:hover {
+--- a/chrome/browser/resources/side_panel/customize_chrome/icons/reset.svg
++++ b/chrome/browser/resources/side_panel/customize_chrome/icons/reset.svg
+@@ -1 +1 @@
+-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"><path d="m7.898 12.5 1.704-1.7-1.684-1.698-.566.566.699.715c-.324 0-.637-.055-.942-.168a2.168 2.168 0 0 1-.808-.516 2.355 2.355 0 0 1-.516-.773A2.359 2.359 0 0 1 5.602 8c0-.18.015-.352.046-.516.036-.168.086-.328.153-.484l-.586-.582a3.419 3.419 0 0 0-.305.758A3 3 0 0 0 4.8 8c0 .422.079.832.243 1.227.16.394.39.738.691 1.039.32.324.68.558 1.075.71.394.149.812.223 1.257.223l-.734.735Zm2.887-2.918c.133-.242.235-.496.305-.758A3 3 0 0 0 11.2 8c0-.422-.083-.832-.25-1.227a3.185 3.185 0 0 0-.7-1.039 2.916 2.916 0 0 0-1.082-.691 3.376 3.376 0 0 0-1.27-.211l.77-.766-.566-.566-1.704 1.7 1.704 1.698.566-.566-.734-.73c.343 0 .664.054.957.164.296.113.566.289.808.535.223.222.395.48.516.773.125.297.183.606.183.926 0 .18-.015.352-.046.516a2.585 2.585 0 0 1-.153.484ZM8 14.398a6.192 6.192 0 0 1-2.484-.5 6.366 6.366 0 0 1-2.04-1.375 6.366 6.366 0 0 1-1.374-2.039A6.192 6.192 0 0 1 1.602 8c0-.89.164-1.719.5-2.492.332-.774.789-1.45 1.375-2.031a6.366 6.366 0 0 1 2.039-1.375A6.192 6.192 0 0 1 8 1.602c.89 0 1.719.164 2.492.5.774.332 1.45.789 2.031 1.375a6.375 6.375 0 0 1 1.375 2.03c.336.774.5 1.602.5 2.493 0 .879-.164 1.707-.5 2.484a6.366 6.366 0 0 1-1.375 2.04 6.375 6.375 0 0 1-2.03 1.374c-.774.336-1.602.5-2.493.5ZM8 13.2c1.445 0 2.672-.504 3.684-1.515 1.011-1.012 1.515-2.239 1.515-3.684 0-1.445-.504-2.672-1.515-3.684C10.672 3.305 9.445 2.801 8 2.801c-1.445 0-2.672.504-3.684 1.515C3.305 5.328 2.801 6.555 2.801 8c0 1.445.504 2.672 1.515 3.684C5.328 12.695 6.555 13.199 8 13.199ZM8 8Zm0 0" fill="#5F6368"/></svg>
+\ No newline at end of file
++<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#1f1f1f"><path d="M480-192q-120 0-204-84t-84-204q0-120 84-204t204-84q65 0 120.5 27t95.5 72v-99h72v240H528v-72h131q-29-44-76-70t-103-26q-90 0-153 63t-63 153q0 90 63 153t153 63q84 0 144-55.5T693-456h74q-9 112-91 188t-196 76Z"/></svg>
+\ No newline at end of file
+--- a/chrome/browser/resources/side_panel/customize_chrome/appearance.ts
++++ b/chrome/browser/resources/side_panel/customize_chrome/appearance.ts
+@@ -35,8 +35,6 @@ export interface AppearanceElement {
+     thirdPartyThemeLinkButton: HTMLButtonElement,
+     followThemeToggle: HTMLElement,
+     followThemeToggleControl: CrToggleElement,
+-    uploadedImageButton: HTMLButtonElement,
+-    searchedImageButton: HTMLButtonElement,
+   };
+ }
+ 

@@ -1,0 +1,150 @@
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -4755,6 +4755,18 @@ int BrowserView::NonClientHitTest(const
+     }
+   }
+ 
++  // The empty spaces in toolbar should allow mouse events to fall
++  // through to the caption area.
++  if (toolbar_) {
++    gfx::Point test_point(point);
++    if (ConvertedHitTest(parent(), toolbar_, &test_point)) {
++      if (toolbar_->IsPositionInWindowCaption(test_point)) {
++        return HTCAPTION;
++      }
++      return HTCLIENT;
++    }
++  }
++
+   // Let the frame handle any events that fall within the bounds of the window
+   // controls overlay.
+   if (IsWindowControlsOverlayEnabled() && GetActiveWebContents()) {
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.cc
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.cc
+@@ -209,38 +209,6 @@ constexpr int kLargeSpaceBetweenButtons
+ constexpr int kInsideBorderAroundGlicButtons = 2;
+ constexpr int kOutsideBorderAroundGlicButtons = 11;
+ 
+-// Returns whether `point` should be treated as part of the caption area in
+-// `view`. Recursively traverses into icon containers to correctly handle
+-// padding between buttons.
+-bool IsPositionInWindowCaptionForView(const views::View* view,
+-                                      const gfx::Point& point) {
+-  for (const views::View* child : view->children()) {
+-    if (!child->GetVisible() || !child->bounds().Contains(point)) {
+-      continue;
+-    }
+-    // Recurse into known icon container types to check their children.
+-    if (views::IsViewClass<ToolbarIconContainerView>(child) ||
+-        views::IsViewClass<page_actions::PageActionContainerView>(child)) {
+-      const gfx::Point point_in_child =
+-          views::View::ConvertPointToTarget(view, child, point);
+-      return IsPositionInWindowCaptionForView(child, point_in_child);
+-    }
+-    // Separators and dividers are non-interactive and should be treated
+-    // as caption area.
+-    if (views::IsViewClass<views::Separator>(child) ||
+-        views::IsViewClass<ToolbarDivider>(child)) {
+-      return true;
+-    }
+-    // The point hit an interactive control (button, location bar, etc.).
+-    return false;
+-  }
+-  // The point is not in any child's bounds — it's in empty space between
+-  // children, padding, or above/below a child. In VTS mode the toolbar is
+-  // at the very top of the window, so all non-interactive areas should be
+-  // draggable regardless of vertical position.
+-  return true;
+-}
+-
+ }  // namespace
+ 
+ ////////////////////////////////////////////////////////////////////////////////
+@@ -1252,6 +1220,44 @@ bool ToolbarView::GetAppMenuFocused() co
+   return app_menu_button_ && app_menu_button_->HasFocus();
+ }
+ 
++bool ToolbarView::IsRectInWindowCaption(const gfx::Rect& rect) const {
++  // Clickable elements are child views of the toolbar. If the toolbar is not
++  // visible, then the rect is in the window caption.
++  if (!GetVisible()) {
++    return true;
++  }
++
++  const auto get_target_rect = [&](views::View* target) {
++    gfx::RectF rect_in_target_coords_f(rect);
++    views::View::ConvertRectToTarget(this, target, &rect_in_target_coords_f);
++    return gfx::ToEnclosingRect(rect_in_target_coords_f);
++  };
++
++  // Check each child view to see if the rect intersects with
++  // any clickable elements. If it does, check if the click is actually on that
++  // element. False if on a clickable element, true if not on a clickable element.
++  for (views::View* const child : children()) {
++    if (!child->GetVisible()) {
++      continue;
++    }
++
++    const gfx::Rect target_rect = get_target_rect(child);
++    if (child->GetLocalBounds().Intersects(target_rect)) {
++      // Check if the rect is actually on the child.
++      if (child->HitTestRect(target_rect)) {
++        return false;
++      }
++    }
++  }
++
++  // The rect is not on any clickable element, so it's in the window caption.
++  return true;
++}
++
++bool ToolbarView::IsPositionInWindowCaption(const gfx::Point& point) const {
++  return IsRectInWindowCaption(gfx::Rect(point, gfx::Size(1, 1)));
++}
++
+ void ToolbarView::ShowIntentPickerBubble(
+     std::vector<IntentPickerBubbleView::AppInfo> app_info,
+     bool show_stay_in_chrome,
+@@ -1288,11 +1294,6 @@ void ToolbarView::ShowBookmarkBubble(con
+                                  already_bookmarked);
+ }
+ 
+-bool ToolbarView::IsPositionInWindowCaption(
+-    const gfx::Point& test_point) const {
+-  return IsPositionInWindowCaptionForView(this, test_point);
+-}
+-
+ views::Button* ToolbarView::GetChromeLabsButton() const {
+   return ChromeLabsCoordinator::From(browser_)->GetChromeLabsButton();
+ }
+--- a/chrome/browser/ui/views/toolbar/toolbar_view.h
++++ b/chrome/browser/ui/views/toolbar/toolbar_view.h
+@@ -146,6 +146,15 @@ class ToolbarView : public views::Access
+ 
+   WebUIToolbarWebView* GetWebUIToolbarViewForTesting() override;
+ 
++  // Returns true if the specified rect is not on a clickable element,
++  // aka container view children: toolbar buttons, location bar, etc.
++  bool IsRectInWindowCaption(const gfx::Rect& rect) const;
++
++  // A convenience function which calls |IsRectInWindowCaption()| with a rect of
++  // size 1x1 and an origin of |point|. |point| is in the local coordinate space
++  // of |this|.
++  bool IsPositionInWindowCaption(const gfx::Point& point) const;
++
+   void ShowIntentPickerBubble(
+       std::vector<IntentPickerBubbleView::AppInfo> app_info,
+       bool show_stay_in_chrome,
+@@ -157,12 +166,6 @@ class ToolbarView : public views::Access
+   // Shows a bookmark bubble and anchors it appropriately.
+   void ShowBookmarkBubble(const GURL& url, bool already_bookmarked);
+ 
+-  // Used to test whether `test_point` should be treated as part of the caption
+-  // bar, which means it can be used to drag the window or open the window
+-  // context menu. Should only be called when the toolbar is in the caption
+-  // area.
+-  bool IsPositionInWindowCaption(const gfx::Point& test_point) const;
+-
+   // Accessors.
+   Browser* browser() const { return browser_; }
+   views::Button* GetChromeLabsButton() const;

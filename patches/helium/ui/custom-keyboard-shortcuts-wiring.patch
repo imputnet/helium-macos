@@ -1,0 +1,175 @@
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -42,6 +42,7 @@
+ #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
+ #include "chrome/browser/app_mode/app_mode_utils.h"
+ #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
++#include "chrome/browser/browser_features.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
+ #include "chrome/browser/desktop_to_mobile_promos/promos_utils.h"
+@@ -82,6 +83,10 @@
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_element_identifiers.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/browser_shortcuts/browser_shortcut_platform_mac.h"
++#endif
++#include "chrome/browser/ui/browser_shortcuts/browser_shortcut_service_factory.h"
+ #include "chrome/browser/ui/browser_tabstrip.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+@@ -1139,6 +1144,15 @@ BrowserView::BrowserView(Browser* browse
+     focus_manager_observation_.Observe(GetFocusManager());
+   }
+ 
++  if (base::FeatureList::IsEnabled(features::kCustomizableBrowserShortcuts)) {
++    browser_shortcut_service_ =
++        browser_shortcuts::BrowserShortcutServiceFactory::GetForProfile(
++            browser_->profile());
++    if (browser_shortcut_service_) {
++      browser_shortcut_service_->AddObserver(this);
++    }
++  }
++
+ #if BUILDFLAG(IS_CHROMEOS)
+   on_locked_task_subscription_ =
+       ash::boca::OnTaskLockedController::From(browser_)
+@@ -1148,6 +1162,11 @@ BrowserView::BrowserView(Browser* browse
+ }
+ 
+ BrowserView::~BrowserView() {
++  if (browser_shortcut_service_) {
++    browser_shortcut_service_->RemoveObserver(this);
++    browser_shortcut_service_ = nullptr;
++  }
++
+   // Remove the layout manager to avoid dangling. This needs to be earlier than
+   // other cleanups that destroy views referenced in the layout manager.
+   SetLayoutManager(nullptr);
+@@ -4224,6 +4243,10 @@ void BrowserView::OnWidgetActivationChan
+   browser_->GetFeatures()
+       .extension_keybinding_registry()
+       ->OnHostActivationChanged(active);
++
++  if (active) {
++    UpdatePlatformAccelerators();
++  }
+ }
+ 
+ void BrowserView::OnWidgetBoundsChanged(views::Widget* widget,
+@@ -5614,7 +5637,20 @@ void BrowserView::LoadAccelerators() {
+       browser_->GetProfile()->IsOffTheRecord() &&
+       browser_->GetProfile()->GetOTRProfileID().IsCaptivePortal();
+ #endif
+-  const std::vector<AcceleratorMapping> accelerator_list(GetAcceleratorList());
++  std::vector<AcceleratorMapping> accelerator_list(GetAcceleratorList());
++  if (browser_shortcut_service_ &&
++      base::FeatureList::IsEnabled(features::kCustomizableBrowserShortcuts)) {
++    std::erase_if(accelerator_list, [this](const AcceleratorMapping& entry) {
++      return browser_shortcut_service_->HasDefaultAccelerator(
++          entry.command_id,
++          ui::Accelerator(entry.keycode, entry.modifiers));
++    });
++    for (const auto& [accelerator, command_id] :
++         browser_shortcut_service_->GetAcceleratorMap()) {
++      accelerator_list.push_back(
++          {accelerator.key_code(), accelerator.modifiers(), command_id});
++    }
++  }
+   for (const auto& entry : accelerator_list) {
+     // In app mode, only allow accelerators of allowlisted commands to pass
+     // through.
+@@ -5641,14 +5677,43 @@ void BrowserView::LoadAccelerators() {
+ #endif
+ 
+     ui::Accelerator accelerator(entry.keycode, entry.modifiers);
++    const bool already_registered = accelerator_table_.contains(accelerator);
+     accelerator_table_[accelerator] = entry.command_id;
+ 
+-    // Also register with the focus manager.
+-    focus_manager->RegisterAccelerator(
+-        accelerator, ui::AcceleratorManager::kNormalPriority, this);
++    if (!already_registered) {
++      focus_manager->RegisterAccelerator(
++          accelerator, ui::AcceleratorManager::kNormalPriority, this);
++    }
+   }
+ }
+ 
++void BrowserView::ReloadAccelerators() {
++  views::FocusManager* focus_manager = GetFocusManager();
++  if (!focus_manager) {
++    return;
++  }
++  focus_manager->UnregisterAccelerators(this);
++  accelerator_table_.clear();
++  LoadAccelerators();
++  UpdatePlatformAccelerators();
++}
++
++void BrowserView::OnBrowserShortcutsChanged() {
++  ReloadAccelerators();
++}
++
++void BrowserView::UpdatePlatformAccelerators() {
++#if BUILDFLAG(IS_MAC)
++  if (!base::FeatureList::IsEnabled(features::kCustomizableBrowserShortcuts) ||
++      !browser_shortcut_service_ || !IsActive()) {
++    return;
++  }
++
++  browser_shortcuts::UpdatePlatformMenuAccelerators(
++      browser_shortcut_service_->GetAcceleratorMap());
++#endif
++}
++
+ int BrowserView::GetCommandIDForAppCommandID(int app_command_id) const {
+ #if BUILDFLAG(IS_WIN)
+   switch (app_command_id) {
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -22,6 +22,7 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+ #include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_shortcuts/browser_shortcut_service.h"
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/tabs/projects/projects_panel_state_controller.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+@@ -143,6 +144,7 @@ class BrowserView : public BrowserWindow
+                     public infobars::InfoBarContainer::Delegate,
+                     public ImmersiveModeController::Observer,
+                     public webapps::AppBannerManager::Observer,
++                    public browser_shortcuts::BrowserShortcutService::Observer,
+                     public views::FocusChangeListener,
+                     public BookmarkBarController::Delegate {
+   METADATA_HEADER(BrowserView, views::ClientView)
+@@ -743,6 +745,9 @@ class BrowserView : public BrowserWindow
+   // ui::AcceleratorTarget:
+   bool AcceleratorPressed(const ui::Accelerator& accelerator) override;
+ 
++  // browser_shortcuts::BrowserShortcutService::Observer:
++  void OnBrowserShortcutsChanged() override;
++
+   // ImmersiveModeController::Observer:
+   void OnImmersiveFullscreenEntered() override;
+   void OnImmersiveFullscreenExited() override;
+@@ -996,6 +1001,8 @@ class BrowserView : public BrowserWindow
+   // Copy the accelerator table from the app resources into something we can
+   // use.
+   void LoadAccelerators();
++  void ReloadAccelerators();
++  void UpdatePlatformAccelerators();
+ 
+   // Retrieves the command id for the specified Windows app command.
+   int GetCommandIDForAppCommandID(int app_command_id) const;
+@@ -1293,6 +1300,8 @@ class BrowserView : public BrowserWindow
+ 
+   // A mapping between accelerators and command IDs.
+   std::map<ui::Accelerator, int> accelerator_table_;
++  raw_ptr<browser_shortcuts::BrowserShortcutService> browser_shortcut_service_ =
++      nullptr;
+ 
+   // True if we have already been initialized.
+   bool initialized_ = false;

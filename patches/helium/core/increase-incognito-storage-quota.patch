@@ -1,0 +1,22 @@
+--- a/chrome/browser/ungoogled_flag_entries.h
++++ b/chrome/browser/ungoogled_flag_entries.h
+@@ -129,7 +129,7 @@
+      "Return generic values for WebGLDebugRendererInfo to remove a potential data leak while preventing potential website breakage. ungoogled-chromium flag.",
+      kOsAll, FEATURE_WITH_PARAMS_VALUE_TYPE(blink::features::kSpoofWebGLInfo, kSpoofWebGLChoices, "SpoofWebGLInfo")},
+     {"increase-incognito-storage-quota",
+-     "Increases the storage quota for Incognito and Guest profiles",
++     "Increase the storage quota for Incognito and Guest profiles",
+      "Makes Incognito and Guest profiles compute the storage quota with the same algorithm that regular profiles use. This makes it harder for websites to detect Incognito mode, but may allow sites to induce heavy memory pressure. ungoogled-chromium flag.",
+      kOsAll, FEATURE_VALUE_TYPE(storage::features::kIncreaseIncognitoStorageQuota)},
+ #endif  // CHROME_BROWSER_UNGOOGLED_FLAG_ENTRIES_H_
+--- a/storage/browser/quota/quota_features.cc
++++ b/storage/browser/quota/quota_features.cc
+@@ -43,7 +43,7 @@ BASE_FEATURE(kIncognitoStaticStorageQuot
+ 
+ BASE_FEATURE(kIncreaseIncognitoStorageQuota,
+              "IncreaseIncognitoStorageQuota",
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ }  // namespace features
+ }  // namespace storage

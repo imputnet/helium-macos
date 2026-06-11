@@ -1,0 +1,67 @@
+--- a/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
++++ b/chrome/browser/ui/views/extensions/extensions_toolbar_desktop.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <memory>
+ 
++#include "base/command_line.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+ #include "base/functional/callback_helpers.h"
+@@ -41,6 +42,7 @@
+ #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+ #include "chrome/browser/ui/views/side_panel/extensions/extension_side_panel_coordinator.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_action_hover_card_controller.h"
++#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+ #include "chrome/common/pref_names.h"
+ #include "chrome/grit/generated_resources.h"
+ #include "components/feature_engagement/public/event_constants.h"
+@@ -56,6 +58,7 @@
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/image_model.h"
++#include "ui/views/interaction/element_tracker_views.h"
+ #include "ui/views/layout/animating_layout_manager.h"
+ #include "ui/views/layout/flex_layout.h"
+ #include "ui/views/layout/flex_layout_types.h"
+@@ -466,6 +469,19 @@ void ExtensionsToolbarDesktop::AnchorAnd
+   widget->widget_delegate()->AsBubbleDialogDelegate()->SetAnchorView(
+       anchor_view && anchor_view->GetVisible() ? anchor_view
+                                                : GetExtensionsButton());
++
++  // Fix the position of widgets. Without this fix, extension-installed-bubble
++  // and extension-uninstall-dialog may be out of the window border on Linux.
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch("hide-extensions-menu")) {
++    views::View* anchor_view =
++        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
++            kToolbarAppMenuButtonElementId,
++            views::ElementTrackerViews::GetContextForView(
++                BrowserView::GetBrowserViewForBrowser(browser_)));
++    widget->widget_delegate()->AsBubbleDialogDelegate()
++      ->SetAnchorView(anchor_view);
++  }
++
+   widget->Show();
+ }
+ 
+@@ -960,6 +976,9 @@ void ExtensionsToolbarDesktop::UpdateCon
+ }
+ 
+ bool ExtensionsToolbarDesktop::ShouldContainerBeVisible() const {
++  if (base::CommandLine::ForCurrentProcess()->HasSwitch("hide-extensions-menu"))
++    return false;
++
+   // The container (and extensions-menu button) should not be visible if we have
+   // no extensions.
+   if (!toolbar_view_model_->HasAnyExtensions()) {
+--- a/chrome/browser/ungoogled_flag_entries.h
++++ b/chrome/browser/ungoogled_flag_entries.h
+@@ -88,4 +88,8 @@
+      "Disable link drag",
+      "Prevents dragging of links and selected text. ungoogled-chromium flag.",
+      kOsDesktop, FEATURE_VALUE_TYPE(blink::features::kDisableLinkDrag)},
++    {"hide-extensions-menu",
++     "Hide Extensions Menu",
++     "Hides the extensions container. This includes the puzzle piece icon as well as any pinned extensions. ungoogled-chromium flag.",
++     kOsDesktop, SINGLE_VALUE_TYPE("hide-extensions-menu")},
+ #endif  // CHROME_BROWSER_UNGOOGLED_FLAG_ENTRIES_H_

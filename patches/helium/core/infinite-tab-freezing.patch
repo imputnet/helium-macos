@@ -1,0 +1,11 @@
+--- a/components/performance_manager/features.cc
++++ b/components/performance_manager/features.cc
+@@ -210,7 +210,7 @@ BASE_FEATURE(kFreezingFollowsDiscardOptO
+ 
+ BASE_FEATURE(kRecordFreezingEligibilityUKM, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+-BASE_FEATURE(kInfiniteTabsFreezing, base::FEATURE_DISABLED_BY_DEFAULT);
++BASE_FEATURE(kInfiniteTabsFreezing, base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE_PARAM(int,
+                    kInfiniteTabsFreezing_NumProtectedTabs,

@@ -1,0 +1,329 @@
+--- a/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc
++++ b/chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.cc
+@@ -42,7 +42,7 @@
+ namespace {
+ 
+ // Value from the spec controlling appearance of the shadow.
+-constexpr int kElevation = 16;
++constexpr int kElevation = 8;
+ 
+ #if !defined(USE_AURA)
+ 
+@@ -237,8 +237,7 @@ RoundedOmniboxResultsFrame::RoundedOmnib
+     LocationBar* location_bar,
+     bool forward_mouse_events)
+     : contents_(contents), forward_mouse_events_(forward_mouse_events) {
+-  const int corner_radius = views::LayoutProvider::Get()->GetCornerRadiusMetric(
+-      views::ShapeContextTokens::kOmniboxExpandedRadius);
++  const int corner_radius = 12;
+   // Host the contents in its own View to simplify layout and customization.
+   auto contents_host_builder =
+       views::Builder<views::View>()
+@@ -306,10 +305,10 @@ int RoundedOmniboxResultsFrame::GetNonRe
+ 
+ // static
+ gfx::Insets RoundedOmniboxResultsFrame::GetLocationBarAlignmentInsets() {
+-  if (ui::TouchUiController::Get()->touch_ui()) {
++  if ((false)) {
+     return gfx::Insets::TLBR(6, 1, 5, 1);
+   }
+-  return gfx::Insets::VH(5, 6);
++  return gfx::Insets::TLBR(3, 7, 0, 7);
+ }
+ 
+ // static
+--- a/chrome/browser/ui/views/omnibox/omnibox_result_view.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_result_view.cc
+@@ -195,9 +195,6 @@ OmniboxResultView::OmniboxResultView(Omn
+ 
+   SetLayoutManager(std::make_unique<views::FillLayout>());
+ 
+-  selection_indicator_ =
+-      AddChildView(std::make_unique<OmniboxResultSelectionIndicator>());
+-
+   local_answer_header_and_suggestion_and_buttons_ =
+       AddChildView(std::make_unique<views::View>());
+   local_answer_header_and_suggestion_and_buttons_
+@@ -298,8 +295,9 @@ OmniboxResultView::OmniboxResultView(Omn
+               &OmniboxResultView::ButtonPressed, base::Unretained(this),
+               OmniboxPopupSelection::FOCUSED_BUTTON_REMOVE_SUGGESTION)));
+   remove_suggestion_button_->SetProperty(views::kMarginsKey,
+-                                         gfx::Insets::TLBR(0, 0, 0, 16));
+-  views::InstallCircleHighlightPathGenerator(remove_suggestion_button_);
++                                         gfx::Insets::TLBR(0, 0, 0, 4));
++  views::InstallRoundRectHighlightPathGenerator(remove_suggestion_button_,
++                                                gfx::Insets::VH(1, 1), 5);
+   auto* const remove_focus_ring =
+       views::FocusRing::Get(remove_suggestion_button_);
+   remove_focus_ring->SetHasFocusPredicate(base::BindRepeating(
+@@ -352,10 +350,9 @@ std::unique_ptr<views::Background> Omnib
+         /*for_border_thickness=*/0);
+   }
+ 
+-  const float half_row_height = OmniboxMatchCellView::kRowHeight / 2;
+-  gfx::RoundedCornersF radii = {0, half_row_height, half_row_height, 0};
+   return views::CreateRoundedRectBackground(
+-      GetOmniboxBackgroundColorId(part_state), radii);
++      GetOmniboxBackgroundColorId(part_state),
++          kIPHBackgroundBorderRadius);
+ }
+ 
+ void OmniboxResultView::SetMatch(const AutocompleteMatch& match) {
+@@ -501,22 +498,6 @@ void OmniboxResultView::ApplyThemeAndRef
+ 
+   button_row_->SetThemeState(GetThemeState());
+ 
+-  // The selection indicator indicates when the suggestion is focused. Do not
+-  // show the selection indicator if an auxiliary button is selected.
+-  if (match_.HasInstantKeyword(
+-          popup_view_->controller()->client()->GetTemplateURLService())) {
+-    const OmniboxPopupSelection::LineState line_state =
+-        popup_view_->GetSelection().state;
+-    selection_indicator_->SetVisible(
+-        selected &&
+-        (line_state == OmniboxPopupSelection::LineState::NORMAL ||
+-         line_state == OmniboxPopupSelection::LineState::KEYWORD_MODE));
+-  } else {
+-    selection_indicator_->SetVisible(selected &&
+-                                     popup_view_->GetSelection().state ==
+-                                         OmniboxPopupSelection::NORMAL);
+-  }
+-
+   if (suggestion_view_->iph_link_view()->GetVisible()) {
+     views::FocusRing::Get(suggestion_view_->iph_link_view())->SchedulePaint();
+   }
+--- a/chrome/browser/ui/views/omnibox/omnibox_row_view.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_row_view.cc
+@@ -106,16 +106,7 @@ views::View* OmniboxRowView::GetActiveAu
+ }
+ 
+ gfx::Insets OmniboxRowView::GetInsets() const {
+-  if (result_view_->GetThemeState() == OmniboxPartState::IPH) {
+-    int LRInsets = OmniboxMatchCellView::kIphOffset;
+-    return gfx::Insets::TLBR(8, LRInsets, 8, LRInsets);
+-  }
+-
+-  if (result_view_->GetThemeState() == OmniboxPartState::TOOLBELT) {
+-    return gfx::Insets::TLBR(0, 0, 0, 0);
+-  }
+-
+-  return gfx::Insets::TLBR(0, 0, 0, 16);
++  return gfx::Insets::TLBR(2, 4, 0, 4);
+ }
+ 
+ BEGIN_METADATA(OmniboxRowView)
+--- a/chrome/browser/ui/views/omnibox/omnibox_match_cell_view.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_match_cell_view.cc
+@@ -60,9 +60,6 @@ static constexpr int kUniformRowHeightIc
+ // since the text will have to be further right to accommodate the icons.
+ static constexpr int kIphTextIndent = 14;
+ 
+-// The extra space added to the left-side inset of the toolbelt suggestion.
+-static constexpr int kToolbeltTextInsetLeft = 12;
+-
+ // The right-side inset of the toolbelt suggestion.
+ static constexpr int kToolbeltTextInsetRight = 8;
+ 
+@@ -353,40 +350,7 @@ void OmniboxMatchCellView::OnSecondaryTe
+ 
+ void OmniboxMatchCellView::SetIcon(const gfx::ImageSkia& image,
+                                    const AutocompleteMatch& match) {
+-  const bool is_pedal_suggestion_row =
+-      match.type == AutocompleteMatchType::PEDAL;
+-  const bool is_journeys_suggestion_row =
+-      match.type == AutocompleteMatchType::HISTORY_CLUSTER;
+-  const bool is_instant_keyword_row =
+-      AutocompleteMatch::IsFeaturedSearchType(match.type);
+-  bool should_draw_icon_background = is_pedal_suggestion_row ||
+-                                     is_journeys_suggestion_row ||
+-                                     is_instant_keyword_row;
+-
+-  // Do not apply the distinctive background color to the open lens action when
+-  // the UI tweaks are enabled.
+-  if (match.HasTakeoverAction(OmniboxActionId::CONTEXTUAL_SEARCH_OPEN_LENS) &&
+-      omnibox_feature_configs::ContextualSearch::Get().open_lens_action_ui_tweaks) {
+-    should_draw_icon_background = false;
+-  }
+-
+-  if (should_draw_icon_background) {
+-    // When a PEDAL suggestion has been split out to its own row, apply a square
+-    // background with a distinctive color to the respective icon. Journeys
+-    // suggestion rows should also receive the same treatment.
+-    const auto background_color = is_pedal_suggestion_row ||
+-                                          is_journeys_suggestion_row ||
+-                                          is_instant_keyword_row
+-                                      ? kColorOmniboxAnswerIconGM3Background
+-                                      : kColorOmniboxResultsIconGM3Background;
+-    icon_view_->SetImage(ui::ImageModel::FromImageSkia(
+-        gfx::ImageSkiaOperations::CreateImageWithRoundRectBackground(
+-            gfx::SizeF(kUniformRowHeightIconSize, kUniformRowHeightIconSize),
+-            kIconAndImageCornerRadius,
+-            GetColorProvider()->GetColor(background_color), image)));
+-  } else {
+     icon_view_->SetImage(ui::ImageModel::FromImageSkia(image));
+-  }
+ }
+ 
+ void OmniboxMatchCellView::ClearIcon() {
+@@ -599,7 +563,7 @@ gfx::Size OmniboxMatchCellView::Calculat
+   } else if (layout_style_ == LayoutStyle::IPH_SUGGESTION ||
+              layout_style_ == LayoutStyle::TOOLBELT) {
+     // IPH and toolbelt suggestions have extra height.
+-    height = kRowHeight + 4;
++    height = kRowHeight;
+   } else {
+     // The height for traditional 1-line matches.
+     height = kRowHeight;
+@@ -620,7 +584,7 @@ int OmniboxMatchCellView::GetImageIndent
+   // not derived from other matches' `indent` below.
+   if (layout_style_ == LayoutStyle::IPH_SUGGESTION ||
+       layout_style_ == LayoutStyle::TOOLBELT) {
+-    return 2;
++    return -3;
+   }
+ 
+   // The entity, answer, and icon images are horizontally centered within their
+@@ -631,7 +595,7 @@ int OmniboxMatchCellView::GetImageIndent
+   // b) Entities, answers, and icons continue to be center-aligned.
+   // c) Regardless of the state of those other features and their widths.
+   // This applies to both touch-UI and non-touch-UI.
+-  int indent = 16 + kUniformRowHeightIconSize / 2 - kImageBoundsWidth / 2;
++  int indent = 3 + kUniformRowHeightIconSize / 2 - kImageBoundsWidth / 2;
+ 
+   indent += omnibox_feature_configs::AdjustOmniboxIndent()
+                 .Get()
+@@ -641,51 +605,7 @@ int OmniboxMatchCellView::GetImageIndent
+ }
+ 
+ int OmniboxMatchCellView::GetTextIndent() const {
+-  // Text indent is added to the `OmniboxMatchCellView::GetInsets()`. It is not
+-  // added to the image position & size.
+-
+-  // Toolbelt layout is similar to IPH and has a custom indent.
+-  if (layout_style_ == LayoutStyle::TOOLBELT) {
+-    return kToolbeltTextInsetLeft;
+-  }
+-
+-  // Some IPH matches have no icons. They should be moved further left so the
+-  // gap between the IPH background and the start of the IPH text isn't jarring.
+-  // Non-IPH matches without icons (e.g. the 'no results found' tab match) don't
+-  // want to apply this left shift because their text needs to align with the
+-  // other matches' and the omnibox's texts. This number is independent of other
+-  // layout numbers; i.e., it's not meant to align with other UI; it's just
+-  // arbitrarily chosen by UX. Hence, it's not derived from other matches'
+-  // `indent` below.
+-  if (layout_style_ == LayoutStyle::IPH_SUGGESTION &&
+-      icon_view_->GetPreferredSize() == gfx::Size{}) {
+-    return kIphTextIndent;
+-  }
+-
+-  // Answers don't have an icon, and their text needs to line up with the icons
+-  // of other suggestions, so they need a smaller indent.
+-  if (layout_style_ == LayoutStyle::HISTORY_EMBEDDING_ANSWER) {
+-    return 18;
+-  }
+-
+-  // For normal matches, the gap between the left edge of this view and the
+-  // left edge of its favicon or answer image.
+-  int indent = 52;
+-
+-  indent += omnibox_feature_configs::AdjustOmniboxIndent()
+-                .Get()
+-                .match_text_indent_offset;
+-
+-  if (layout_style_ == LayoutStyle::IPH_SUGGESTION) {
+-    // The IPH row left inset is +`kIphOffset` from other suggestions, so the
+-    // text indent should be -`kIphOffset` to keep the text aligned. IPH matches
+-    // seem to have inner padding, so the gap between the left edge of this
+-    // `OmniboxMatchCellView` and the IPH icon/text is actually larger than
+-    // `indent`.
+-    indent -= kIphOffset;
+-  }
+-
+-  return indent;
++  return 30;
+ }
+ 
+ void OmniboxMatchCellView::SetTailSuggestCommonPrefixWidth(
+--- a/chrome/browser/ui/views/omnibox/omnibox_match_cell_view.h
++++ b/chrome/browser/ui/views/omnibox/omnibox_match_cell_view.h
+@@ -34,7 +34,7 @@ class OmniboxMatchCellView : public view
+ 
+   // The height of the standard 1-line match row. Multiline & IPH matches have
+   // larger heights.
+-  static constexpr int kRowHeight = 40;
++  static constexpr int kRowHeight = 28;
+ 
+   // The width of icon, answer, and entity image bounds. These images are
+   // smaller than this bounds; they'll be centered within the bounds.
+--- a/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc
+@@ -726,14 +726,7 @@ gfx::Rect OmniboxPopupViewViews::GetTarg
+   // added if the results section has no height (result set is empty or all
+   // results are hidden). See https://crbug.com/40128770 for additional context.
+   if (popup_height != 0) {
+-    // The amount of extra space is dependent on whether the last match is the
+-    // toolbelt or not. The toolbelt doesn't have an icon or image on the left
+-    // like a regular suggestion nor a big background highlight like an IPH
+-    // suggestion so it doesn't require as much space.
+-    const size_t last_result_index = result_size - 1;
+-    int extra_bottom_padding =
+-        GetMatchAtIndex(last_result_index).IsToolbelt() ? 2 : 8;
+-    popup_height += extra_bottom_padding;
++    popup_height += 4;
+   }
+ 
+   // Add enough space on the top and bottom so it looks like there is the same
+--- a/chrome/browser/ui/views/omnibox/omnibox_suggestion_button_row_view.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_suggestion_button_row_view.cc
+@@ -73,7 +73,7 @@ class OmniboxSuggestionRowChip : public
+                               views::DISTANCE_RELATED_BUTTON_HORIZONTAL)));
+ 
+     SetImageLabelSpacing(5);
+-    SetCustomPadding(gfx::Insets::VH(0, 7));
++    SetCustomPadding(gfx::Insets::VH(0, 6));
+     SetCornerRadius(100);  // Large number to ensure 100% rounded.
+ 
+     views::InkDrop::Get(this)->GetInkDrop()->SetShowHighlightOnHover(false);
+@@ -266,7 +266,7 @@ class OmniboxSuggestionButtonRowLayout :
+   //   the suggestion text/view. Additionally, the values here were selected to
+   //   produce the designed layout, but they should either be explained further
+   //   here or specified with `ChromeLayoutProvider`.
+-  gfx::Insets row_insets_ = gfx::Insets::TLBR(6, 4, 6, 0);
++  gfx::Insets row_insets_ = gfx::Insets::TLBR(1, 4, 0, 0);
+   gfx::Insets button_insets_ =
+       gfx::Insets::TLBR(0,
+                         0,
+@@ -299,10 +299,9 @@ class OmniboxSuggestionRowButton : publi
+                              ui::EF_MIDDLE_MOUSE_BUTTON);
+     views::InstallPillHighlightPathGenerator(this);
+ 
+-    SetImageLabelSpacing(8);
+-    SetCustomPadding(ChromeLayoutProvider::Get()->GetInsetsMetric(
+-        INSETS_OMNIBOX_PILL_BUTTON));
+-    SetCornerRadius(GetLayoutConstant(LayoutConstant::kToolbarCornerRadius));
++    SetImageLabelSpacing(6);
++    SetCustomPadding(gfx::Insets::VH(3, 8));
++    SetCornerRadius(8);
+ 
+     auto* const ink_drop = views::InkDrop::Get(this);
+     SetAnimationDuration(base::TimeDelta());
+@@ -314,6 +313,7 @@ class OmniboxSuggestionRowButton : publi
+       CHECK(v);
+       return v->GetVisible() && v->popup_view_->GetSelection() == v->selection_;
+     }));
++    focus_ring->SetOutsetFocusRingDisabled(true);
+     focus_ring->SetColorId(kColorOmniboxResultsFocusIndicator);
+ 
+     GetViewAccessibility().SetRole(ax::mojom::Role::kListBoxOption);
+--- a/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
++++ b/chrome/browser/ui/views/omnibox/omnibox_view_views.cc
+@@ -675,7 +675,7 @@ int OmniboxViewViews::GetUnelidedTextWid
+ }
+ 
+ gfx::Size OmniboxViewViews::GetMinimumSize() const {
+-  constexpr int kMinCharacters = 20;
++  constexpr int kMinCharacters = 32;
+   return gfx::Size(
+       GetFontList().GetExpectedTextWidth(kMinCharacters) + GetInsets().width(),
+       GetPreferredSize().height());

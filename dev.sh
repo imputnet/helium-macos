@@ -2,6 +2,7 @@
 
 _root_dir=$(dirname $(greadlink -f $0))
 
+# source "~/.venvs/helium/bin/activate"
 source "$_root_dir/env.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 

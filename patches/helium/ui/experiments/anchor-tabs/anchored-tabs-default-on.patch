@@ -1,0 +1,16 @@
+Index: src/chrome/browser/ui/ui_features.cc
+===================================================================
+--- src.orig/chrome/browser/ui/ui_features.cc
++++ src/chrome/browser/ui/ui_features.cc
+@@ -36,8 +36,9 @@ bool IsHeliumAnchoredTabsStartupModeEnab
+     return false;
+   }
+ 
+-  enabled_at_startup = SessionStartupPref::GetStartupPref(profile).type ==
+-                       SessionStartupPref::LAST_WITH_ANCHORING;
++  const auto type = SessionStartupPref::GetStartupPref(profile).type;
++  enabled_at_startup = type == SessionStartupPref::LAST_WITH_ANCHORING ||
++                       type == SessionStartupPref::LAST;
+   return *enabled_at_startup;
+ }
+ 

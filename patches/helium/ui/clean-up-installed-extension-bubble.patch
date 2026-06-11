@@ -1,0 +1,32 @@
+--- a/chrome/browser/ui/extensions/extension_post_install_dialog.cc
++++ b/chrome/browser/ui/extensions/extension_post_install_dialog.cc
+@@ -60,29 +60,6 @@ void ConfigurePostInstallDialogModel(
+       .SetIcon(
+           ui::ImageModel::FromImageSkia(model->MakeIconOfSize(kMaxIconSize)));
+ 
+-  if (model->show_how_to_use()) {
+-    dialog_model_builder.AddParagraph(
+-        ui::DialogModelLabel(model->GetHowToUseText()));
+-  }
+-  if (model->show_key_binding() && manage_shortcuts_callback) {
+-    dialog_model_builder.AddParagraph(
+-        ui::DialogModelLabel::CreateWithReplacement(
+-            IDS_EXTENSION_INSTALLED_MANAGE_SHORTCUTS,
+-            ui::DialogModelLabel::CreateLink(
+-                IDS_EXTENSION_INSTALLED_MANAGE_SHORTCUTS_LINK_TEXT,
+-                manage_shortcuts_callback)));
+-  }
+-  if (model->show_how_to_manage()) {
+-    int manage_info_string_id = IDS_EXTENSION_INSTALLED_MANAGE_INFO;
+-#if BUILDFLAG(IS_ANDROID)
+-    if (!profile->GetPrefs()->GetBoolean(prefs::kPinExtensionsMenuButton)) {
+-      manage_info_string_id = IDS_EXTENSION_INSTALLED_MANAGE_INFO_IN_MAIN_MENU;
+-    }
+-#endif
+-    dialog_model_builder.AddParagraph(
+-        ui::DialogModelLabel(l10n_util::GetStringUTF16(manage_info_string_id)));
+-  }
+-
+ #if BUILDFLAG(IS_ANDROID)
+   dialog_model_builder.AddOkButton(
+       base::DoNothing(),

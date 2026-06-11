@@ -1,0 +1,307 @@
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/air_command_bar_controller.h
+@@ -0,0 +1,36 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#ifndef CHROME_BROWSER_UI_COCOA_AIR_COMMAND_BAR_CONTROLLER_H_
++#define CHROME_BROWSER_UI_COCOA_AIR_COMMAND_BAR_CONTROLLER_H_
++
++#import <Cocoa/Cocoa.h>
++
++#include "base/memory/raw_ptr.h"
++
++class Browser;
++
++@interface AirCommandBarResult : NSObject
++@property(nonatomic, copy) NSString* title;
++@property(nonatomic, copy) NSString* subtitle;
++@property(nonatomic, copy) NSString* url;
++@property(nonatomic, copy) NSString* type;
++@property(nonatomic, strong) NSImage* favicon;
++@end
++
++// Floating command palette — Arc's "Little Arc" equivalent.
++// Shown via Cmd+T, dismissed by Esc or clicking outside.
++@interface AirCommandBarController : NSWindowController <NSWindowDelegate,
++                                                          NSTableViewDelegate,
++                                                          NSTableViewDataSource,
++                                                          NSTextFieldDelegate>
++
+++ (instancetype)sharedControllerForBrowser:(Browser*)browser;
++
++- (void)show;
++- (void)hide;
++- (BOOL)isVisible;
++
++@end
++
++#endif  // CHROME_BROWSER_UI_COCOA_AIR_COMMAND_BAR_CONTROLLER_H_
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/air_command_bar_controller.mm
+@@ -0,0 +1,265 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#import "chrome/browser/ui/cocoa/air_command_bar_controller.h"
++
++#include "base/strings/sys_string_conversions.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_navigator.h"
++#include "chrome/browser/ui/browser_navigator_params.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/base/page_transition_types.h"
++#include "url/gurl.h"
++
++static const CGFloat kWindowWidth = 640.0;
++static const CGFloat kWindowHeight = 400.0;
++static const CGFloat kInputHeight = 52.0;
++static const CGFloat kResultRowHeight = 44.0;
++static const NSInteger kMaxResults = 8;
++static const CGFloat kCornerRadius = 12.0;
++
++@implementation AirCommandBarResult
++@end
++
++@interface AirCommandBarController () {
++  raw_ptr<Browser> _browser;
++  NSTextField* _searchField;
++  NSScrollView* _scrollView;
++  NSTableView* _tableView;
++  NSMutableArray<AirCommandBarResult*>* _results;
++  NSInteger _selectedIndex;
++}
++@end
++
++@implementation AirCommandBarController
++
+++ (instancetype)sharedControllerForBrowser:(Browser*)browser {
++  static AirCommandBarController* instance = nil;
++  static dispatch_once_t onceToken;
++  dispatch_once(&onceToken, ^{
++    instance = [[AirCommandBarController alloc] initWithBrowser:browser];
++  });
++  return instance;
++}
++
++- (instancetype)initWithBrowser:(Browser*)browser {
++  NSPanel* panel = [[NSPanel alloc]
++      initWithContentRect:NSMakeRect(0, 0, kWindowWidth, kWindowHeight)
++                styleMask:NSWindowStyleMaskNonactivatingPanel |
++                          NSWindowStyleMaskFullSizeContentView
++                  backing:NSBackingStoreBuffered
++                    defer:NO];
++  panel.opaque = NO;
++  panel.backgroundColor = NSColor.clearColor;
++  panel.hasShadow = YES;
++  panel.level = NSFloatingWindowLevel;
++  panel.hidesOnDeactivate = YES;
++  panel.delegate = self;
++
++  if ((self = [super initWithWindow:panel])) {
++    _browser = browser;
++    _results = [NSMutableArray array];
++    _selectedIndex = -1;
++    [self buildUI];
++  }
++  return self;
++}
++
++- (void)buildUI {
++  NSView* content = self.window.contentView;
++
++  NSVisualEffectView* blur =
++      [[NSVisualEffectView alloc] initWithFrame:content.bounds];
++  blur.material = NSVisualEffectMaterialHUDWindow;
++  blur.blendingMode = NSVisualEffectBlendingModeBehindWindow;
++  blur.state = NSVisualEffectStateActive;
++  blur.wantsLayer = YES;
++  blur.layer.cornerRadius = kCornerRadius;
++  blur.layer.masksToBounds = YES;
++  blur.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  [content addSubview:blur];
++
++  _searchField = [[NSTextField alloc]
++      initWithFrame:NSMakeRect(12, kWindowHeight - kInputHeight,
++                               kWindowWidth - 24, kInputHeight)];
++  _searchField.placeholderString = @"Search tabs, history, and web...";
++  _searchField.bordered = NO;
++  _searchField.drawsBackground = NO;
++  _searchField.font = [NSFont systemFontOfSize:18 weight:NSFontWeightRegular];
++  _searchField.focusRingType = NSFocusRingTypeNone;
++  _searchField.delegate = self;
++  _searchField.autoresizingMask = NSViewWidthSizable;
++  [content addSubview:_searchField];
++
++  NSBox* separator = [[NSBox alloc]
++      initWithFrame:NSMakeRect(0, kWindowHeight - kInputHeight - 1,
++                               kWindowWidth, 1)];
++  separator.boxType = NSBoxSeparator;
++  separator.autoresizingMask = NSViewWidthSizable;
++  [content addSubview:separator];
++
++  _tableView = [[NSTableView alloc] init];
++  _tableView.headerView = nil;
++  _tableView.rowHeight = kResultRowHeight;
++  _tableView.intercellSpacing = NSMakeSize(0, 0);
++  _tableView.backgroundColor = NSColor.clearColor;
++  _tableView.delegate = self;
++  _tableView.dataSource = self;
++  NSTableColumn* col = [[NSTableColumn alloc] initWithIdentifier:@"result"];
++  col.width = kWindowWidth;
++  [_tableView addTableColumn:col];
++
++  _scrollView = [[NSScrollView alloc]
++      initWithFrame:NSMakeRect(0, 0, kWindowWidth,
++                               kWindowHeight - kInputHeight - 1)];
++  _scrollView.documentView = _tableView;
++  _scrollView.hasVerticalScroller = NO;
++  _scrollView.drawsBackground = NO;
++  _scrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++  [content addSubview:_scrollView];
++}
++
++- (void)show {
++  [self.window center];
++  [_searchField setStringValue:@""];
++  [self queryWithString:@""];
++  [self showWindow:nil];
++  [self.window makeKeyAndOrderFront:nil];
++  [self.window makeFirstResponder:_searchField];
++}
++
++- (void)hide {
++  [self.window orderOut:nil];
++  _selectedIndex = -1;
++}
++
++- (BOOL)isVisible {
++  return self.window.isVisible;
++}
++
++#pragma mark - NSTextFieldDelegate
++
++- (void)controlTextDidChange:(NSNotification*)notification {
++  [self queryWithString:_searchField.stringValue];
++}
++
++- (BOOL)control:(NSControl*)control
++       textView:(NSTextView*)textView
++    doCommandBySelector:(SEL)selector {
++  if (selector == @selector(moveDown:)) {
++    _selectedIndex = MIN(_selectedIndex + 1, (NSInteger)_results.count - 1);
++    [_tableView selectRowIndexes:[NSIndexSet indexSetWithIndex:_selectedIndex]
++            byExtendingSelection:NO];
++    return YES;
++  }
++  if (selector == @selector(moveUp:)) {
++    _selectedIndex = MAX(_selectedIndex - 1, 0);
++    [_tableView selectRowIndexes:[NSIndexSet indexSetWithIndex:_selectedIndex]
++            byExtendingSelection:NO];
++    return YES;
++  }
++  if (selector == @selector(insertNewline:)) {
++    [self activateSelectedResult];
++    return YES;
++  }
++  if (selector == @selector(cancelOperation:)) {
++    [self hide];
++    return YES;
++  }
++  return NO;
++}
++
++- (void)queryWithString:(NSString*)query {
++  [_results removeAllObjects];
++  TabStripModel* strip = _browser->tab_strip_model();
++  for (int i = 0; i < strip->count() &&
++       _results.count < (NSUInteger)kMaxResults; ++i) {
++    content::WebContents* wc = strip->GetWebContentsAt(i);
++    NSString* title = base::SysUTF16ToNSString(wc->GetTitle());
++    NSString* url =
++        base::SysUTF8ToNSString(wc->GetLastCommittedURL().spec());
++    if (query.length == 0 ||
++        [title localizedCaseInsensitiveContainsString:query] ||
++        [url localizedCaseInsensitiveContainsString:query]) {
++      AirCommandBarResult* r = [[AirCommandBarResult alloc] init];
++      r.title = title;
++      r.subtitle = url;
++      r.url = url;
++      r.type = @"tab";
++      [_results addObject:r];
++    }
++  }
++  if (query.length > 0 && _results.count < (NSUInteger)kMaxResults) {
++    NSString* encoded = [query stringByAddingPercentEncodingWithAllowedCharacters:
++                         NSCharacterSet.URLQueryAllowedCharacterSet];
++    AirCommandBarResult* r = [[AirCommandBarResult alloc] init];
++    r.title = [NSString stringWithFormat:@"Search for \"%@\"", query];
++    r.subtitle = @"Google Search";
++    r.url = [NSString stringWithFormat:@"https://www.google.com/search?q=%@",
++             encoded];
++    r.type = @"search";
++    [_results addObject:r];
++  }
++  _selectedIndex = _results.count > 0 ? 0 : -1;
++  [_tableView reloadData];
++  if (_selectedIndex >= 0) {
++    [_tableView selectRowIndexes:[NSIndexSet indexSetWithIndex:0]
++            byExtendingSelection:NO];
++  }
++}
++
++- (void)activateSelectedResult {
++  if (_selectedIndex < 0 || _selectedIndex >= (NSInteger)_results.count)
++    return;
++  AirCommandBarResult* r = _results[_selectedIndex];
++  GURL url(base::SysNSStringToUTF8(r.url));
++  NavigateParams params(_browser, url, ui::PAGE_TRANSITION_TYPED);
++  params.disposition = WindowOpenDisposition::CURRENT_TAB;
++  Navigate(&params);
++  [self hide];
++}
++
++#pragma mark - NSTableViewDataSource
++
++- (NSInteger)numberOfRowsInTableView:(NSTableView*)tableView {
++  return _results.count;
++}
++
++#pragma mark - NSTableViewDelegate
++
++- (NSView*)tableView:(NSTableView*)tableView
++    viewForTableColumn:(NSTableColumn*)tableColumn
++                   row:(NSInteger)row {
++  AirCommandBarResult* r = _results[row];
++  NSTableCellView* cell =
++      [tableView makeViewWithIdentifier:@"AirCommandBarCell" owner:self];
++  if (!cell) {
++    cell = [[NSTableCellView alloc] init];
++    cell.identifier = @"AirCommandBarCell";
++    NSTextField* title = [NSTextField labelWithString:@""];
++    title.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
++    title.frame = NSMakeRect(12, 22, kWindowWidth - 24, 18);
++    title.autoresizingMask = NSViewWidthSizable;
++    title.tag = 1;
++    [cell addSubview:title];
++    NSTextField* sub = [NSTextField labelWithString:@""];
++    sub.font = [NSFont systemFontOfSize:11];
++    sub.textColor = NSColor.secondaryLabelColor;
++    sub.frame = NSMakeRect(12, 6, kWindowWidth - 24, 14);
++    sub.autoresizingMask = NSViewWidthSizable;
++    sub.tag = 2;
++    [cell addSubview:sub];
++  }
++  ((NSTextField*)[cell viewWithTag:1]).stringValue = r.title ?: @"";
++  ((NSTextField*)[cell viewWithTag:2]).stringValue = r.subtitle ?: @"";
++  return cell;
++}
++
++#pragma mark - NSWindowDelegate
++
++- (void)windowDidResignKey:(NSNotification*)notification {
++  [self hide];
++}
++
++@end

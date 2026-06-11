@@ -1,0 +1,171 @@
+--- a/chrome/browser/extensions/api/messaging/launch_context_posix.cc
++++ b/chrome/browser/extensions/api/messaging/launch_context_posix.cc
+@@ -44,11 +44,22 @@ base::FilePath LaunchContext::FindManife
+   if (allow_user_level_hosts) {
+     result = FindManifestInDir(chrome::DIR_USER_NATIVE_MESSAGING, host_name);
+   }
++
++  // FIXME: this is not supported on windows,
++  // because idrgaf about windows. make a patch
++  if (result.empty() && allow_user_level_hosts) {
++    result = FindManifestInDir(chrome::DIR_CHROME_USER_NATIVE_MESSAGING, host_name);
++  }
++
+   if (result.empty()) {
+     result = FindManifestInDir(chrome::DIR_NATIVE_MESSAGING, host_name);
+   }
+ 
+   if (result.empty()) {
++    result = FindManifestInDir(chrome::DIR_CHROME_NATIVE_MESSAGING, host_name);
++  }
++
++  if (result.empty()) {
+     error_message = "Can't find native messaging host " + host_name;
+   }
+ 
+--- a/chrome/common/chrome_paths.cc
++++ b/chrome/common/chrome_paths.cc
+@@ -153,6 +153,11 @@ bool PathProvider(int key, base::FilePat
+       }
+       create_dir = true;
+       break;
++    case chrome::DIR_CHROME_USER_DATA:
++      if (!GetChromeUserDataDirectory(&cur)) {
++        return false;
++      }
++      break;
+     case chrome::DIR_USER_DOCUMENTS:
+       if (!GetUserDocumentsDirectory(&cur)) {
+         return false;
+@@ -487,11 +492,28 @@ bool PathProvider(int key, base::FilePat
+ #endif  // !BUILDFLAG(IS_MAC)
+       break;
+ 
++      case chrome::DIR_CHROME_NATIVE_MESSAGING:
++      #if BUILDFLAG(IS_MAC)
++            cur = base::FilePath(
++                FILE_PATH_LITERAL("/Library/Google/Chrome/NativeMessagingHosts"));
++      #else  // BUILDFLAG(IS_MAC)
++            cur = base::FilePath(
++                FILE_PATH_LITERAL("/etc/opt/chrome/native-messaging-hosts"));
++      #endif  // !BUILDFLAG(IS_MAC)
++      break;
++
+     case chrome::DIR_USER_NATIVE_MESSAGING:
+       if (!base::PathService::Get(chrome::DIR_USER_DATA, &cur)) {
+         return false;
+       }
+       cur = cur.Append(FILE_PATH_LITERAL("NativeMessagingHosts"));
++      break;
++
++    case chrome::DIR_CHROME_USER_NATIVE_MESSAGING:
++      if (!base::PathService::Get(chrome::DIR_CHROME_USER_DATA, &cur)) {
++        return false;
++      }
++      cur = cur.Append(FILE_PATH_LITERAL("NativeMessagingHosts"));
+       break;
+ #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE) && (BUILDFLAG(IS_LINUX) ||
+         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID))
+--- a/chrome/common/chrome_paths.h
++++ b/chrome/common/chrome_paths.h
+@@ -24,6 +24,7 @@ enum {
+ 
+   DIR_LOGS = PATH_START,  // Directory where logs should be written.
+   DIR_USER_DATA,          // Directory where user data can be written.
++  DIR_CHROME_USER_DATA,   // Directory where Chrome would write user data.
+   DIR_CRASH_METRICS,      // Directory where crash metrics are written.
+   DIR_CRASH_DUMPS,        // Directory where crash dumps are written.
+   DIR_LOCAL_TRACES,       // Directory where local traces are written.
+@@ -109,6 +110,9 @@ enum {
+                               // manifest files are stored.
+   DIR_USER_NATIVE_MESSAGING,  // Directory with Native Messaging Hosts
+                               // installed per-user.
++  DIR_CHROME_NATIVE_MESSAGING,      // Default "Chrome" directories, which is where
++                                    // third-party applications usually drop their
++  DIR_CHROME_USER_NATIVE_MESSAGING, // files (since they might not know about our fork).
+ #endif
+ #if !BUILDFLAG(IS_ANDROID)
+   DIR_GLOBAL_GCM_STORE,  // Directory where the global GCM instance
+--- a/chrome/common/chrome_paths_android.cc
++++ b/chrome/common/chrome_paths_android.cc
+@@ -19,6 +19,11 @@ bool GetDefaultUserDataDirectory(base::F
+   return base::PathService::Get(base::DIR_ANDROID_APP_DATA, result);
+ }
+ 
++bool GetChromeUserDataDirectory(base::FilePath* result) {
++  // We can't cross-access Chrome files on Android
++  return false;
++}
++
+ bool GetUserDocumentsDirectory(base::FilePath* result) {
+   if (!GetDefaultUserDataDirectory(result))
+     return false;
+--- a/chrome/common/chrome_paths_internal.h
++++ b/chrome/common/chrome_paths_internal.h
+@@ -35,6 +35,9 @@ std::optional<bool> IsUsingDefaultDataDi
+ // value for testing. Set to `std::nullopt` to restore the default behavior.
+ void SetUsingDefaultUserDataDirectoryForTesting(std::optional<bool> is_default);
+ 
++// Get the path to where Chrome would make a user data directory.
++bool GetChromeUserDataDirectory(base::FilePath* result);
++
+ #if BUILDFLAG(IS_WIN)
+ // Get the path to the roaming user's data directory, regardless of whether
+ // DIR_ROAMING_USER_DATA has been overridden by a command-line option.
+--- a/chrome/common/chrome_paths_linux.cc
++++ b/chrome/common/chrome_paths_linux.cc
+@@ -101,6 +101,24 @@ bool GetDefaultUserDataDirectory(base::F
+   return true;
+ }
+ 
++bool GetChromeUserDataDirectory(base::FilePath* result) {
++  std::unique_ptr<base::Environment> env(base::Environment::Create());
++  base::FilePath config_dir;
++  std::optional<std::string> chrome_config_home_str =
++      env->GetVar("CHROME_CONFIG_HOME");
++
++  if (chrome_config_home_str && base::IsStringUTF8(*chrome_config_home_str)) {
++    config_dir = base::FilePath::FromUTF8Unsafe(*chrome_config_home_str);
++  } else {
++    config_dir =
++        GetXDGDirectory(env.get(), kXdgConfigHomeEnvVar, kDotConfigDir);
++  }
++
++  std::string data_dir_basename = "google-chrome";
++  *result = config_dir.Append(data_dir_basename);
++  return true;
++}
++
+ void GetUserCacheDirectory(const base::FilePath& profile_dir,
+                            base::FilePath* result) {
+   // See http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+--- a/chrome/common/chrome_paths_win.cc
++++ b/chrome/common/chrome_paths_win.cc
+@@ -47,6 +47,14 @@ bool GetDefaultUserDataDirectory(base::F
+   return true;
+ }
+ 
++bool GetChromeUserDataDirectory(base::FilePath* result) {
++  if (!base::PathService::Get(base::DIR_LOCAL_APP_DATA, result))
++    return false;
++  *result = result->Append(L"Google\\Chrome");
++  *result = result->Append(chrome::kUserDataDirname);
++  return true;
++}
++
+ bool GetDefaultRoamingUserDataDirectory(base::FilePath* result) {
+   if (!base::PathService::Get(base::DIR_ROAMING_APP_DATA, result))
+     return false;
+--- a/chrome/common/chrome_paths_mac.mm
++++ b/chrome/common/chrome_paths_mac.mm
+@@ -87,6 +87,10 @@ bool GetDefaultUserDataDirectory(base::F
+   return GetDefaultUserDataDirectoryForProduct(ProductDirName(), result);
+ }
+ 
++bool GetChromeUserDataDirectory(base::FilePath* result) {
++  return GetDefaultUserDataDirectoryForProduct("Google/Chrome", result);
++}
++
+ bool GetUserDocumentsDirectory(base::FilePath* result) {
+   return base::apple::GetUserDirectory(NSDocumentDirectory, result);
+ }

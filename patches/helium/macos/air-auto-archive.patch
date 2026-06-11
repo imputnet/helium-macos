@@ -1,0 +1,276 @@
+--- /dev/null
++++ b/chrome/browser/ui/tabs/air_tab_archive_service.h
+@@ -0,0 +1,90 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#ifndef CHROME_BROWSER_UI_TABS_AIR_TAB_ARCHIVE_SERVICE_H_
++#define CHROME_BROWSER_UI_TABS_AIR_TAB_ARCHIVE_SERVICE_H_
++
++#include <map>
++#include <string>
++#include <vector>
++
++#include "base/memory/raw_ptr.h"
++#include "base/observer_list.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
++#include "components/keyed_service/core/keyed_service.h"
++#include "url/gurl.h"
++
++class Profile;
++class TabStripModel;
++
++namespace air {
++
++struct ArchivedTab {
++  GURL url;
++  std::u16string title;
++  base::Time archived_at;
++};
++
++class AirTabArchiveObserver {
++ public:
++  virtual void OnTabArchived(const ArchivedTab& tab) {}
++  virtual void OnArchivedTabRestored(const GURL& url) {}
++  virtual void OnArchiveCleared() {}
++};
++
++class AirTabArchiveService : public KeyedService,
++                              public TabStripModelObserver {
++ public:
++  enum class ArchiveThreshold {
++    kNever = 0,
++    kOneDay = 1,
++    kThreeDays = 3,
++    kOneWeek = 7,
++  };
++
++  explicit AirTabArchiveService(Profile* profile);
++  ~AirTabArchiveService() override;
++
++  AirTabArchiveService(const AirTabArchiveService&) = delete;
++  AirTabArchiveService& operator=(const AirTabArchiveService&) = delete;
++
++  void ObserveTabStrip(TabStripModel* tab_strip);
++
++  const std::vector<ArchivedTab>& GetArchivedTabs() const {
++    return archived_tabs_;
++  }
++
++  ArchiveThreshold GetThreshold() const { return threshold_; }
++  void SetThreshold(ArchiveThreshold threshold);
++
++  void RestoreTab(const GURL& url, TabStripModel* tab_strip);
++  void ClearArchive();
++
++  void AddObserver(AirTabArchiveObserver* observer);
++  void RemoveObserver(AirTabArchiveObserver* observer);
++
++ private:
++  void OnTabStripModelChanged(
++      TabStripModel* tab_strip_model,
++      const TabStripModelChange& change,
++      const TabStripSelectionChange& selection) override;
++
++  void OnHourlyCheck();
++  void LoadFromPrefs();
++  void SaveToPrefs();
++  base::TimeDelta ThresholdDelta() const;
++
++  raw_ptr<Profile> profile_;
++  raw_ptr<TabStripModel> observed_tab_strip_ = nullptr;
++  std::vector<ArchivedTab> archived_tabs_;
++  ArchiveThreshold threshold_ = ArchiveThreshold::kOneDay;
++  std::map<int, base::Time> tab_last_activated_;
++  base::RepeatingTimer hourly_timer_;
++  base::ObserverList<AirTabArchiveObserver> observers_;
++};
++
++}  // namespace air
++
++#endif  // CHROME_BROWSER_UI_TABS_AIR_TAB_ARCHIVE_SERVICE_H_
+--- /dev/null
++++ b/chrome/browser/ui/tabs/air_tab_archive_service.cc
+@@ -0,0 +1,180 @@
++// Copyright 2024 The Air Browser Authors
++// Use of this source code is governed by GPL-3.0 license.
++
++#include "chrome/browser/ui/tabs/air_tab_archive_service.h"
++
++#include "base/strings/utf_string_conversions.h"
++#include "base/time/time.h"
++#include "base/values.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser_navigator.h"
++#include "chrome/browser/ui/browser_navigator_params.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/prefs/pref_registry_simple.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/base/page_transition_types.h"
++
++namespace {
++const char kArchivedTabsPrefKey[] = "air_browser.archived_tabs";
++const char kArchiveThresholdPrefKey[] = "air_browser.archive_threshold_days";
++constexpr base::TimeDelta kCheckInterval = base::Hours(1);
++}  // namespace
++
++namespace air {
++
++AirTabArchiveService::AirTabArchiveService(Profile* profile)
++    : profile_(profile) {
++  LoadFromPrefs();
++  int days = profile_->GetPrefs()->GetInteger(kArchiveThresholdPrefKey);
++  switch (days) {
++    case 0: threshold_ = ArchiveThreshold::kNever; break;
++    case 3: threshold_ = ArchiveThreshold::kThreeDays; break;
++    case 7: threshold_ = ArchiveThreshold::kOneWeek; break;
++    default: threshold_ = ArchiveThreshold::kOneDay; break;
++  }
++}
++
++AirTabArchiveService::~AirTabArchiveService() {
++  if (observed_tab_strip_) {
++    observed_tab_strip_->RemoveObserver(this);
++  }
++}
++
++void AirTabArchiveService::ObserveTabStrip(TabStripModel* tab_strip) {
++  DCHECK(tab_strip);
++  observed_tab_strip_ = tab_strip;
++  tab_strip->AddObserver(this);
++  if (threshold_ != ArchiveThreshold::kNever) {
++    hourly_timer_.Start(FROM_HERE, kCheckInterval, this,
++                        &AirTabArchiveService::OnHourlyCheck);
++  }
++}
++
++void AirTabArchiveService::SetThreshold(ArchiveThreshold threshold) {
++  threshold_ = threshold;
++  profile_->GetPrefs()->SetInteger(kArchiveThresholdPrefKey,
++                                   static_cast<int>(threshold));
++  if (threshold == ArchiveThreshold::kNever) {
++    hourly_timer_.Stop();
++  } else if (!hourly_timer_.IsRunning() && observed_tab_strip_) {
++    hourly_timer_.Start(FROM_HERE, kCheckInterval, this,
++                        &AirTabArchiveService::OnHourlyCheck);
++  }
++}
++
++void AirTabArchiveService::RestoreTab(const GURL& url,
++                                       TabStripModel* tab_strip) {
++  DCHECK(tab_strip);
++  std::erase_if(archived_tabs_,
++                [&url](const ArchivedTab& t) { return t.url == url; });
++  SaveToPrefs();
++  NavigateParams params(tab_strip->profile(), url,
++                        ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
++  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++  Navigate(&params);
++  for (auto& observer : observers_) {
++    observer.OnArchivedTabRestored(url);
++  }
++}
++
++void AirTabArchiveService::ClearArchive() {
++  archived_tabs_.clear();
++  SaveToPrefs();
++  for (auto& observer : observers_) {
++    observer.OnArchiveCleared();
++  }
++}
++
++void AirTabArchiveService::AddObserver(AirTabArchiveObserver* observer) {
++  observers_.AddObserver(observer);
++}
++
++void AirTabArchiveService::RemoveObserver(AirTabArchiveObserver* observer) {
++  observers_.RemoveObserver(observer);
++}
++
++void AirTabArchiveService::OnTabStripModelChanged(
++    TabStripModel* tab_strip_model,
++    const TabStripModelChange& change,
++    const TabStripSelectionChange& selection) {
++  if (selection.active_tab_changed() && selection.new_contents) {
++    int index =
++        tab_strip_model->GetIndexOfWebContents(selection.new_contents);
++    if (index >= 0) {
++      tab_last_activated_[index] = base::Time::Now();
++    }
++  }
++}
++
++void AirTabArchiveService::OnHourlyCheck() {
++  if (!observed_tab_strip_ || threshold_ == ArchiveThreshold::kNever) return;
++
++  base::TimeDelta max_inactive = ThresholdDelta();
++  base::Time now = base::Time::Now();
++
++  for (int i = observed_tab_strip_->count() - 1; i >= 0; --i) {
++    if (observed_tab_strip_->active_index() == i) continue;
++    auto it = tab_last_activated_.find(i);
++    base::Time last_active = (it != tab_last_activated_.end())
++                                 ? it->second
++                                 : now - max_inactive * 2;
++    if ((now - last_active) <= max_inactive) continue;
++
++    content::WebContents* wc = observed_tab_strip_->GetWebContentsAt(i);
++    ArchivedTab archived;
++    archived.url = wc->GetLastCommittedURL();
++    archived.title = wc->GetTitle();
++    archived.archived_at = now;
++    archived_tabs_.push_back(archived);
++    observed_tab_strip_->CloseWebContentsAt(
++        i, TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB);
++    for (auto& observer : observers_) {
++      observer.OnTabArchived(archived);
++    }
++  }
++  SaveToPrefs();
++}
++
++base::TimeDelta AirTabArchiveService::ThresholdDelta() const {
++  return base::Days(static_cast<int>(threshold_));
++}
++
++void AirTabArchiveService::LoadFromPrefs() {
++  const base::Value::List& list =
++      profile_->GetPrefs()->GetList(kArchivedTabsPrefKey);
++  archived_tabs_.clear();
++  for (const auto& item : list) {
++    const base::Value::Dict* dict = item.GetIfDict();
++    if (!dict) continue;
++    ArchivedTab tab;
++    if (const std::string* url = dict->FindString("url"))
++      tab.url = GURL(*url);
++    if (const std::string* title = dict->FindString("title"))
++      tab.title = base::UTF8ToUTF16(*title);
++    if (const std::string* ts = dict->FindString("archived_at")) {
++      int64_t micros;
++      if (base::StringToInt64(*ts, &micros)) {
++        tab.archived_at = base::Time::FromDeltaSinceWindowsEpoch(
++            base::Microseconds(micros));
++      }
++    }
++    archived_tabs_.push_back(std::move(tab));
++  }
++}
++
++void AirTabArchiveService::SaveToPrefs() {
++  base::Value::List list;
++  for (const auto& tab : archived_tabs_) {
++    base::Value::Dict dict;
++    dict.Set("url", tab.url.spec());
++    dict.Set("title", base::UTF16ToUTF8(tab.title));
++    dict.Set("archived_at",
++             base::NumberToString(
++                 tab.archived_at.ToDeltaSinceWindowsEpoch().InMicroseconds()));
++    list.Append(std::move(dict));
++  }
++  profile_->GetPrefs()->SetList(kArchivedTabsPrefKey, std::move(list));
++}
++
++}  // namespace air

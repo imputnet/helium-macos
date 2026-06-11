@@ -1,0 +1,63 @@
+--- a/components/update_client/update_query_params.h
++++ b/components/update_client/update_query_params.h
+@@ -19,7 +19,7 @@ class UpdateQueryParamsDelegate;
+ // browser process.
+ class UpdateQueryParams {
+  public:
+-  enum ProdId { CHROME = 0, CRX, WEBVIEW, IOS_WEBVIEW };
++  enum ProdId { CHROME = 0, CRX, WEBVIEW, IOS_WEBVIEW, CRX_DUMMY };
+ 
+   UpdateQueryParams() = delete;
+   UpdateQueryParams(const UpdateQueryParams&) = delete;
+--- a/components/update_client/update_query_params.cc
++++ b/components/update_client/update_query_params.cc
+@@ -68,7 +68,7 @@ constexpr std::string_view kArch =
+ #error "unknown arch"
+ #endif
+ 
+-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
++#if true
+ constexpr char kChrome[] = "chrome";
+ constexpr char kCrx[] = "chromecrx";
+ constexpr char kWebView[] = "googleandroidwebview";
+@@ -86,6 +86,10 @@ UpdateQueryParamsDelegate* g_delegate =
+ 
+ // static
+ std::string UpdateQueryParams::Get(ProdId prod) {
++  if (prod == CRX_DUMMY) {
++    return "os=win&arch=x64&os_arch=x86_64&nacl_arch=x86-64&prod=chromecrx&acceptformat=crx3,puff";
++  }
++
+   return base::StringPrintf(
+       "os=%s&arch=%s&prod=%s%s&acceptformat=crx3,puff", kOs, kArch,
+       GetProdIdString(prod),
+@@ -98,6 +102,7 @@ const char* UpdateQueryParams::GetProdId
+     case UpdateQueryParams::CHROME:
+       return kChrome;
+     case UpdateQueryParams::CRX:
++    case UpdateQueryParams::CRX_DUMMY:
+       return kCrx;
+     case UpdateQueryParams::WEBVIEW:
+       return kWebView;
+--- a/chrome/browser/extensions/updater/chrome_extension_downloader_factory.cc
++++ b/chrome/browser/extensions/updater/chrome_extension_downloader_factory.cc
+@@ -46,7 +46,7 @@ ChromeExtensionDownloaderFactory::Create
+   }
+ #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   std::string manifest_query_params =
+-      UpdateQueryParams::Get(UpdateQueryParams::CRX);
++      UpdateQueryParams::Get(UpdateQueryParams::CRX_DUMMY);
+   base::CommandLine* command_line =
+       base::CommandLine::ForCurrentProcess();
+   if (command_line->HasSwitch(extensions::kSwitchTestRequestParam)) {
+--- a/extensions/browser/webstore_installer.cc
++++ b/extensions/browser/webstore_installer.cc
+@@ -199,7 +199,7 @@ GURL WebstoreInstaller::GetWebstoreInsta
+   GURL url(
+       url_string + "?response=redirect&" +
+       update_client::UpdateQueryParams::Get(
+-          update_client::UpdateQueryParams::CRX) +
++          update_client::UpdateQueryParams::CRX_DUMMY) +
+       "&x=" + base::EscapeQueryParamValue(base::JoinString(params, "&"), true));
+   DCHECK(url.is_valid());
+ 

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 install *)",
+      "Bash(pip install *)",
+      "Bash(brew list *)",
+      "Bash(git -C /Users/franz.muehringer/Projects/chrome-air/air show HEAD:patches/series)",
+      "Bash(cp /Users/franz.muehringer/Projects/chrome-air/air/patches/series.orig /Users/franz.muehringer/Projects/chrome-air/air/patches/series)",
+      "Bash(rm /Users/franz.muehringer/Projects/chrome-air/air/patches/series.orig /Users/franz.muehringer/Projects/chrome-air/air/patches/series.prepend /Users/franz.muehringer/Projects/chrome-air/air/patches/series.merged)",
+      "Bash(helium-chromium/devutils/update_platform_patches.py merge *)"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+--- a/ui/gfx/monogram_utils.cc
++++ b/ui/gfx/monogram_utils.cc
+@@ -25,7 +25,7 @@ void DrawCircleInCanvas(Canvas* canvas,
+   flags.setStyle(cc::PaintFlags::kFill_Style);
+   flags.setAntiAlias(true);
+   flags.setColor(background_color);
+-  int corner_radius = size / 2;
++  int corner_radius = 14;
+   canvas->DrawRoundRect(Rect(offset, offset, size, size), corner_radius, flags);
+ }
+ 
