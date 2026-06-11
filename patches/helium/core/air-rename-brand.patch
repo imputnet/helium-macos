@@ -1,0 +1,98 @@
+Index: src/chrome/app/chromium_strings.grd
+===================================================================
+--- src.orig/chrome/app/chromium_strings.grd
++++ src/chrome/app/chromium_strings.grd
+@@ -1031,7 +1031,7 @@ Chromium is unable to recover your setti
+       </message>
+ 
+       <message name="IDS_APPMENU_TOOLTIP_HELIUM_SERVICES_UPDATE" desc="The tooltip to show for the browser menu when Helium services schema changes">
+-        Helium services have been updated. Please review the changes.
++        Air services have been updated. Please review the changes.
+       </message>
+ 
+       <message name="IDS_APPMENU_TOOLTIP_ALERT" desc="The tooltip to show for the browser menu when a non-update alert is displayed">
+@@ -1753,7 +1753,7 @@ Chromium is unable to recover your setti
+ 
+       <!-- Helium services schema change bubble -->
+       <message name="IDS_HELIUM_SERVICES_SCHEMA_MENU_ITEM" desc="Text for the bubble that notifies the user of a schema change in Helium services.">
+-        Review Helium services updates
++        Review Air services updates
+       </message>
+ 
+       <!-- User menu errors -->
+Index: src/chrome/app/generated_resources.grd
+===================================================================
+--- src.orig/chrome/app/generated_resources.grd
++++ src/chrome/app/generated_resources.grd
+@@ -3174,7 +3174,7 @@ are declared in tools/grit/grit_args.gni
+       </message>
+       <message name="IDS_DOWNLOAD_BUBBLE_INTERRUPTED_SUBPAGE_SUMMARY_HELIUM_SERVICES_DISABLED"
+                desc="Subpage summary text for a extension download item that was interrupted because Helium services are disabled.">
+-        Extension downloads are disabled. Enable this feature in Helium services settings and try again.
++        Extension downloads are disabled. Enable this feature in Air services settings and try again.
+       </message>
+       <message name="IDS_DOWNLOAD_BUBBLE_INTERRUPTED_SUBPAGE_SUMMARY_PATH_TOO_LONG"
+                desc="Subpage summary text for a download item that was interrupted because the file path name is too long.">
+@@ -7067,7 +7067,7 @@ Keep your key file in a safe place. You
+         Update error
+       </message>
+       <message name="IDS_COMPONENTS_SVC_STATUS_ERROR_HELIUM_SERVICES" desc="Service Status">
+-        Component updates are disabled. See Helium services in settings.
++        Component updates are disabled. See Air services in settings.
+       </message>
+       <message name="IDS_COMPONENTS_UNKNOWN" desc="Service Status">
+         Unknown
+@@ -11834,7 +11834,7 @@ Check your passwords anytime in <ph name
+             Full Disk Access required
+           </message>
+           <message name="IDS_IMPORT_FULL_DISK_ACCESS_DIALOG_MESSAGE" desc="Message for the dialog shown when Full Disk Access is needed to import bookmarks from Safari.">
+-            Helium needs Full Disk Access to import your Bookmarks from Safari.
++            Air needs Full Disk Access to import your Bookmarks from Safari.
+           </message>
+           <message name="IDS_IMPORT_FULL_DISK_ACCESS_DIALOG_LINK" desc="Help link text in the dialog shown when Full Disk Access is needed to import from Safari.">
+             Learn how to grant Full Disk Access from your System Preferences.
+@@ -13994,7 +13994,7 @@ Check your passwords anytime in <ph name
+           Installed because of dependent extension(s).
+         </message>
+         <message name="IDS_EXTENSIONS_INSTALL_LOCATION_HELIUM" desc="The text explaining the the installation location is a Helium component.">
+-          Helium component
++          Air component
+         </message>
+ 
+         <!-- Extension blocklist state -->
+Index: src/chrome/app/settings_chromium_strings.grdp
+===================================================================
+--- src.orig/chrome/app/settings_chromium_strings.grdp
++++ src/chrome/app/settings_chromium_strings.grdp
+@@ -302,7 +302,7 @@
+     When you type in the address bar or search box, Chromium sends what you type to your default search engine to get better suggestions. This is off in Incognito.
+   </message>
+   <message name="IDS_SETTINGS_SUGGEST_PREF_DESC_HELIUM" desc="The description of the checkbox to enable/disable sending omnibox input to the user's default search engine to get additional suggestions.">
+-    When you type in the address bar, Helium sends what you type to your default search engine to get suggestions. This is off in Incognito.
++    When you type in the address bar, Air sends what you type to your default search engine to get suggestions. This is off in Incognito.
+   </message>
+   <message name="IDS_SETTINGS_SEARCH_AGGREGATOR_PREF_DESC" desc="The description of the 'Show suggestions and results from your organization' checkbox, which enables/disables sending omnibox input to the user's organization's search aggregator to get additional suggestions. Note that this setting is controlled by enterprise policy and, while a checkbox is shown, it is always enabled and cannot be disabled.">
+     When you type in the address bar or search box, Chromium sends what you type to your organization's search, AI, and agent tools to get suggestions.
+Index: src/chrome/app/theme/chromium/BRANDING
+===================================================================
+--- src.orig/chrome/app/theme/chromium/BRANDING
++++ src/chrome/app/theme/chromium/BRANDING
+@@ -1,10 +1,10 @@
+-COMPANY_FULLNAME=The Helium Authors
+-COMPANY_SHORTNAME=The Helium Authors
+-PRODUCT_FULLNAME=Helium
+-PRODUCT_SHORTNAME=Helium
+-PRODUCT_INSTALLER_FULLNAME=Helium Installer
+-PRODUCT_INSTALLER_SHORTNAME=Helium Installer
+-COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Helium Authors. All rights reserved.
+-MAC_BUNDLE_ID=net.imput.helium
++COMPANY_FULLNAME=The Air Authors
++COMPANY_SHORTNAME=The Air Authors
++PRODUCT_FULLNAME=Air
++PRODUCT_SHORTNAME=Air
++PRODUCT_INSTALLER_FULLNAME=Air Installer
++PRODUCT_INSTALLER_SHORTNAME=Air Installer
++COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Air Authors. All rights reserved.
++MAC_BUNDLE_ID=net.imput.air
+ MAC_CREATOR_CODE=Cr24
+ MAC_TEAM_ID=S4Q33XPHB4
