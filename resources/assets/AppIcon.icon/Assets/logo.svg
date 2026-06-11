@@ -1,3 +1,14 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M305.24 475.7L256 512L206.76 475.7L229.136 302.496L90.1 408.44L34 384L40.85 323.27L202.256 256L40.85 188.73L34 128L90.1 103.56L229.136 209.504L206.76 36.3L256 0L305.24 36.3L282.864 209.504L421.9 103.56L478 128L471.15 188.73L309.744 256L471.15 323.27L478 384L421.9 408.44L282.864 302.496L305.24 475.7Z" fill="currentColor"/>
+  <!--
+    Air "A" letterform:
+    - Bold A with two diagonal arms meeting at the apex
+    - Horizontal crossbar
+    - Triangular hollow punched through the center
+    Fill-evenodd lets the hollow cut through.
+  -->
+  <path fill-rule="evenodd" fill="currentColor"
+    d="M256,64
+       L452,436 L374,436 L322,316 L190,316 L138,436 L60,436
+       Z
+       M256,164 L198,306 L314,306 Z"/>
 </svg>
