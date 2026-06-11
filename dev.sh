@@ -177,8 +177,8 @@ ___helium_build() {
 }
 
 ___helium_run() {
-    "$_out_dir/Helium.app/Contents/MacOS/Helium" \
-    --user-data-dir="$HOME/Library/Application Support/net.imput.helium.dev" \
+    "$_out_dir/Air.app/Contents/MacOS/Air" \
+    --user-data-dir="$HOME/Library/Application Support/net.imput.air.dev" \
     --enable-ui-devtools \
     --use-mock-keychain \
     --disable-features=DialMediaRouteProvider
