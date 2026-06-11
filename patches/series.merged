@@ -311,3 +311,4 @@ helium/ui/air-hibernate-close-group.patch
 helium/core/air-persistent-tab-groups.patch
 helium/ui/air-command-bar.patch
 helium/core/air-rename-brand.patch
+helium/ui/air-rename-onboarding.patch
