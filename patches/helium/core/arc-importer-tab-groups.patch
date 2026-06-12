@@ -11,15 +11,17 @@ Index: src/chrome/browser/importer/BUILD.gn
      "brave_external_process_importer_client.cc",
      "brave_external_process_importer_host.cc",
      "brave_in_process_importer_bridge.cc",
-@@ -64,6 +66,7 @@ source_set("impl") {
+@@ -64,6 +66,9 @@ source_set("impl") {
      "//chrome/browser/password_manager/factories",
      "//chrome/browser/profiles:profile",
      "//chrome/browser/search_engines",
 +    "//chrome/browser/tab_group_sync:factories",
++    "//chrome/browser/ui:browser_finder",
++    "//chrome/browser/ui/tabs/saved_tab_groups:saved_tab_groups",
      "//chrome/browser/webdata_services",
      "//chrome/common/importer:interfaces",
      "//components/bookmarks/browser",
-@@ -71,6 +74,8 @@ source_set("impl") {
+@@ -71,6 +76,8 @@ source_set("impl") {
      "//components/favicon/core",
      "//components/password_manager/core/browser:password_form",
      "//components/password_manager/core/browser/password_store:password_store_interface",
@@ -32,7 +34,7 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 ===================================================================
 --- /dev/null
 +++ src/chrome/browser/importer/arc_tab_group_importer.cc
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,315 @@
 +// Copyright 2026 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -53,9 +55,13 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +#include "base/values.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_finder.h"
++#include "chrome/browser/ui/tabs/saved_tab_groups/tab_group_action_context_desktop.h"
 +#include "components/saved_tab_groups/public/saved_tab_group.h"
 +#include "components/saved_tab_groups/public/saved_tab_group_tab.h"
 +#include "components/saved_tab_groups/public/tab_group_sync_service.h"
++#include "components/saved_tab_groups/public/types.h"
 +#include "components/tab_groups/tab_group_color.h"
 +#include "url/gurl.h"
 +
@@ -248,6 +254,13 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +  auto* service =
 +      tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile);
 +  if (!service) {
++    LOG(WARNING) << "arc_tab_group_importer: TabGroupSyncService unavailable";
++    return;
++  }
++
++  Browser* browser = chrome::FindLastActive();
++  if (!browser) {
++    LOG(WARNING) << "arc_tab_group_importer: no active browser";
 +    return;
 +  }
 +
@@ -326,6 +339,13 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +                                   tabs,
 +                                   /*position=*/std::nullopt, group_guid);
 +    service->AddGroup(std::move(group));
++
++    // Open the group immediately so it appears in the tab strip with
++    // hibernated tabs rather than waiting for the next restart.
++    service->OpenTabGroup(
++        group_guid,
++        std::make_unique<tab_groups::TabGroupActionContextDesktop>(
++            browser, tab_groups::OpeningSource::kUnknown));
 +  }
 +}
 +
