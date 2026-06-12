@@ -75,7 +75,7 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +  bool is_container = false;
 +};
 +
-+std::map<std::string, ArcItem> ParseItems(const base::Value::List& items_list) {
++std::map<std::string, ArcItem> ParseItems(const base::ListValue& items_list) {
 +  std::map<std::string, ArcItem> items;
 +  for (size_t i = 0; i + 1 < items_list.size(); i += 2) {
 +    const auto* id_str = items_list[i].GetIfString();
@@ -126,7 +126,7 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +  std::string pinned_container_id;
 +};
 +
-+std::vector<SpaceInfo> ParseSpaces(const base::Value::List* spaces_list) {
++std::vector<SpaceInfo> ParseSpaces(const base::ListValue* spaces_list) {
 +  std::vector<SpaceInfo> spaces;
 +  if (!spaces_list) {
 +    return spaces;
@@ -262,7 +262,7 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +    return;
 +  }
 +
-+  std::optional<base::Value::Dict> root =
++  std::optional<base::DictValue> root =
 +      base::JSONReader::ReadDict(content, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
 +  if (!root) {
 +    LOG(WARNING) << "arc_tab_group_importer: failed to parse JSON";
