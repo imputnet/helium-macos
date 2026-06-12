@@ -1,0 +1,44 @@
+Index: src/chrome/browser/ui/tabs/tab_strip_prefs.cc
+===================================================================
+--- src.orig/chrome/browser/ui/tabs/tab_strip_prefs.cc
++++ src/chrome/browser/ui/tabs/tab_strip_prefs.cc
+@@ -49,7 +49,7 @@ void RegisterProfilePrefs(user_prefs::Pr
+   registry->RegisterBooleanPref(prefs::kEverythingMenuPinnedToTabstrip, true);
+ 
+   registry->RegisterIntegerPref(prefs::kHeliumLayout,
+-                                std::to_underlying(HeliumLayoutType::kClassic));
++                                std::to_underlying(HeliumLayoutType::kVertical));
+   registry->RegisterBooleanPref(prefs::kHeliumVerticalRightAligned, false);
+   registry->RegisterBooleanPref(prefs::kHeliumZenMode, false);
+   registry->RegisterBooleanPref(prefs::kHeliumZenModeSidebarPinned, false);
+Index: src/components/search_engines/template_url_prepopulate_data.cc
+===================================================================
+--- src.orig/components/search_engines/template_url_prepopulate_data.cc
++++ src/components/search_engines/template_url_prepopulate_data.cc
+@@ -276,7 +276,7 @@ std::unique_ptr<TemplateURLData> GetPrep
+     const std::vector<const PrepopulatedEngine*>&
+         regional_prepopulated_engines) {
+   return FindPrepopulatedEngineInternal(prefs, regional_prepopulated_engines,
+-                                        duckduckgo.id,
++                                        break_stuff_google.id,
+                                         /*use_first_as_fallback=*/true);
+ }
+ 
+Index: src/chrome/browser/prefs/session_startup_pref.cc
+===================================================================
+--- src.orig/chrome/browser/prefs/session_startup_pref.cc
++++ src/chrome/browser/prefs/session_startup_pref.cc
+@@ -72,12 +72,7 @@ SessionStartupPref::Type SessionStartupP
+ #if BUILDFLAG(IS_CHROMEOS)
+   return SessionStartupPref::LAST;
+ #else
+-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
+-  if (features::kSetDefaultToContinueSession.Get()) {
+-    return SessionStartupPref::LAST;
+-  }
+-#endif
+-  return SessionStartupPref::DEFAULT;
++  return SessionStartupPref::LAST_WITH_ANCHORING;
+ #endif
+ }
+ 

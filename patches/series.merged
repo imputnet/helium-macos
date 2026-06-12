@@ -312,3 +312,5 @@ helium/core/air-persistent-tab-groups.patch
 helium/ui/air-command-bar.patch
 helium/core/air-rename-brand.patch
 helium/ui/air-rename-onboarding.patch
+helium/core/air-default-settings.patch
+helium/ui/air-onboarding-logo.patch

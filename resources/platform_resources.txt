@@ -24,3 +24,6 @@ assets/product_logo_128.png chrome/app/theme/chromium/linux/product_logo_128.png
 assets/product_logo_256.png chrome/app/theme/chromium/linux/product_logo_256.png
 assets/product_logo_16.png chrome/app/theme/default_100_percent/chromium/linux/product_logo_16.png
 assets/product_logo_32.png chrome/app/theme/default_100_percent/chromium/linux/product_logo_32.png
+
+# Air logo for onboarding page favicon
+assets/product_logo_128.png components/helium_onboarding/public/favicon.png
