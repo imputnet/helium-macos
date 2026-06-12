@@ -1,0 +1,646 @@
+Index: src/chrome/browser/importer/BUILD.gn
+===================================================================
+--- src.orig/chrome/browser/importer/BUILD.gn
++++ src/chrome/browser/importer/BUILD.gn
+@@ -41,6 +41,8 @@ source_set("impl") {
+   public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+ 
+   sources = [
++    "arc_tab_group_importer.cc",
++    "arc_tab_group_importer.h",
+     "brave_external_process_importer_client.cc",
+     "brave_external_process_importer_host.cc",
+     "brave_in_process_importer_bridge.cc",
+@@ -64,6 +66,7 @@ source_set("impl") {
+     "//chrome/browser/password_manager/factories",
+     "//chrome/browser/profiles:profile",
+     "//chrome/browser/search_engines",
++    "//chrome/browser/tab_group_sync:factories",
+     "//chrome/browser/webdata_services",
+     "//chrome/common/importer:interfaces",
+     "//components/bookmarks/browser",
+@@ -71,6 +74,8 @@ source_set("impl") {
+     "//components/favicon/core",
+     "//components/password_manager/core/browser:password_form",
+     "//components/password_manager/core/browser/password_store:password_store_interface",
++    "//components/saved_tab_groups/public",
++    "//components/tab_groups",
+   ]
+ 
+   if (is_win) {
+@@ -79,3 +84,70 @@ source_set("impl") {
+     sources += [ "firefox_profile_lock_posix.cc" ]
+   }
+ }
++
++source_set("browser_tests") {
++  testonly = true
++  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
++  sources = [
++    "importer_unittest_utils.cc",
++    "importer_unittest_utils.h",
++  ]
++
++  deps = [
++    "//base",
++    "//chrome/common/importer",
++    "//components/user_data_importer/common",
++    "//testing/gtest",
++  ]
++
++  if (is_win) {
++    sources += [
++      "edge_importer_browsertest_win.cc",
++      "ie_importer_browsertest_win.cc",
++    ]
++
++    deps += [
++      ":importer",
++      "//chrome/browser/ui",
++      "//chrome/common:constants",
++      "//chrome/test:test_support",
++      "//chrome/test:test_support_ui",
++      "//components/favicon_base",
++      "//components/search_engines",
++      "//content/test:test_support",
++      "//third_party/zlib/google:compression_utils",
++    ]
++  }
++}
++
++source_set("unit_tests") {
++  testonly = true
++  sources = [
++    "firefox_profile_lock_unittest.cc",
++    "profile_writer_unittest.cc",
++  ]
++
++  deps = [
++    ":importer",
++    "//base",
++    "//base/test:test_support",
++    "//chrome/browser",
++    "//chrome/browser/bookmarks",
++    "//chrome/browser/history",
++    "//chrome/browser/search_engines",
++    "//chrome/common:constants",
++    "//chrome/common/importer",
++    "//chrome/test:test_support",
++    "//components/bookmarks/browser",
++    "//components/bookmarks/test",
++    "//components/history/core/browser",
++    "//components/password_manager/core/browser:test_support",
++    "//components/password_manager/core/browser/password_store:test_support",
++    "//components/password_manager/core/common",
++    "//components/prefs",
++    "//components/query_parser",
++    "//components/user_data_importer/common",
++    "//content/test:test_support",
++    "//testing/gtest",
++  ]
++}
+Index: src/chrome/browser/importer/arc_tab_group_importer.cc
+===================================================================
+--- /dev/null
++++ src/chrome/browser/importer/arc_tab_group_importer.cc
+@@ -0,0 +1,297 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/importer/arc_tab_group_importer.h"
++
++#include <array>
++#include <map>
++#include <string>
++#include <unordered_set>
++#include <vector>
++
++#include "base/files/file_util.h"
++#include "base/json/json_reader.h"
++#include "base/logging.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "base/values.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
++#include "components/saved_tab_groups/public/saved_tab_group.h"
++#include "components/saved_tab_groups/public/saved_tab_group_tab.h"
++#include "components/saved_tab_groups/public/tab_group_sync_service.h"
++#include "components/tab_groups/tab_group_color.h"
++#include "url/gurl.h"
++
++namespace arc_importer {
++
++namespace {
++
++constexpr double kCFAbsoluteTimeToUnixOffset = 978307200.0;
++
++struct ArcItem {
++  std::string id;
++  std::string title;
++  std::string saved_url;
++  std::string saved_title;
++  double created_at = 0;
++  std::vector<std::string> children_ids;
++  bool is_container = false;
++};
++
++std::map<std::string, ArcItem> ParseItems(const base::Value::List& items_list) {
++  std::map<std::string, ArcItem> items;
++  for (size_t i = 0; i + 1 < items_list.size(); i += 2) {
++    const auto* id_str = items_list[i].GetIfString();
++    const auto* dict = items_list[i + 1].GetIfDict();
++    if (!id_str || !dict) {
++      continue;
++    }
++
++    ArcItem item;
++    item.id = *id_str;
++
++    if (const auto* title = dict->FindString("title")) {
++      item.title = *title;
++    }
++    if (auto created = dict->FindDouble("createdAt")) {
++      item.created_at = *created;
++    }
++    if (const auto* children = dict->FindList("childrenIds")) {
++      for (const auto& child : *children) {
++        if (const auto* s = child.GetIfString()) {
++          item.children_ids.push_back(*s);
++        }
++      }
++    }
++
++    const auto* data = dict->FindDict("data");
++    const auto* tab = data ? data->FindDict("tab") : nullptr;
++    const auto* container = data ? data->FindDict("itemContainer") : nullptr;
++
++    if (tab) {
++      if (const auto* url = tab->FindString("savedURL")) {
++        item.saved_url = *url;
++      }
++      if (const auto* saved_title = tab->FindString("savedTitle")) {
++        item.saved_title = *saved_title;
++      }
++    } else if (container) {
++      item.is_container = true;
++    }
++
++    items[item.id] = std::move(item);
++  }
++  return items;
++}
++
++struct SpaceInfo {
++  std::string id;
++  std::string pinned_container_id;
++};
++
++std::vector<SpaceInfo> ParseSpaces(const base::Value::List* spaces_list) {
++  std::vector<SpaceInfo> spaces;
++  if (!spaces_list) {
++    return spaces;
++  }
++
++  for (size_t i = 0; i + 1 < spaces_list->size(); i += 2) {
++    const auto* space_id = (*spaces_list)[i].GetIfString();
++    const auto* space_dict = (*spaces_list)[i + 1].GetIfDict();
++    if (!space_id || !space_dict) {
++      continue;
++    }
++
++    SpaceInfo space;
++    space.id = *space_id;
++
++    const auto* container_ids = space_dict->FindList("containerIDs");
++    if (container_ids) {
++      for (size_t j = 0; j + 1 < container_ids->size(); j += 2) {
++        const auto* label = (*container_ids)[j].GetIfString();
++        const auto* cid = (*container_ids)[j + 1].GetIfString();
++        if (label && cid && *label == "pinned") {
++          space.pinned_container_id = *cid;
++        }
++      }
++    }
++
++    spaces.push_back(std::move(space));
++  }
++  return spaces;
++}
++
++void CollectTabs(
++    const std::string& item_id,
++    const std::map<std::string, ArcItem>& items,
++    std::unordered_set<std::string>& visited,
++    std::vector<tab_groups::SavedTabGroupTab>& tabs,
++    const base::Uuid& group_guid) {
++  if (!visited.insert(item_id).second) {
++    return;
++  }
++
++  auto it = items.find(item_id);
++  if (it == items.end()) {
++    return;
++  }
++
++  const ArcItem& item = it->second;
++  if (item.saved_url.starts_with("arc://")) {
++    return;
++  }
++
++  if (!item.saved_url.empty()) {
++    GURL url(item.saved_url);
++    if (url.is_valid()) {
++      std::u16string title = base::UTF8ToUTF16(
++          !item.title.empty() ? item.title : item.saved_title);
++      std::optional<base::Time> creation_time;
++      if (item.created_at > 0) {
++        creation_time = base::Time::FromSecondsSinceUnixEpoch(
++            item.created_at + kCFAbsoluteTimeToUnixOffset);
++      }
++      tabs.emplace_back(url, title, group_guid, /*position=*/tabs.size(),
++                        /*saved_tab_guid=*/std::nullopt,
++                        /*local_tab_id=*/std::nullopt,
++                        /*creator_cache_guid=*/std::nullopt,
++                        /*last_updater_cache_guid=*/std::nullopt,
++                        creation_time);
++    }
++  }
++
++  for (const auto& child_id : item.children_ids) {
++    CollectTabs(child_id, items, visited, tabs, group_guid);
++  }
++}
++
++tab_groups::TabGroupColorId ColorForIndex(size_t index) {
++  constexpr std::array<tab_groups::TabGroupColorId, 7> kColors = {
++      tab_groups::TabGroupColorId::kBlue,
++      tab_groups::TabGroupColorId::kRed,
++      tab_groups::TabGroupColorId::kYellow,
++      tab_groups::TabGroupColorId::kGreen,
++      tab_groups::TabGroupColorId::kPink,
++      tab_groups::TabGroupColorId::kPurple,
++      tab_groups::TabGroupColorId::kCyan,
++  };
++  return kColors[index % kColors.size()];
++}
++
++std::string SpaceDisplayName(const std::string& space_id) {
++  if (space_id.find("defaultPersonalSpaceID") != std::string::npos) {
++    return "Personal";
++  }
++  if (space_id.size() > 8) {
++    return "Space " + space_id.substr(space_id.size() - 8);
++  }
++  return space_id.empty() ? "Space" : space_id;
++}
++
++base::FilePath FindStorableSidebarPath(const base::FilePath& source_path) {
++  constexpr base::FilePath::StringViewType kFilename =
++      FILE_PATH_LITERAL("StorableSidebar.json");
++  const std::array<base::FilePath, 3> candidates = {
++      source_path.DirName().DirName().Append(kFilename),
++      source_path.DirName().Append(kFilename),
++      source_path.Append(kFilename),
++  };
++  for (const auto& p : candidates) {
++    if (base::PathExists(p)) {
++      return p;
++    }
++  }
++  return {};
++}
++
++}  // namespace
++
++void ImportArcSpacesAsTabGroups(Profile* profile,
++                                const base::FilePath& source_path) {
++  auto* service =
++      tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile);
++  if (!service) {
++    return;
++  }
++
++  base::FilePath sidebar_path = FindStorableSidebarPath(source_path);
++  if (sidebar_path.empty()) {
++    return;
++  }
++
++  std::string content;
++  if (!base::ReadFileToString(sidebar_path, &content)) {
++    LOG(WARNING) << "arc_tab_group_importer: failed to read StorableSidebar";
++    return;
++  }
++
++  std::optional<base::Value::Dict> root =
++      base::JSONReader::ReadDict(content, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
++  if (!root) {
++    LOG(WARNING) << "arc_tab_group_importer: failed to parse JSON";
++    return;
++  }
++
++  const auto* sidebar = root->FindDict("sidebar");
++  if (!sidebar) {
++    return;
++  }
++  const auto* containers = sidebar->FindList("containers");
++  if (!containers || containers->size() < 2) {
++    return;
++  }
++  const auto* data_container = (*containers)[1].GetIfDict();
++  if (!data_container) {
++    return;
++  }
++
++  const auto* items_list = data_container->FindList("items");
++  if (!items_list) {
++    return;
++  }
++
++  auto items = ParseItems(*items_list);
++  if (items.empty()) {
++    return;
++  }
++
++  auto spaces = ParseSpaces(data_container->FindList("spaces"));
++  if (spaces.empty()) {
++    return;
++  }
++
++  size_t color_index = 0;
++  for (const auto& space : spaces) {
++    if (space.pinned_container_id.empty()) {
++      continue;
++    }
++
++    auto it = items.find(space.pinned_container_id);
++    if (it == items.end() || it->second.children_ids.empty()) {
++      continue;
++    }
++
++    base::Uuid group_guid = base::Uuid::GenerateRandomV4();
++    std::vector<tab_groups::SavedTabGroupTab> tabs;
++    std::unordered_set<std::string> visited;
++
++    for (const auto& child_id : it->second.children_ids) {
++      CollectTabs(child_id, items, visited, tabs, group_guid);
++    }
++
++    if (tabs.empty()) {
++      continue;
++    }
++
++    std::u16string group_title =
++        base::UTF8ToUTF16(SpaceDisplayName(space.id));
++    tab_groups::SavedTabGroup group(group_title, ColorForIndex(color_index++),
++                                   tabs,
++                                   /*position=*/std::nullopt, group_guid);
++    service->AddGroup(std::move(group));
++  }
++}
++
++}  // namespace arc_importer
+Index: src/chrome/browser/importer/arc_tab_group_importer.h
+===================================================================
+--- /dev/null
++++ src/chrome/browser/importer/arc_tab_group_importer.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_IMPORTER_ARC_TAB_GROUP_IMPORTER_H_
++#define CHROME_BROWSER_IMPORTER_ARC_TAB_GROUP_IMPORTER_H_
++
++#include "base/files/file_path.h"
++
++class Profile;
++
++namespace arc_importer {
++
++// Parses StorableSidebar.json from the Arc source path and creates a
++// SavedTabGroup for each Arc space that has pinned tabs. Must be called on
++// the UI thread with a valid Profile*.
++void ImportArcSpacesAsTabGroups(Profile* profile,
++                                const base::FilePath& source_path);
++
++}  // namespace arc_importer
++
++#endif  // CHROME_BROWSER_IMPORTER_ARC_TAB_GROUP_IMPORTER_H_
+Index: src/chrome/browser/importer/brave_external_process_importer_host.cc
+===================================================================
+--- src.orig/chrome/browser/importer/brave_external_process_importer_host.cc
++++ src/chrome/browser/importer/brave_external_process_importer_host.cc
+@@ -6,9 +6,11 @@
+ #include "chrome/browser/importer/brave_external_process_importer_host.h"
+ 
+ #include "base/check.h"
++#include "chrome/browser/importer/arc_tab_group_importer.h"
+ #include "chrome/browser/importer/extensions_import_helpers.h"
+ #include "chrome/browser/importer/importer_lock_dialog.h"
+ #include "chrome/grit/generated_resources.h"
++#include "components/user_data_importer/common/importer_type.h"
+ 
+ BraveExternalProcessImporterHost::BraveExternalProcessImporterHost()
+     : weak_ptr_factory_(this) {}
+@@ -33,6 +35,101 @@ void BraveExternalProcessImporterHost::N
+   // Force tests to fail if |this| is deleted.
+   DCHECK(weak_ptr_factory_.GetWeakPtr());
+ 
++  // For Arc imports, create SavedTabGroups for each space.
++  if (!cancelled_ &&
++      source_profile_.importer_type == user_data_importer::TYPE_ARC) {
++    arc_importer::ImportArcSpacesAsTabGroups(profile_,
++                                             source_profile_.source_path);
++  }
++
+   // Otherwise, notifying here and importing is finished.
+   ExternalProcessImporterHost::NotifyImportEnded();
+ }
++
++void BraveExternalProcessImporterHost::LaunchImportIfReady() {
++#if BUILDFLAG(ENABLE_EXTENSIONS)
++  if (NeedToImportExtensions()) {
++    if (!extensions_importer_) {
++      extensions_importer_ =
++          std::make_unique<extensions_import::ExtensionsImporter>(
++              source_profile_.source_path, profile_);
++      extensions_importer_->Prepare(base::BindOnce(
++          &BraveExternalProcessImporterHost::OnExtensionsImportReady,
++          weak_ptr_factory_.GetWeakPtr()));
++      return;
++    }
++    if (!extensions_import_ready_) {
++      return;
++    }
++  }
++#endif
++
++  if (!do_not_launch_import_for_testing_) {
++    CHECK(!client_);
++    ExternalProcessImporterHost::LaunchImportIfReady();
++  } else {
++    NotifyImportEnded();
++  }
++}
++
++void BraveExternalProcessImporterHost::DoNotLaunchImportForTesting() {
++  do_not_launch_import_for_testing_ = true;
++}
++
++void BraveExternalProcessImporterHost::NotifyImportEndedForTesting() {
++  ExternalProcessImporterHost::NotifyImportEnded();
++}
++
++importer::ImporterProgressObserver*
++BraveExternalProcessImporterHost::GetObserverForTesting() {
++  return observer_;
++}
++
++#if BUILDFLAG(ENABLE_EXTENSIONS)
++
++bool BraveExternalProcessImporterHost::NeedToImportExtensions() const {
++  return !cancelled_ && (items_ & user_data_importer::EXTENSIONS) ==
++                            user_data_importer::EXTENSIONS;
++}
++
++void BraveExternalProcessImporterHost::OnExtensionsImportReady(bool ready) {
++  if (cancelled_) {
++    return;
++  }
++  if (!ready) {
++    extensions_importer_.reset();
++    importer::ShowImportLockDialog(
++        parent_view_, parent_window_,
++        base::BindOnce(
++            &BraveExternalProcessImporterHost::OnExtensionsImportLockDialogEnd,
++            weak_ptr_factory_.GetWeakPtr()),
++        IDS_EXTENSIONS_IMPORTER_LOCK_TITLE, IDS_EXTENSIONS_IMPORTER_LOCK_TEXT);
++  } else {
++    extensions_import_ready_ = true;
++    LaunchImportIfReady();
++  }
++}
++
++void BraveExternalProcessImporterHost::OnExtensionsImportLockDialogEnd(
++    bool is_continue) {
++  DCHECK(!extensions_importer_);
++  if (is_continue) {
++    LaunchImportIfReady();
++  } else {
++    NotifyImportEnded();
++  }
++}
++
++void BraveExternalProcessImporterHost::OnExtensionImported(
++    const std::string& extension_id,
++    extensions_import::ExtensionImportStatus status) {
++  if (!extensions_importer_ || !extensions_importer_->IsImportInProgress()) {
++    extensions_importer_.reset();
++    if (observer_) {
++      NotifyImportItemEnded(user_data_importer::EXTENSIONS);
++    }
++    ExternalProcessImporterHost::NotifyImportEnded();
++  }
++}
++
++#endif
+Index: src/chrome/utility/importer/arc_sidebar_importer.cc
+===================================================================
+--- src.orig/chrome/utility/importer/arc_sidebar_importer.cc
++++ src/chrome/utility/importer/arc_sidebar_importer.cc
+@@ -160,49 +160,6 @@ void WalkItem(const std::string& item_id
+   }
+ }
+ 
+-struct SpaceInfo {
+-  std::string id;
+-  std::string pinned_container_id;
+-};
+-
+-// Parse the spaces list from the sidebar data container.
+-// Spaces alternate: ["spaceId", {spaceObj}, ...] and each space has
+-// containerIDs: ["pinned", "<id>", "unpinned", "<id>"].
+-std::vector<SpaceInfo> ParseSpaces(const base::ListValue* spaces_list) {
+-  std::vector<SpaceInfo> spaces;
+-  if (!spaces_list) {
+-    return spaces;
+-  }
+-
+-  for (size_t i = 0; i + 1 < spaces_list->size(); i += 2) {
+-    const auto* space_id = (*spaces_list)[i].GetIfString();
+-    const auto* space_dict = (*spaces_list)[i + 1].GetIfDict();
+-    if (!space_id || !space_dict) {
+-      continue;
+-    }
+-
+-    SpaceInfo space;
+-    space.id = *space_id;
+-
+-    const auto* container_ids = space_dict->FindList("containerIDs");
+-    if (container_ids) {
+-      for (size_t j = 0; j + 1 < container_ids->size(); j += 2) {
+-        const auto* label = (*container_ids)[j].GetIfString();
+-        const auto* cid = (*container_ids)[j + 1].GetIfString();
+-        if (!label || !cid) {
+-          continue;
+-        }
+-        if (*label == "pinned") {
+-          space.pinned_container_id = *cid;
+-        }
+-      }
+-    }
+-
+-    spaces.push_back(std::move(space));
+-  }
+-  return spaces;
+-}
+-
+ }  // namespace
+ 
+ ArcSidebarImporter::ArcSidebarImporter() = default;
+@@ -282,7 +239,8 @@ void ArcSidebarImporter::ImportBookmarks
+     return;
+   }
+ 
+-  auto spaces = ParseSpaces(data_container->FindList("spaces"));
++  // Spaces are imported as tab groups by the browser-side ArcTabGroupImporter.
++  // Only import Top Apps (pinned toolbar items) as bookmarks here.
+   std::unordered_set<std::string> visited_ids;
+   std::vector<user_data_importer::ImportedBookmarkEntry> bookmarks;
+   const auto* top_apps_ids = data_container->FindList("topAppsContainerIDs");
+@@ -304,33 +262,6 @@ void ArcSidebarImporter::ImportBookmarks
+     }
+   }
+ 
+-  bool multiple_spaces = spaces.size() > 1;
+-
+-  for (const auto& space : spaces) {
+-    if (space.pinned_container_id.empty()) {
+-      continue;
+-    }
+-
+-    auto it = items.find(space.pinned_container_id);
+-    if (it == items.end() || it->second.children_ids.empty()) {
+-      continue;
+-    }
+-
+-    std::vector<std::u16string> path_parts;
+-    if (multiple_spaces) {
+-      std::string space_name = space.id;
+-      if (space_name.contains("defaultPersonalSpaceID")) {
+-        space_name = "Personal";
+-      }
+-      path_parts.push_back(base::UTF8ToUTF16(space_name));
+-    }
+-
+-    for (const auto& child_id : it->second.children_ids) {
+-      WalkItem(child_id, items, path_parts, /*in_toolbar=*/false, &bookmarks,
+-               visited_ids);
+-    }
+-  }
+-
+   if (!bookmarks.empty() && !cancelled()) {
+     bridge_->AddBookmarks(
+         bookmarks, l10n_util::GetStringFUTF16(IDS_IMPORTED_FROM_BOOKMARK_FOLDER,

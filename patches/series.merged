@@ -314,3 +314,4 @@ helium/core/air-rename-brand.patch
 helium/ui/air-rename-onboarding.patch
 helium/core/air-default-settings.patch
 helium/ui/air-onboarding-logo.patch
+helium/core/arc-importer-tab-groups.patch
