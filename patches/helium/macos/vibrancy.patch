@@ -1,0 +1,161 @@
+diff --git a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+index 380a3c51c2ae0..7845dc78b4bb7 100644
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -429,8 +429,36 @@ void BrowserFrameViewMac::OnPaint(gfx::Canvas* canvas) {
+     return;
+   }
+ 
++  auto* prefs = GetBrowserView()->browser()->profile()->GetPrefs();
++  bool transparency_enabled =
++      prefs && prefs->GetBoolean(prefs::kHeliumTransparencyEnabled);
++
++  if (!transparency_enabled) {
++    SkColor frame_color = GetFrameColor(BrowserFrameActiveState::kUseCurrent);
++    canvas->DrawColor(frame_color);
++    auto* theme_service = ThemeServiceFactory::GetForProfile(
++        GetBrowserView()->browser()->profile());
++    if (!theme_service->UsingSystemTheme()) {
++      PaintThemedFrame(canvas);
++    }
++    return;
++  }
++
++  canvas->DrawColor(SK_ColorTRANSPARENT);
++
+   SkColor frame_color = GetFrameColor(BrowserFrameActiveState::kUseCurrent);
+-  canvas->DrawColor(frame_color);
++  SkColor transparent_tint = SkColorSetA(frame_color, 38);
++
++  gfx::Rect contents_bounds = GetBrowserView()->contents_container()->bounds();
++  contents_bounds =
++      views::View::ConvertRectToTarget(GetBrowserView(), this, contents_bounds);
++
++  canvas->Save();
++  canvas->ClipRect(contents_bounds, SkClipOp::kDifference);
++  canvas->DrawColor(transparent_tint);
++  canvas->Restore();
+ 
+   auto* theme_service = ThemeServiceFactory::GetForProfile(
+       GetBrowserView()->browser()->profile());
+diff --git a/chrome/browser/ui/views/frame/browser_widget.cc b/chrome/browser/ui/views/frame/browser_widget.cc
+index d825bc7cb5828..064f9dbf8dda3 100644
+--- a/chrome/browser/ui/views/frame/browser_widget.cc
++++ b/chrome/browser/ui/views/frame/browser_widget.cc
+@@ -157,6 +157,7 @@ void BrowserWidget::InitBrowserWidget() {
+       views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+   params.name = "BrowserWidget";
+   params.delegate = browser_view_;
++  params.opacity = views::Widget::InitParams::WindowOpacity::kTranslucent;
+ 
+   Browser* browser = browser_view_->browser();
+   if (browser->is_type_picture_in_picture()) {
+diff --git a/chrome/browser/ui/views/frame/themed_background.cc b/chrome/browser/ui/views/frame/themed_background.cc
+index f5f3d4e6c1cfa..ed893b91af2aa 100644
+--- a/chrome/browser/ui/views/frame/themed_background.cc
++++ b/chrome/browser/ui/views/frame/themed_background.cc
+@@ -5,10 +5,13 @@
+ 
+ #include <optional>
+ 
++#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/themes/theme_properties.h"
+ #include "chrome/browser/ui/color/chrome_color_id.h"
+ #include "chrome/browser/ui/views/frame/browser_view.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
++#include "chrome/common/pref_names.h"
+ #include "chrome/grit/theme_resources.h"
++#include "components/prefs/pref_service.h"
+ #include "ui/base/theme_provider.h"
+ #include "ui/color/color_id.h"
+ #include "ui/color/color_provider.h"
+@@ -102,12 +105,28 @@ void ThemedBackground::PaintBackground(gfx::Canvas* canvas,
+                                         const views::View* view,
+                                         const BrowserView* browser_view,
+                                         ThemeChoice theme_choice) {
+-  bool painted =
+-      PaintThemeCustomImage(canvas, view, browser_view, theme_choice);
+-  if (!painted) {
+-    canvas->DrawColor(view->GetColorProvider()->GetColor(
+-        GetThemeChoiceInfo(theme_choice, view).second));
+-  }
++  if (browser_view->IsZenModeEnabledForLayout() &&
++      browser_view->ShouldDrawVerticalTabStrip() &&
++      !browser_view->IsZenModeSideChromePinned()) {
++    bool painted =
++        PaintThemeCustomImage(canvas, view, browser_view, theme_choice);
++    if (!painted) {
++      canvas->DrawColor(view->GetColorProvider()->GetColor(
++          GetThemeChoiceInfo(theme_choice, view).second));
++    }
++    return;
++  }
++
++  canvas->DrawColor(SK_ColorTRANSPARENT);
++
++  // When transparency is disabled, fall back to an opaque frame color.
++  auto* prefs = browser_view->browser()->profile()->GetPrefs();
++  if (prefs && !prefs->GetBoolean(prefs::kHeliumTransparencyEnabled)) {
++    canvas->DrawColor(view->GetColorProvider()->GetColor(
++        GetThemeChoiceInfo(theme_choice, view).second));
++  }
+ }
+ 
+ std::optional<SkColor> ThemedBackground::GetBackgroundColor(
+diff --git a/chrome/browser/ui/views/side_panel/side_panel.cc b/chrome/browser/ui/views/side_panel/side_panel.cc
+index e1cee41274339..9c8d986418391 100644
+--- a/chrome/browser/ui/views/side_panel/side_panel.cc
++++ b/chrome/browser/ui/views/side_panel/side_panel.cc
+@@ -236,14 +236,24 @@ class ContentParentBackground : public views::Background {
+     SkRRect rrect;
+     rrect.setRectRadii(gfx::RectToSkRect(view->GetLocalBounds()), sk_radii);
+     SkPath path = SkPath::RRect(rrect);
+-    canvas->ClipPath(path, /*do_anti_alias=*/true);
+-
+-    if (type_ == SidePanelEntry::PanelType::kToolbar) {
+-      ThemedBackground::PaintBackground(canvas, view, browser_view_);
+-    } else {
+-      canvas->DrawColor(
+-          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
+-    }
++    if (browser_view_->IsZenModeEnabledForLayout() &&
++        browser_view_->ShouldDrawVerticalTabStrip() &&
++        !browser_view_->IsZenModeSideChromePinned()) {
++      canvas->DrawColor(
++          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
++      return;
++    }
++
++    auto* prefs = browser_view_->browser()->profile()->GetPrefs();
++    bool transparency_enabled =
++        prefs && prefs->GetBoolean(prefs::kHeliumTransparencyEnabled);
++    if (!transparency_enabled) {
++      canvas->DrawColor(
++          view->GetColorProvider()->GetColor(kColorSidePanelBackground));
++      return;
++    }
++
++    canvas->DrawColor(SK_ColorTRANSPARENT);
+   }
+ 
+  private:
+diff --git a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
+index b89085a51a169..d87ef5bc43ae2 100644
+--- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
++++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
+@@ -750,6 +750,15 @@ void NativeWidgetNSWindowBridge::CreateContentView(
+   [compositor_view setLayer:background_layer];
+   [compositor_view setWantsLayer:YES];
+   [bridged_view_ addSubview:compositor_view];
++  if (is_translucent_window_) {
++    NSVisualEffectView* vibrancy_view =
++        [[NSVisualEffectView alloc] initWithFrame:[bridged_view_ bounds]];
++    [vibrancy_view setMaterial:NSVisualEffectMaterialUnderWindowBackground];
++    [vibrancy_view setBlendingMode:NSVisualEffectBlendingModeBehindWindow];
++    [vibrancy_view setState:NSVisualEffectStateActive];
++    [vibrancy_view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
++    [bridged_view_ addSubview:vibrancy_view];
++  }
+ 
+   [bridged_view_ setWantsLayer:YES];
+   if (corner_radius) {
