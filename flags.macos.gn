@@ -1,4 +1,5 @@
 blink_symbol_level=0
+v8_symbol_level=0
 enable_iterator_debugging=false
 enable_mse_mpeg2ts_stream_parser=true
 enable_rust=true
