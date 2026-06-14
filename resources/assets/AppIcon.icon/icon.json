@@ -1,73 +1,120 @@
 {
-  "fill-specializations" : [
-    {
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:0.05490,0.11373,0.36863,1.00000",
-          "display-p3:0.33333,0.40784,0.85098,1.00000"
-        ]
-      }
-    },
-    {
-      "appearance" : "dark",
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:0.08235,0.09804,0.19608,1.00000",
-          "display-p3:0.17647,0.23529,0.49804,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
-      }
-    }
-  ],
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.05267,0.11371,0.36768,1.00000",
+      "display-p3:0.31689,0.39502,0.82666,1.00000"
+    ]
+  },
   "groups" : [
     {
       "layers" : [
         {
+          "blend-mode" : "normal",
           "fill-specializations" : [
             {
               "value" : {
-                "solid" : "srgb:0.98431,0.98824,1.00000,1.00000"
+                "linear-gradient" : [
+                  "display-p3:0.99121,0.99121,0.99902,1.00000",
+                  "display-p3:0.70898,0.74023,0.90088,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.5,
+                    "y" : 1
+                  },
+                  "stop" : {
+                    "x" : 0.5,
+                    "y" : 0
+                  }
+                }
               }
             },
             {
               "appearance" : "tinted",
               "value" : {
-                "solid" : "srgb:0.98431,0.98824,1.00000,1.00000"
+                "solid" : "display-p3:0.33496,0.40967,0.85400,1.00000"
               }
             }
           ],
-          "glass-specializations" : [
-            {
-              "value" : true
-            },
-            {
-              "appearance" : "tinted",
-              "value" : true
-            }
-          ],
-          "hidden" : false,
-          "image-name" : "logo.svg",
-          "name" : "logo",
+          "image-name" : "SVG Image.svg",
+          "name" : "SVG Image",
           "opacity-specializations" : [
             {
               "value" : 1
             },
             {
               "appearance" : "dark",
-              "value" : 0.96
+              "value" : 0
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 1
             }
           ],
           "position" : {
-            "scale" : 1.45,
+            "scale" : 1.6,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:0.05988,0.11859,0.37207,1.00000",
+              "display-p3:0.33350,0.40771,0.85156,1.00000"
+            ]
+          },
+          "image-name" : "SVG Image.svg",
+          "name" : "SVG Image",
+          "opacity-specializations" : [
+            {
+              "value" : 0
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 0
+            }
+          ],
+          "position" : {
+            "scale" : 1.6,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:0.05988,0.11859,0.37207,1.00000",
+              "display-p3:0.33350,0.40771,0.85156,1.00000"
+            ]
+          },
+          "image-name" : "SVG Image.svg",
+          "name" : "SVG Image",
+          "opacity-specializations" : [
+            {
+              "value" : 0
+            },
+            {
+              "appearance" : "dark",
+              "value" : 1
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 0
+            }
+          ],
+          "position" : {
+            "scale" : 1.6,
             "translation-in-points" : [
               0,
               0
@@ -77,15 +124,18 @@
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.2
+        "opacity" : 0.6
       },
       "translucency" : {
         "enabled" : true,
-        "value" : 0.5
+        "value" : 0.2
       }
     }
   ],
   "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
     "squares" : "shared"
   }
 }

@@ -70,7 +70,7 @@
    parser.add_option('--keystone',
                      dest='use_keystone',
                      action='store',
-@@ -468,6 +506,20 @@ def Main(argv):
+@@ -468,6 +506,22 @@ def Main(argv):
    else:
      _RemoveKeystoneKeys(plist)
  
@@ -87,6 +87,9 @@
 +                    options.sparkle_check_interval)
 +  else:
 +    _RemoveSparkleKeys(plist)
++
++  # Use dynamic AppIcon.icon bundle (supports light/dark appearances).
++  plist['CFBundleIconFile'] = 'AppIcon'
 +
    # Adds or removes any SCM keys.
    if not _DoSCMKeys(plist, options.add_scm_info):
