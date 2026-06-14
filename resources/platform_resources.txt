@@ -1,3 +1,2 @@
-assets/AppIcon.icon chrome/app/theme/chromium/mac/AppIcon.icon
 assets/Assets.car chrome/app/theme/chromium/mac/Assets.car
 assets/app.icns chrome/app/theme/chromium/mac/app.icns

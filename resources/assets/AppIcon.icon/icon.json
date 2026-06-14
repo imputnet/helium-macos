@@ -30,12 +30,32 @@
               }
             },
             {
+              "appearance" : "dark",
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.32861,0.40283,0.84229,1.00000",
+                  "display-p3:0.06018,0.12146,0.37549,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 0.5,
+                    "y" : 1
+                  },
+                  "stop" : {
+                    "x" : 0.5,
+                    "y" : 0
+                  }
+                }
+              }
+            },
+            {
               "appearance" : "tinted",
               "value" : {
                 "solid" : "display-p3:0.33496,0.40967,0.85400,1.00000"
               }
             }
           ],
+          "hidden" : false,
           "image-name" : "SVG Image.svg",
           "name" : "SVG Image",
           "opacity-specializations" : [
@@ -44,73 +64,11 @@
             },
             {
               "appearance" : "dark",
-              "value" : 0
-            },
-            {
-              "appearance" : "tinted",
-              "value" : 1
-            }
-          ],
-          "position" : {
-            "scale" : 1.6,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "blend-mode" : "normal",
-          "fill" : {
-            "linear-gradient" : [
-              "display-p3:0.05988,0.11859,0.37207,1.00000",
-              "display-p3:0.33350,0.40771,0.85156,1.00000"
-            ]
-          },
-          "image-name" : "SVG Image.svg",
-          "name" : "SVG Image",
-          "opacity-specializations" : [
-            {
-              "value" : 0
-            },
-            {
-              "appearance" : "dark",
-              "value" : 0
-            },
-            {
-              "appearance" : "tinted",
-              "value" : 0
-            }
-          ],
-          "position" : {
-            "scale" : 1.6,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "blend-mode" : "normal",
-          "fill" : {
-            "linear-gradient" : [
-              "display-p3:0.05988,0.11859,0.37207,1.00000",
-              "display-p3:0.33350,0.40771,0.85156,1.00000"
-            ]
-          },
-          "image-name" : "SVG Image.svg",
-          "name" : "SVG Image",
-          "opacity-specializations" : [
-            {
-              "value" : 0
-            },
-            {
-              "appearance" : "dark",
               "value" : 1
             },
             {
               "appearance" : "tinted",
-              "value" : 0
+              "value" : 1
             }
           ],
           "position" : {
@@ -133,9 +91,8 @@
     }
   ],
   "supported-platforms" : {
-    "circles" : [
-      "watchOS"
-    ],
-    "squares" : "shared"
+    "squares" : [
+      "macOS"
+    ]
   }
 }
