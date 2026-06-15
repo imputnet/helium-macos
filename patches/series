@@ -17,3 +17,5 @@ helium/macos/updater/sparkle2-integration.patch
 helium/macos/updater/disable-default-updater.patch
 helium/macos/applescript-tab-select-command.patch
 helium/macos/open-shortcuts-settings-action.patch
+
+helium/macos/native-translation-context-option.patch

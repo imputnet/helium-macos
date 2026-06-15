@@ -1,0 +1,816 @@
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -602,6 +602,9 @@ are declared in tools/grit/grit_args.gni
+         <message name="IDS_CONTENT_CONTEXT_LIVE_CAPTION_DISABLE" desc="The name of the Live Caption command in the content area context menu to disable Live Caption">
+           &amp;Disable Live Caption
+         </message>
++        <message name="IDS_CONTENT_CONTEXT_SYSTEM_TRANSLATE" desc="The name of the macOS system Translate command in the content area context menu">
++          Translate “<ph name="SELECTION_TEXT">$1<ex>Bonjour</ex></ph>”
++        </message>
+         <if expr="not use_titlecase">
+           <message name="IDS_CONTENT_CONTEXT_BACK" desc="The name of the Back command in the content area context menu">
+             &amp;Back
+--- a/chrome/browser/ui/cocoa/BUILD.gn
++++ b/chrome/browser/ui/cocoa/BUILD.gn
+@@ -94,6 +94,10 @@ source_set("cocoa") {
+     "main_menu_item.h",
+     "profiles/profile_menu_controller.mm",
+     "renderer_context_menu/chrome_swizzle_services_menu_updater.mm",
++    "renderer_context_menu/helium_translate_popover.h",
++    "renderer_context_menu/helium_translate_popover.mm",
++    "renderer_context_menu/native_translation_context_menu_mac.h",
++    "renderer_context_menu/native_translation_context_menu_mac.mm",
+     "renderer_context_menu/render_view_context_menu_mac.mm",
+     "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
+     "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
+@@ -149,9 +153,11 @@ source_set("cocoa") {
+     "//chrome/browser/profiles:profile_manager",
+     "//chrome/browser/profiles:profile_util",
+     "//chrome/browser/profiles/keep_alive",
++    "//chrome/browser/search",
+     "//chrome/browser/search_engines",
+     "//chrome/browser/status_icons",
+     "//chrome/browser/themes",
++    "//chrome/browser/translate",
+     "//chrome/browser/ui:ui_features",
+     "//chrome/browser/ui/autofill",
+     "//chrome/browser/ui/bookmarks",
+@@ -176,7 +182,9 @@ source_set("cocoa") {
+     "//components/startup_metric_utils",
+     "//components/tab_groups",
+     "//components/tabs",
++    "//components/translate/core/browser",
+     "//content/public/browser",
++    "//extensions/browser",
+     "//mojo/public/cpp/bindings",
+     "//skia",
+     "//ui/base",
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.h
+@@ -0,0 +1,25 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_NATIVE_TRANSLATION_CONTEXT_MENU_MAC_H_
++#define CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_NATIVE_TRANSLATION_CONTEXT_MENU_MAC_H_
++
++namespace content {
++struct ContextMenuParams;
++class RenderFrameHost;
++}  // namespace content
++
++namespace native_translation_context_menu {
++
++bool IsAvailable();
++
++bool CanShow(content::RenderFrameHost* render_frame_host,
++             const content::ContextMenuParams& params);
++
++void Show(content::RenderFrameHost* render_frame_host,
++          const content::ContextMenuParams& params);
++
++}  // namespace native_translation_context_menu
++
++#endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_NATIVE_TRANSLATION_CONTEXT_MENU_MAC_H_
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.mm
+@@ -0,0 +1,276 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.h"
++
++#import <Cocoa/Cocoa.h>
++#include <objc/message.h>
++
++#include "base/apple/foundation_util.h"
++#include "base/strings/sys_string_conversions.h"
++#import "chrome/browser/ui/cocoa/renderer_context_menu/helium_translate_popover.h"
++#include "content/public/browser/context_menu_params.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_widget_host.h"
++#include "content/public/browser/render_widget_host_view.h"
++#include "third_party/blink/public/common/context_menu_data/edit_flags.h"
++#include "third_party/blink/public/mojom/forms/form_control_type.mojom.h"
++#import "ui/base/cocoa/base_view.h"
++#include "ui/gfx/geometry/rect.h"
++
++namespace native_translation_context_menu {
++namespace {
++
++using blink::ContextMenuDataEditFlags;
++
++constexpr CGFloat kSystemTranslateAnchorSize = 1;
++constexpr CGFloat kMaxSystemTranslateAnchorSelectionVisibleRatio = 0.8;
++
++struct SystemTranslatePopoverAnchor {
++  NSRect rect;
++  NSRectEdge preferred_edge;
++};
++
++SEL IsAvailableSelector() {
++  // Avoid @selector() for private TranslationUI selectors so the code has no
++  // compile-time dependency on private SDK declarations.
++  static SEL selector = NSSelectorFromString(@"isAvailable");
++  return selector;
++}
++
++SEL SetTextSelector() {
++  static SEL selector = NSSelectorFromString(@"setText:");
++  return selector;
++}
++
++SEL SetSourceViewSelector() {
++  static SEL selector = NSSelectorFromString(@"setSourceView:");
++  return selector;
++}
++
++SEL SetIsSourceEditableSelector() {
++  static SEL selector = NSSelectorFromString(@"setIsSourceEditable:");
++  return selector;
++}
++
++Class SystemTranslationViewControllerClass() {
++  static Class controller_class = []() -> Class {
++    // TranslationUI is private API. Load it at runtime and validate selectors
++    // so missing or changed OS support only disables this menu item.
++    NSBundle* bundle = [NSBundle
++        bundleWithPath:@"/System/Library/PrivateFrameworks/TranslationUI.framework"];
++    if (!bundle) {
++      return Nil;
++    }
++    if (![bundle load]) {
++      return Nil;
++    }
++    return NSClassFromString(@"LTUITranslationViewController");
++  }();
++  return controller_class;
++}
++
++bool IsSystemTranslateControllerUsable(Class controller_class) {
++  // Treat any private API shape change as unavailable before sending messages
++  // that would otherwise crash on an unrecognized selector.
++  return controller_class &&
++         [controller_class respondsToSelector:IsAvailableSelector()] &&
++         [controller_class instancesRespondToSelector:SetTextSelector()] &&
++         [controller_class
++             instancesRespondToSelector:SetSourceViewSelector()] &&
++         [controller_class
++             instancesRespondToSelector:SetIsSourceEditableSelector()];
++}
++
++bool IsSystemTranslateAvailable() {
++  Class controller_class = SystemTranslationViewControllerClass();
++  if (!IsSystemTranslateControllerUsable(controller_class)) {
++    return false;
++  }
++
++  return reinterpret_cast<BOOL (*)(Class, SEL)>(objc_msgSend)(
++      controller_class, IsAvailableSelector());
++}
++
++NSRect PointAnchorRect(NSPoint point) {
++  return NSMakeRect(point.x - kSystemTranslateAnchorSize / 2,
++                    point.y - kSystemTranslateAnchorSize / 2,
++                    kSystemTranslateAnchorSize, kSystemTranslateAnchorSize);
++}
++
++bool ShouldCenterSystemTranslateAnchor(NSRect selection_rect,
++                                       NSRect visible_rect) {
++  // Very large selections make a side anchor misleading and can leave little
++  // useful space around the selection. Anchor to the visible page area instead.
++  return NSIsEmptyRect(selection_rect) || NSIsEmptyRect(visible_rect) ||
++         NSWidth(selection_rect) >=
++             NSWidth(visible_rect) *
++                 kMaxSystemTranslateAnchorSelectionVisibleRatio ||
++         NSHeight(selection_rect) >=
++             NSHeight(visible_rect) *
++                 kMaxSystemTranslateAnchorSelectionVisibleRatio;
++}
++
++bool CanFitSystemTranslatePopover(CGFloat space, CGFloat content_length) {
++  // A zero fitting size means the private view has not reported a useful size.
++  // Treat that as fitting so the fallback is not chosen unnecessarily.
++  return content_length <= 0 || space >= content_length;
++}
++
++bool CanShowForParams(const content::ContextMenuParams& params) {
++  return params.form_control_type !=
++             blink::mojom::FormControlType::kInputPassword &&
++         !params.selection_text.empty() && params.link_url.is_empty() &&
++         (params.edit_flags & ContextMenuDataEditFlags::kCanTranslate) != 0;
++}
++
++SystemTranslatePopoverAnchor SystemTranslateAnchorForSelection(
++    const gfx::Rect& selection_rect,
++    BaseView* view,
++    NSSize content_size) {
++  NSRect visible_rect = NSIntersectionRect(view.visibleRect, view.bounds);
++  if (NSIsEmptyRect(visible_rect)) {
++    return {NSZeroRect, NSMaxYEdge};
++  }
++
++  NSRect selection_ns_rect = selection_rect.IsEmpty()
++                                 ? NSZeroRect
++                                 : [view flipRectToNSRect:selection_rect];
++  selection_ns_rect = NSIntersectionRect(selection_ns_rect, visible_rect);
++  if (ShouldCenterSystemTranslateAnchor(selection_ns_rect, visible_rect)) {
++    return {visible_rect, NSMaxYEdge};
++  }
++
++  CGFloat left_space = NSMinX(selection_ns_rect) - NSMinX(visible_rect);
++  CGFloat right_space = NSMaxX(visible_rect) - NSMaxX(selection_ns_rect);
++  CGFloat top_space = NSMaxY(visible_rect) - NSMaxY(selection_ns_rect);
++  CGFloat bottom_space = NSMinY(selection_ns_rect) - NSMinY(visible_rect);
++  CGFloat anchor_y = NSMidY(selection_ns_rect);
++
++  CGFloat best_space = -1;
++  NSPoint anchor_point = NSZeroPoint;
++  NSRectEdge preferred_edge = NSMaxYEdge;
++  // Prefer an edge where the popover's reported fitting size can fit. If
++  // several edges fit, use the one with the most available space.
++  if (CanFitSystemTranslatePopover(right_space, content_size.width)) {
++    best_space = right_space;
++    anchor_point = NSMakePoint(NSMaxX(selection_ns_rect), anchor_y);
++    preferred_edge = NSMaxXEdge;
++  }
++  if (CanFitSystemTranslatePopover(left_space, content_size.width) &&
++      left_space > best_space) {
++    best_space = left_space;
++    anchor_point = NSMakePoint(NSMinX(selection_ns_rect), anchor_y);
++    preferred_edge = NSMinXEdge;
++  }
++  if (CanFitSystemTranslatePopover(top_space, content_size.height) &&
++      top_space > best_space) {
++    best_space = top_space;
++    anchor_point =
++        NSMakePoint(NSMidX(selection_ns_rect), NSMaxY(selection_ns_rect));
++    preferred_edge = NSMaxYEdge;
++  }
++  if (CanFitSystemTranslatePopover(bottom_space, content_size.height) &&
++      bottom_space > best_space) {
++    best_space = bottom_space;
++    anchor_point =
++        NSMakePoint(NSMidX(selection_ns_rect), NSMinY(selection_ns_rect));
++    preferred_edge = NSMinYEdge;
++  }
++  if (best_space < 0) {
++    return {visible_rect, NSMaxYEdge};
++  }
++
++  return {PointAnchorRect(anchor_point), preferred_edge};
++}
++
++BaseView* SourceViewForRenderFrameHost(
++    content::RenderFrameHost* render_frame_host) {
++  // The TranslationUI controller needs the AppKit view that owns the selected
++  // text. Resolve it from the local frame's RenderWidgetHost, not the tab view.
++  if (!render_frame_host || !render_frame_host->GetRenderWidgetHost()) {
++    return nil;
++  }
++
++  content::RenderWidgetHostView* view =
++      render_frame_host->GetRenderWidgetHost()->GetView();
++  if (!view) {
++    return nil;
++  }
++
++  NSView* native_view = view->GetNativeView().GetNativeNSView();
++  if (!native_view || !native_view.window) {
++    return nil;
++  }
++
++  return base::apple::ObjCCast<BaseView>(native_view);
++}
++
++}  // namespace
++
++bool IsAvailable() {
++  return IsSystemTranslateAvailable();
++}
++
++bool CanShow(content::RenderFrameHost* render_frame_host,
++             const content::ContextMenuParams& params) {
++  // Browser-level policy, URL, MIME type, and NTP checks live in
++  // RenderViewContextMenuMac. This helper only gates native UI prerequisites.
++  return CanShowForParams(params) && IsAvailable() &&
++         SourceViewForRenderFrameHost(render_frame_host);
++}
++
++void Show(content::RenderFrameHost* render_frame_host,
++          const content::ContextMenuParams& params) {
++  if (!CanShowForParams(params) || !IsAvailable()) {
++    return;
++  }
++
++  BaseView* source_view = SourceViewForRenderFrameHost(render_frame_host);
++  if (!source_view) {
++    return;
++  }
++
++  NSViewController* controller =
++      base::apple::ObjCCast<NSViewController>(
++          [[SystemTranslationViewControllerClass() alloc] initWithNibName:nil
++                                                                   bundle:nil]);
++  if (!controller) {
++    return;
++  }
++
++  NSAttributedString* selection_text = [[NSAttributedString alloc]
++      initWithString:base::SysUTF16ToNSString(params.selection_text)];
++  // LTUITranslationViewController is private API, so these setters are called
++  // dynamically instead of through SDK declarations. objc_msgSend must be cast
++  // to each selector's exact signature. Using an untyped call can use the wrong
++  // calling convention on some architectures.
++  reinterpret_cast<void (*)(id, SEL, NSAttributedString*)>(objc_msgSend)(
++      controller, SetTextSelector(), selection_text);
++  reinterpret_cast<void (*)(id, SEL, id)>(objc_msgSend)(
++      controller, SetSourceViewSelector(), source_view);
++  reinterpret_cast<void (*)(id, SEL, BOOL)>(objc_msgSend)(
++      controller, SetIsSourceEditableSelector(), NO);
++
++  NSPopover* popover = [[NSPopover alloc] init];
++  popover.behavior = NSPopoverBehaviorTransient;
++  popover.contentViewController = controller;
++
++  // Compute the anchor after assigning the controller so the private view can
++  // load and report a fitting size.
++  SystemTranslatePopoverAnchor anchor = SystemTranslateAnchorForSelection(
++      params.selection_rect, source_view, controller.view.fittingSize);
++  if (NSIsEmptyRect(anchor.rect)) {
++    return;
++  }
++
++  [HeliumTranslatePopover closeActivePopovers];
++  HeliumTranslatePopover* popover_controller =
++      [[HeliumTranslatePopover alloc] initWithPopover:popover
++                                           sourceView:source_view];
++  [popover_controller showRelativeToRect:anchor.rect
++                           preferredEdge:anchor.preferred_edge];
++}
++
++}  // namespace native_translation_context_menu
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/helium_translate_popover.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_HELIUM_TRANSLATE_POPOVER_H_
++#define CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_HELIUM_TRANSLATE_POPOVER_H_
++
++#import <Cocoa/Cocoa.h>
++
++// Owns the lifetime of a single native translation NSPopover, including the
++// AppKit observers that dismiss it when the user scrolls over the source view
++// or the source window closes. The controller keeps itself alive (NSPopover's
++// delegate is a weak reference) until the popover closes, so callers do not
++// need to retain it.
++@interface HeliumTranslatePopover : NSObject <NSPopoverDelegate>
++
++// Closes any translation popover that is currently visible. Keeps at most one
++// popover alive so repeated context menu actions do not stack popovers.
+++ (void)closeActivePopovers;
++
++- (instancetype)initWithPopover:(NSPopover*)popover
++                     sourceView:(NSView*)sourceView NS_DESIGNATED_INITIALIZER;
++- (instancetype)init NS_UNAVAILABLE;
++
++// Shows the popover relative to |rect| within the source view, taking over the
++// popover's lifetime.
++- (void)showRelativeToRect:(NSRect)rect
++             preferredEdge:(NSRectEdge)preferredEdge;
++
++@end
++
++#endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_HELIUM_TRANSLATE_POPOVER_H_
+--- /dev/null
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/helium_translate_popover.mm
+@@ -0,0 +1,125 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#import "chrome/browser/ui/cocoa/renderer_context_menu/helium_translate_popover.h"
++
++namespace {
++
++// Strongly holds every visible controller so it stays alive until its popover
++// closes. NSPopover.delegate is a weak reference, so without this the controller
++// could be deallocated while its event monitors are still installed.
++NSMutableSet<HeliumTranslatePopover*>* ActiveTranslatePopovers() {
++  static NSMutableSet<HeliumTranslatePopover*>* controllers =
++      [[NSMutableSet alloc] init];
++  return controllers;
++}
++
++}  // namespace
++
++@interface HeliumTranslatePopover ()
++- (void)close;
++- (void)installEventMonitors;
++- (void)tearDown;
++- (void)closeForScrollEvent:(NSEvent*)event inWindow:(NSWindow*)window;
++@end
++
++@implementation HeliumTranslatePopover {
++  NSPopover* _popover;
++  NSView* _sourceView;
++  id _scrollMonitor;
++  id _windowCloseObserver;
++}
++
+++ (void)closeActivePopovers {
++  for (HeliumTranslatePopover* controller in
++       [ActiveTranslatePopovers() allObjects]) {
++    [controller close];
++  }
++}
++
++- (instancetype)initWithPopover:(NSPopover*)popover
++                     sourceView:(NSView*)sourceView {
++  if ((self = [super init])) {
++    _popover = popover;
++    _sourceView = sourceView;
++    _popover.delegate = self;
++  }
++  return self;
++}
++
++- (void)showRelativeToRect:(NSRect)rect
++             preferredEdge:(NSRectEdge)preferredEdge {
++  [ActiveTranslatePopovers() addObject:self];
++  [_popover showRelativeToRect:rect
++                        ofView:_sourceView
++                 preferredEdge:preferredEdge];
++  if (![_popover isShown]) {
++    [self tearDown];
++    return;
++  }
++  [self installEventMonitors];
++}
++
++- (void)close {
++  [_popover close];
++  if (![_popover isShown]) {
++    [self tearDown];
++  }
++}
++
++- (void)installEventMonitors {
++  NSWindow* sourceWindow = _sourceView.window;
++  __weak HeliumTranslatePopover* weakSelf = self;
++
++  // Transient popovers close for many normal AppKit interactions, but scrolling
++  // inside the web contents does not necessarily dismiss this private view.
++  _scrollMonitor = [NSEvent
++      addLocalMonitorForEventsMatchingMask:NSEventMaskScrollWheel
++                                   handler:^NSEvent*(NSEvent* event) {
++                                     [weakSelf closeForScrollEvent:event
++                                                          inWindow:sourceWindow];
++                                     return event;
++                                   }];
++
++  _windowCloseObserver = [[NSNotificationCenter defaultCenter]
++      addObserverForName:NSWindowWillCloseNotification
++                  object:sourceWindow
++                   queue:nil
++              usingBlock:^(NSNotification*) {
++                [weakSelf close];
++              }];
++}
++
++- (void)closeForScrollEvent:(NSEvent*)event inWindow:(NSWindow*)window {
++  if (event.window != window) {
++    return;
++  }
++  NSPoint location = [_sourceView convertPoint:event.locationInWindow
++                                      fromView:nil];
++  if ([_sourceView mouse:location inRect:_sourceView.bounds]) {
++    [self close];
++  }
++}
++
++- (void)tearDown {
++  if (_scrollMonitor) {
++    [NSEvent removeMonitor:_scrollMonitor];
++    _scrollMonitor = nil;
++  }
++  if (_windowCloseObserver) {
++    [[NSNotificationCenter defaultCenter] removeObserver:_windowCloseObserver];
++    _windowCloseObserver = nil;
++  }
++  _popover.delegate = nil;
++  // Drops the controller's last strong reference; safe to call mid-callback
++  // because ARC keeps |self| alive for the duration of this method.
++  [ActiveTranslatePopovers() removeObject:self];
++}
++
++// NSPopoverDelegate:
++- (void)popoverDidClose:(NSNotification*)notification {
++  [self tearDown];
++}
++
++@end
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -443,6 +443,7 @@
+ #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
+ // Listen to this page context menu.
+ #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
++#define IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE 50196
+ // Open with items.
+ #define IDC_CONTENT_CONTEXT_OPEN_WITH1 50200
+ #define IDC_CONTENT_CONTEXT_OPEN_WITH2 50201
+--- a/chrome/browser/ui/actions/chrome_action_id.h
++++ b/chrome/browser/ui/actions/chrome_action_id.h
+@@ -331,6 +331,8 @@
+     IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
+   /* Other items. */ \
+   E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
++  E(kActionContentContextSystemTranslate, \
++    IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) \
+   E(kActionContentContextInspectElement, IDC_CONTENT_CONTEXT_INSPECTELEMENT) \
+   E(kActionContentContextViewPageInfo, IDC_CONTENT_CONTEXT_VIEWPAGEINFO) \
+   E(kActionContentContextLanguageSettings, \
+--- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
++++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+@@ -603,13 +603,14 @@ const std::map<int, int>& GetIdcToUmaMap
+        {IDC_CONTENT_CONTEXT_GLIC, 162},
+        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
+        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 165},
+        // To add new items:
+        //   - Add one more line above this comment block, using the UMA value
+        //     from the line below this comment block.
+        //   - Increment the UMA value in that latter line.
+        //   - Add the new item to the RenderViewContextMenuItem enum in
+        //     tools/metrics/histograms/metadata/ui/enums.xml.
+-       {0, 165}});
++       {0, 166}});
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
+ 
+   // LINT.IfChange(ContextMenuOptionDesktop)
+@@ -648,13 +649,14 @@ const std::map<int, int>& GetIdcToUmaMap
+        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
+        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
+        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 33},
+        // To add new items:
+        //   - Add one more line above this comment block, using the UMA value
+        //     from the line below this comment block.
+        //   - Increment the UMA value in that latter line.
+        //   - Add the new item to the ContextMenuOptionDesktop enum in
+        //     tools/metrics/histograms/metadata/enums.xml.
+-       {0, 32}});
++       {0, 33}});
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
+ 
+   return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
+--- a/tools/metrics/histograms/metadata/ui/enums.xml
++++ b/tools/metrics/histograms/metadata/ui/enums.xml
+@@ -78,6 +78,7 @@ chromium-metrics-reviews@google.com.
+   <int value="29" label="Search web for... in new tab"/>
+   <int value="31" label="Open link in split view"/>
+   <int value="32" label="Create image with Gemini in Chrome"/>
++  <int value="33" label="Translate with macOS system translation"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
+@@ -363,6 +364,7 @@ chromium-metrics-reviews@google.com.
+   <int value="162" label="IDC_CONTENT_CONTEXT_GLIC"/>
+   <int value="163" label="IDC_CONTENT_CONTEXT_VIDEO_FRAME"/>
+   <int value="164" label="IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE"/>
++  <int value="165" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+ </enum>
+ 
+ <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
+--- a/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h
+@@ -7,6 +7,8 @@
+ 
+ #import <Cocoa/Cocoa.h>
+ 
++#include <optional>
++
+ #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
+ #include "ui/menus/cocoa/text_services_context_menu.h"
+ 
+@@ -31,6 +33,7 @@ class RenderViewContextMenuMac : public
+   // SimpleMenuModel::Delegate:
+   void ExecuteCommand(int command_id, int event_flags) override;
+   bool IsCommandIdChecked(int command_id) const override;
++  bool IsCommandIdVisible(int command_id) const override;
+   bool IsCommandIdEnabled(int command_id) const override;
+ 
+   // TextServicesContextMenu::Delegate:
+@@ -62,11 +65,24 @@ class RenderViewContextMenuMac : public
+   // Handler for the "Look Up" menu item.
+   void LookUpInDictionary();
+ 
++  // Handler for the macOS system "Translate" menu item.
++  void TranslateWithSystem();
++
++  // Combines native TranslationUI availability with the relevant Chromium
++  // translate gates used by RenderViewContextMenu::IsTranslateEnabled(). The
++  // result is memoized because it is queried several times while the menu is
++  // built and shown, and it crosses into the private macOS framework.
++  bool CanShowSystemTranslate() const;
++  bool ComputeCanShowSystemTranslate() const;
++
+   // Returns the ContextMenuParams value associated with |direction|.
+   int ParamsForTextDirection(base::i18n::TextDirection direction) const;
+ 
+   // The context menu that adds and handles Speech and BiDi.
+   ui::TextServicesContextMenu text_services_context_menu_;
++
++  // Cached result of ComputeCanShowSystemTranslate() for this menu's lifetime.
++  mutable std::optional<bool> can_show_system_translate_;
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_MAC_H_
+--- a/components/translate/core/browser/translate_manager.cc
++++ b/components/translate/core/browser/translate_manager.cc
+@@ -264,6 +264,7 @@ bool TranslateManager::CanPartiallyTrans
+       target_lang);
+ }
+ 
++// static
+ bool TranslateManager::IsMimeTypeSupported(std::string_view mime_type) {
+   if (net::MatchesMimeType("image/*", mime_type))
+     return false;
+--- a/components/translate/core/browser/translate_manager.h
++++ b/components/translate/core/browser/translate_manager.h
+@@ -148,7 +148,7 @@ class TranslateManager {
+   // but shares a target language with full page translation.
+   bool CanPartiallyTranslateTargetLanguage();
+ 
+-  bool IsMimeTypeSupported(std::string_view mime_type);
++  static bool IsMimeTypeSupported(std::string_view mime_type);
+ 
+   // Shows the after translate or error infobar depending on the details.
+   void PageTranslated(std::string_view source_lang,
+--- a/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
++++ b/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
+@@ -4,16 +4,25 @@
+ 
+ #include "chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h"
+ 
++#include <memory>
+ #include <utility>
+ 
+ #include "base/mac/mac_util.h"
+ #include "base/strings/sys_string_conversions.h"
+ #include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/search/search.h"
++#include "chrome/browser/translate/translate_service.h"
++#include "chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.h"
+ #include "chrome/grit/generated_resources.h"
++#include "components/translate/core/browser/translate_manager.h"
++#include "components/translate/core/browser/translate_prefs.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/render_view_host.h"
+ #include "content/public/browser/render_widget_host.h"
+ #include "content/public/browser/render_widget_host_view.h"
++#include "content/public/browser/web_contents.h"
++#include "extensions/browser/guest_view/mime_handler_view/mime_handler_view_guest.h"
+ #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/resource/resource_bundle.h"
+@@ -69,6 +78,8 @@ RenderViewContextMenuMac::~RenderViewCon
+ void RenderViewContextMenuMac::ExecuteCommand(int command_id, int event_flags) {
+   if (command_id == IDC_CONTENT_CONTEXT_LOOK_UP) {
+     LookUpInDictionary();
++  } else if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
++    TranslateWithSystem();
+   } else {
+     RenderViewContextMenu::ExecuteCommand(command_id, event_flags);
+   }
+@@ -83,9 +94,21 @@ bool RenderViewContextMenuMac::IsCommand
+     return false;
+   }
+ 
++  if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
++    return false;
++  }
++
+   return RenderViewContextMenu::IsCommandIdChecked(command_id);
+ }
+ 
++bool RenderViewContextMenuMac::IsCommandIdVisible(int command_id) const {
++  if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
++    return CanShowSystemTranslate();
++  }
++
++  return RenderViewContextMenu::IsCommandIdVisible(command_id);
++}
++
+ bool RenderViewContextMenuMac::IsCommandIdEnabled(int command_id) const {
+   if (text_services_context_menu_.SupportsCommand(command_id)) {
+     return text_services_context_menu_.IsCommandIdEnabled(command_id);
+@@ -95,6 +118,10 @@ bool RenderViewContextMenuMac::IsCommand
+     return true;
+   }
+ 
++  if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
++    return CanShowSystemTranslate();
++  }
++
+   return RenderViewContextMenu::IsCommandIdEnabled(command_id);
+ }
+ 
+@@ -168,6 +195,20 @@ void RenderViewContextMenuMac::InitToolk
+         index++, IDC_CONTENT_CONTEXT_LOOK_UP,
+         l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_LOOK_UP,
+                                    printable_selection_text));
++
++    // Prefer Chromium's own translate items when they are present. The system
++    // item is a fallback for selected text, not a duplicate entry beside
++    // IDC_CONTENT_CONTEXT_TRANSLATE or IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE.
++    if (!menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_TRANSLATE) &&
++        !menu_model_.GetIndexOfCommandId(
++            IDC_CONTENT_CONTEXT_PARTIAL_TRANSLATE) &&
++        CanShowSystemTranslate()) {
++      menu_model_.InsertItemAt(
++          index++, IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE,
++          l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SYSTEM_TRANSLATE,
++                                     printable_selection_text));
++    }
++
+     menu_model_.InsertSeparatorAt(index++, ui::NORMAL_SEPARATOR);
+   }
+ 
+@@ -184,6 +225,69 @@ void RenderViewContextMenuMac::LookUpInD
+   }
+ }
+ 
++void RenderViewContextMenuMac::TranslateWithSystem() {
++  // Use the menu-time eligibility decision. The native helper still validates
++  // current TranslationUI and source-view prerequisites before showing UI.
++  if (!CanShowSystemTranslate()) {
++    return;
++  }
++
++  native_translation_context_menu::Show(GetRenderFrameHost(), params_);
++}
++
++bool RenderViewContextMenuMac::CanShowSystemTranslate() const {
++  if (!can_show_system_translate_.has_value()) {
++    can_show_system_translate_ = ComputeCanShowSystemTranslate();
++  }
++  return *can_show_system_translate_;
++}
++
++bool RenderViewContextMenuMac::ComputeCanShowSystemTranslate() const {
++  // Native UI checks are kept in native_translation_context_menu::CanShow().
++  // Browser policy and page eligibility checks intentionally stay here, next
++  // to the rest of RenderViewContextMenu's command gating.
++  if (!native_translation_context_menu::CanShow(GetRenderFrameHost(),
++                                                params_)) {
++    return false;
++  }
++
++  // The conditions below reuse Chromium's translate page eligibility checks
++  // where they apply to system translation. Avoid CanTranslate(), which also
++  // gates on Chromium service state such as network, API keys, and target
++  // language availability.
++
++  content::WebContents* web_contents = GetWebContents();
++  if (!web_contents) {
++    return false;
++  }
++
++  Profile* profile = GetProfile();
++  if (!profile) {
++    return false;
++  }
++
++  translate::TranslatePrefs translate_prefs(profile->GetPrefs());
++  if (!translate_prefs.IsTranslateAllowedByPolicy()) {
++    return false;
++  }
++
++  if (!TranslateService::IsTranslatableURL(web_contents->GetVisibleURL())) {
++    return false;
++  }
++
++  if (!translate::TranslateManager::IsMimeTypeSupported(
++          web_contents->GetContentsMimeType())) {
++    return false;
++  }
++
++  if (extensions::MimeHandlerViewGuest::FromRenderFrameHost(
++          GetRenderFrameHost())) {
++    return false;
++  }
++
++  return !search::IsInstantNTP(web_contents);
++}
++
+ int RenderViewContextMenuMac::ParamsForTextDirection(
+     base::i18n::TextDirection direction) const {
+   switch (direction) {
