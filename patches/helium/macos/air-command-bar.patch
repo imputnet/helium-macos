@@ -19,6 +19,7 @@
 +@property(nonatomic, copy) NSString* url;
 +@property(nonatomic, copy) NSString* type;
 +@property(nonatomic, strong) NSImage* favicon;
++@property(nonatomic) NSInteger tabIndex;
 +@end
 +
 +// Floating command palette — Arc's "Little Arc" equivalent.
@@ -229,10 +230,11 @@
 +      r.subtitle = url;
 +      r.url = url;
 +      r.type = @"tab";
++      r.tabIndex = i;
 +      [_results addObject:r];
 +    }
 +  }
-+  if (query.length > 0 && _results.count < (NSUInteger)kMaxResults) {
++  if (query.length > 0) {
 +    NSString* encoded = [query stringByAddingPercentEncodingWithAllowedCharacters:
 +                         NSCharacterSet.URLQueryAllowedCharacterSet];
 +    AirCommandBarResult* r = [[AirCommandBarResult alloc] init];
@@ -241,6 +243,7 @@
 +    r.url = [NSString stringWithFormat:@"https://www.google.com/search?q=%@",
 +             encoded];
 +    r.type = @"search";
++    r.tabIndex = -1;
 +    [_results addObject:r];
 +  }
 +  _selectedIndex = _results.count > 0 ? 0 : -1;
@@ -255,9 +258,14 @@
 +  if (_selectedIndex < 0 || _selectedIndex >= (NSInteger)_results.count)
 +    return;
 +  AirCommandBarResult* r = _results[_selectedIndex];
++  if (r.tabIndex >= 0) {
++    _browser->tab_strip_model()->ActivateTabAt(r.tabIndex);
++    [self hide];
++    return;
++  }
 +  GURL url(base::SysNSStringToUTF8(r.url));
 +  NavigateParams params(_browser, url, ui::PAGE_TRANSITION_TYPED);
-+  params.disposition = WindowOpenDisposition::CURRENT_TAB;
++  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
 +  Navigate(&params);
 +  [self hide];
 +}

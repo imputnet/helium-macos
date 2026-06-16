@@ -227,12 +227,17 @@ Index: src/chrome/browser/resources/tab_search/tab_search_page.ts
    protected onItemClose_(e: Event) {
      performance.mark('tab_search:close_tab:metric_begin');
      const target = e.currentTarget as TabSearchItemElement;
-@@ -607,7 +649,13 @@ export class TabSearchPageElement extend
+@@ -607,7 +649,18 @@ export class TabSearchPageElement extend
      }
  
      if (this.$.tabsList.selected === -1) {
 -      // No tabs matching the search text criteria.
 +      // No tabs matching the search text criteria — route to action items.
++      if (e.key === 'Enter') {
++        this.apiProxy_.openNewTab(this.searchText_);
++        e.preventDefault();
++        return;
++      }
 +      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
 +          this.filteredItems_.length === 0) {
 +        const el = this.shadowRoot?.getElementById('air-new-tab-action');

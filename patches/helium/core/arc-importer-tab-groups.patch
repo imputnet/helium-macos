@@ -11,17 +11,16 @@ Index: src/chrome/browser/importer/BUILD.gn
      "brave_external_process_importer_client.cc",
      "brave_external_process_importer_host.cc",
      "brave_in_process_importer_bridge.cc",
-@@ -64,6 +66,9 @@ source_set("impl") {
+@@ -64,6 +66,8 @@ source_set("impl") {
      "//chrome/browser/password_manager/factories",
      "//chrome/browser/profiles:profile",
      "//chrome/browser/search_engines",
 +    "//chrome/browser/tab_group_sync:factories",
-+    "//chrome/browser/ui:browser_finder",
 +    "//chrome/browser/ui/tabs/saved_tab_groups:saved_tab_groups",
      "//chrome/browser/webdata_services",
      "//chrome/common/importer:interfaces",
      "//components/bookmarks/browser",
-@@ -71,6 +76,8 @@ source_set("impl") {
+@@ -71,6 +75,8 @@ source_set("impl") {
      "//components/favicon/core",
      "//components/password_manager/core/browser:password_form",
      "//components/password_manager/core/browser/password_store:password_store_interface",
@@ -258,7 +257,7 @@ Index: src/chrome/browser/importer/arc_tab_group_importer.cc
 +    return;
 +  }
 +
-+  Browser* browser = chrome::FindLastActive();
++  Browser* browser = chrome::FindBrowserWithProfile(profile);
 +  if (!browser) {
 +    LOG(WARNING) << "arc_tab_group_importer: no active browser";
 +    return;
