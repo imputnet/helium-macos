@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -602,6 +602,9 @@ are declared in tools/grit/grit_args.gni
+@@ -605,6 +605,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_CONTENT_CONTEXT_LIVE_CAPTION_DISABLE" desc="The name of the Live Caption command in the content area context menu to disable Live Caption">
            &amp;Disable Live Caption
          </message>
