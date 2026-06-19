@@ -1,4 +1,5 @@
 # Air
+![Air logo](resources/assets/air-browser.svg)
 macOS packaging & development tooling for the Air Browser (derived from
 [Helium](https://github.com/imputnet/helium)).
 
