@@ -81,6 +81,6 @@ cd "$_src_dir"
 ./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
 ./out/Default/gn gen out/Default --fail-on-unused-args
 
-ninja -C out/Default chrome chromedriver
+ninja -j 4 -C out/Default chrome chromedriver
 
 "$_root_dir/sign_and_package_app.sh"
