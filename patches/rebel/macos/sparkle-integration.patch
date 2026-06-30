@@ -649,7 +649,7 @@
 +  sys.exit(main(sys.argv))
 --- a/chrome/browser/lifetime/application_lifetime_desktop.cc
 +++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
-@@ -17,6 +17,7 @@
+@@ -21,6 +21,7 @@
  #include "chrome/browser/background/glic/glic_background_mode_manager.h"
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
@@ -657,7 +657,7 @@
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/lifetime/application_lifetime.h"
  #include "chrome/browser/lifetime/browser_close_manager.h"
-@@ -55,6 +56,10 @@
+@@ -67,6 +68,10 @@
  #include "chrome/browser/sessions/session_data_service_factory.h"
  #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
  
@@ -668,7 +668,7 @@
  namespace chrome {
  
  namespace {
-@@ -114,6 +119,14 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -281,6 +286,14 @@ void AttemptRestartInternal(IgnoreUnload
  #else   // !BUILDFLAG(IS_CHROMEOS).
    // Set the flag to restore state after the restart.
    pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
