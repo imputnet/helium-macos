@@ -93,7 +93,7 @@
      return 3
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
-@@ -50,6 +50,7 @@ if (is_android) {
+@@ -49,6 +49,7 @@ if (is_android) {
    import("//build/util/branding.gni")
    import("//chrome/browser/buildflags.gni")
    import("//chrome/updater/branding.gni")
@@ -101,7 +101,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -508,6 +509,20 @@ if (is_win) {
+@@ -509,6 +510,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +122,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1151,6 +1166,10 @@ if (is_win) {
+@@ -1160,6 +1175,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +133,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1207,6 +1226,12 @@ if (is_win) {
+@@ -1216,6 +1235,12 @@ if (is_win) {
        bundle_deps += [ ":angle_binaries" ]
      }
  
@@ -176,7 +176,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3470,6 +3471,11 @@ static_library("ui") {
+@@ -3275,6 +3276,11 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
@@ -185,9 +185,9 @@
 +      public_configs = [ "//third_party/sparkle:sparkle_link_test" ]
 +    }
 +
-     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+     # Any circular includes must depend on the target
+     # "//chrome/browser:browser_public_dependencies".
      allow_circular_includes_from += [
-       "//chrome/browser/apps/app_shim",
 --- a/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 +++ b/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 @@ -464,6 +464,8 @@
@@ -355,7 +355,7 @@
 +@end
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
-@@ -41,6 +41,7 @@
+@@ -42,6 +42,7 @@
  #include "chrome/browser/browser_features.h"
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
@@ -363,7 +363,7 @@
  #include "chrome/browser/command_updater_impl.h"
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/download/download_core_service_factory.h"
-@@ -50,6 +51,9 @@
+@@ -51,6 +52,9 @@
  #include "chrome/browser/lifetime/browser_shutdown.h"
  #include "chrome/browser/mac/auth_session_request.h"
  #include "chrome/browser/mac/key_window_notifier.h"
@@ -373,7 +373,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -922,6 +926,9 @@ class AppControllerProfileObserver : pub
+@@ -929,6 +933,9 @@ class AppControllerProfileObserver : pub
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -382,7 +382,7 @@
 +#endif
  }
  
- - (BOOL)tryToTerminateApplication:(NSApplication*)app {
+ - (void)tryToTerminateApplication {
 --- a/chrome/browser/chrome_browser_main_mac.mm
 +++ b/chrome/browser/chrome_browser_main_mac.mm
 @@ -30,6 +30,9 @@
@@ -434,7 +434,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -4239,6 +4247,22 @@ static_library("browser") {
+@@ -4528,6 +4536,22 @@ static_library("browser") {
      weak_frameworks = [
        "ScreenCaptureKit.framework",  # Available in macOS 12.3, stable in 13.2.
      ]

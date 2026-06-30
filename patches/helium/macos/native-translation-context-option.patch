@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -605,6 +605,9 @@ are declared in tools/grit/grit_args.gni
+@@ -630,6 +630,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_CONTENT_CONTEXT_LIVE_CAPTION_DISABLE" desc="The name of the Live Caption command in the content area context menu to disable Live Caption">
            &amp;Disable Live Caption
          </message>
@@ -23,7 +23,7 @@
      "renderer_context_menu/render_view_context_menu_mac.mm",
      "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
      "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
-@@ -149,9 +153,11 @@ source_set("cocoa") {
+@@ -153,9 +157,11 @@ source_set("cocoa") {
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles/keep_alive",
@@ -32,10 +32,10 @@
      "//chrome/browser/status_icons",
      "//chrome/browser/themes",
 +    "//chrome/browser/translate",
+     "//chrome/browser/ui:accelerator_utils_headers",
+     "//chrome/browser/ui:simple_message_box_headers",
      "//chrome/browser/ui:ui_features",
-     "//chrome/browser/ui/autofill",
-     "//chrome/browser/ui/bookmarks",
-@@ -176,7 +182,9 @@ source_set("cocoa") {
+@@ -182,7 +188,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
      "//components/tabs",
@@ -517,7 +517,7 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -443,6 +443,7 @@
+@@ -449,6 +449,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
@@ -527,7 +527,7 @@
  #define IDC_CONTENT_CONTEXT_OPEN_WITH2 50201
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -331,6 +331,8 @@
+@@ -332,6 +332,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
@@ -538,23 +538,23 @@
    E(kActionContentContextLanguageSettings, \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -603,13 +603,14 @@ const std::map<int, int>& GetIdcToUmaMap
-        {IDC_CONTENT_CONTEXT_GLIC, 162},
-        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
+@@ -617,13 +617,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 165},
+        {IDC_CONTENT_CONTEXT_DICTATION, 165},
+        {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 167},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the RenderViewContextMenuItem enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {0, 165}});
-+       {0, 166}});
+-       {0, 167}});
++       {0, 168}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -648,13 +649,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -662,13 +663,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
@@ -580,11 +580,11 @@
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -363,6 +364,7 @@ chromium-metrics-reviews@google.com.
-   <int value="162" label="IDC_CONTENT_CONTEXT_GLIC"/>
-   <int value="163" label="IDC_CONTENT_CONTEXT_VIDEO_FRAME"/>
+@@ -367,6 +368,7 @@ chromium-metrics-reviews@google.com.
    <int value="164" label="IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE"/>
-+  <int value="165" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+   <int value="165" label="IDC_CONTENT_CONTEXT_DICTATION"/>
+   <int value="166" label="IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST"/>
++  <int value="167" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
@@ -655,7 +655,7 @@
    void PageTranslated(std::string_view source_lang,
 --- a/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
 +++ b/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
-@@ -4,16 +4,25 @@
+@@ -4,15 +4,25 @@
  
  #include "chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h"
  
@@ -669,7 +669,7 @@
 +#include "chrome/browser/search/search.h"
 +#include "chrome/browser/translate/translate_service.h"
 +#include "chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.h"
- #include "chrome/grit/generated_resources.h"
++#include "chrome/grit/generated_resources.h"
 +#include "components/translate/core/browser/translate_manager.h"
 +#include "components/translate/core/browser/translate_prefs.h"
  #include "content/public/browser/render_frame_host.h"
@@ -681,7 +681,7 @@
  #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
  #include "ui/base/l10n/l10n_util.h"
  #include "ui/base/resource/resource_bundle.h"
-@@ -69,6 +78,8 @@ RenderViewContextMenuMac::~RenderViewCon
+@@ -68,6 +78,8 @@ RenderViewContextMenuMac::~RenderViewCon
  void RenderViewContextMenuMac::ExecuteCommand(int command_id, int event_flags) {
    if (command_id == IDC_CONTENT_CONTEXT_LOOK_UP) {
      LookUpInDictionary();
@@ -690,7 +690,7 @@
    } else {
      RenderViewContextMenu::ExecuteCommand(command_id, event_flags);
    }
-@@ -83,9 +94,21 @@ bool RenderViewContextMenuMac::IsCommand
+@@ -82,9 +94,21 @@ bool RenderViewContextMenuMac::IsCommand
      return false;
    }
  
@@ -712,7 +712,7 @@
  bool RenderViewContextMenuMac::IsCommandIdEnabled(int command_id) const {
    if (text_services_context_menu_.SupportsCommand(command_id)) {
      return text_services_context_menu_.IsCommandIdEnabled(command_id);
-@@ -95,6 +118,10 @@ bool RenderViewContextMenuMac::IsCommand
+@@ -94,6 +118,10 @@ bool RenderViewContextMenuMac::IsCommand
      return true;
    }
  
@@ -723,7 +723,7 @@
    return RenderViewContextMenu::IsCommandIdEnabled(command_id);
  }
  
-@@ -168,6 +195,20 @@ void RenderViewContextMenuMac::InitToolk
+@@ -167,6 +195,20 @@ void RenderViewContextMenuMac::InitToolk
          index++, IDC_CONTENT_CONTEXT_LOOK_UP,
          l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_LOOK_UP,
                                     printable_selection_text));
@@ -744,7 +744,7 @@
      menu_model_.InsertSeparatorAt(index++, ui::NORMAL_SEPARATOR);
    }
  
-@@ -184,6 +225,69 @@ void RenderViewContextMenuMac::LookUpInD
+@@ -183,6 +225,69 @@ void RenderViewContextMenuMac::LookUpInD
    }
  }
  

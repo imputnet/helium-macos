@@ -1,18 +1,20 @@
---- a/chrome/browser/ui/views/frame/browser_view.cc
-+++ b/chrome/browser/ui/views/frame/browser_view.cc
-@@ -1359,15 +1359,11 @@ std::vector<ContentsContainerView*> Brow
+--- a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
++++ b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
+@@ -56,17 +56,11 @@ bool WindowFeatureController::CanSupport
  
  #if BUILDFLAG(IS_MAC)
- bool BrowserView::UsesImmersiveFullscreenMode() const {
--  const bool is_pwa = GetIsWebAppType();
--  const bool is_tabbed_window = GetSupportsTabStrip();
+ bool WindowFeatureController::UsesImmersiveFullscreenMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
 -  return is_pwa || is_tabbed_window;
 +  return false;
  }
  
- bool BrowserView::UsesImmersiveFullscreenTabbedMode() const {
--  const bool is_pwa = GetIsWebAppType();
--  const bool is_tabbed_window = GetSupportsTabStrip();
+ bool WindowFeatureController::UsesImmersiveFullscreenTabbedMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
 -  return is_tabbed_window && !is_pwa;
 +  return false;
  }
