@@ -1,8 +1,8 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html
-@@ -332,16 +332,6 @@
-             </template>
-           </select>
+@@ -334,16 +334,6 @@
+               label="$i18n{showZoomIndicator}">
+           </settings-toggle-button>
          </div>
 -<if expr="is_macosx">
 -        <settings-toggle-button class="hr"
