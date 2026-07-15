@@ -12,7 +12,7 @@
              &amp;Back
 --- a/chrome/browser/ui/cocoa/BUILD.gn
 +++ b/chrome/browser/ui/cocoa/BUILD.gn
-@@ -94,6 +94,10 @@ source_set("cocoa") {
+@@ -95,6 +95,10 @@ source_set("cocoa") {
      "main_menu_item.h",
      "profiles/profile_menu_controller.mm",
      "renderer_context_menu/chrome_swizzle_services_menu_updater.mm",
@@ -23,7 +23,7 @@
      "renderer_context_menu/render_view_context_menu_mac.mm",
      "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
      "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
-@@ -153,9 +157,11 @@ source_set("cocoa") {
+@@ -155,9 +159,11 @@ source_set("cocoa") {
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles/keep_alive",
@@ -35,7 +35,7 @@
      "//chrome/browser/ui:accelerator_utils_headers",
      "//chrome/browser/ui:simple_message_box_headers",
      "//chrome/browser/ui:ui_features",
-@@ -182,7 +188,9 @@ source_set("cocoa") {
+@@ -184,7 +190,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
      "//components/tabs",
@@ -517,7 +517,7 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -449,6 +449,7 @@
+@@ -451,6 +451,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
@@ -538,11 +538,11 @@
    E(kActionContentContextLanguageSettings, \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -617,13 +617,14 @@ const std::map<int, int>& GetIdcToUmaMap
-        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
+@@ -618,13 +618,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_DICTATION, 165},
         {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 167},
+        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 167},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 168},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
@@ -554,7 +554,7 @@
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -662,13 +663,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -663,13 +664,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
@@ -580,11 +580,11 @@
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -367,6 +368,7 @@ chromium-metrics-reviews@google.com.
-   <int value="164" label="IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE"/>
+@@ -368,6 +369,7 @@ chromium-metrics-reviews@google.com.
    <int value="165" label="IDC_CONTENT_CONTEXT_DICTATION"/>
    <int value="166" label="IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST"/>
-+  <int value="167" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+   <int value="167" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
++  <int value="168" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
