@@ -1,4 +1,7 @@
 {
+  "features" : [
+    "specular-location"
+  ],
   "fill-specializations" : [
     {
       "value" : {
@@ -10,22 +13,7 @@
     },
     {
       "appearance" : "dark",
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:0.08235,0.09804,0.19608,1.00000",
-          "display-p3:0.17647,0.23529,0.49804,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
-      }
+      "value" : "automatic"
     }
   ],
   "groups" : [
@@ -45,15 +33,7 @@
               }
             }
           ],
-          "glass-specializations" : [
-            {
-              "value" : true
-            },
-            {
-              "appearance" : "tinted",
-              "value" : true
-            }
-          ],
+          "glass" : true,
           "hidden" : false,
           "image-name" : "logo.svg",
           "name" : "logo",
@@ -79,6 +59,7 @@
         "kind" : "neutral",
         "opacity" : 0.2
       },
+      "specular" : "inside",
       "translucency" : {
         "enabled" : true,
         "value" : 0.5
