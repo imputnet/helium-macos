@@ -64,6 +64,7 @@ ___helium_info_pull() {
 ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
+    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir" "$_depot_tools_dir" "$_arch"
     python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
     "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
