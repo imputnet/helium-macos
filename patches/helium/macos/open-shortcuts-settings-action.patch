@@ -14,8 +14,8 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
  
 --- a/base/mac/mac_util.mm
 +++ b/base/mac/mac_util.mm
-@@ -501,6 +501,16 @@ void OpenSystemSettingsPane(SystemSettin
-                            error:nil];
+@@ -474,6 +474,16 @@ void OpenSystemSettingsPane(SystemSettin
+               @"Sharing";
        }
        break;
 +    case SystemSettingsPane::kKeyboardShortcuts:
@@ -29,8 +29,8 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
 +      }
 +      break;
      case SystemSettingsPane::kNetwork_Proxies:
-       if (MacOSMajorVersion() >= 13) {
-         url = @"x-apple.systempreferences:com.apple.Network-Settings.extension?"
+       url = @"x-apple.systempreferences:com.apple.Network-Settings.extension?"
+             @"Proxies";
 --- a/chrome/browser/ui/webui/settings/mac_system_settings_handler.cc
 +++ b/chrome/browser/ui/webui/settings/mac_system_settings_handler.cc
 @@ -15,12 +15,24 @@ MacSystemSettingsHandler::~MacSystemSett

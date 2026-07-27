@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -630,6 +630,9 @@ are declared in tools/grit/grit_args.gni
+@@ -647,6 +647,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_CONTENT_CONTEXT_LIVE_CAPTION_DISABLE" desc="The name of the Live Caption command in the content area context menu to disable Live Caption">
            &amp;Disable Live Caption
          </message>
@@ -23,22 +23,23 @@
      "renderer_context_menu/render_view_context_menu_mac.mm",
      "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
      "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
-@@ -155,9 +159,11 @@ source_set("cocoa") {
+@@ -144,10 +148,12 @@ source_set("cocoa") {
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles/keep_alive",
 +    "//chrome/browser/search",
      "//chrome/browser/search_engines",
+     "//chrome/browser/spellchecker",
      "//chrome/browser/status_icons",
      "//chrome/browser/themes",
 +    "//chrome/browser/translate",
      "//chrome/browser/ui:accelerator_utils_headers",
+     "//chrome/browser/ui:recently_audible_helper",
      "//chrome/browser/ui:simple_message_box_headers",
-     "//chrome/browser/ui:ui_features",
-@@ -184,7 +190,9 @@ source_set("cocoa") {
+@@ -177,7 +183,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
-     "//components/tabs",
+     "//components/tabs:impl",
 +    "//components/translate/core/browser",
      "//content/public/browser",
 +    "//extensions/browser",
@@ -517,7 +518,7 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -451,6 +451,7 @@
+@@ -457,6 +457,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
@@ -527,7 +528,7 @@
  #define IDC_CONTENT_CONTEXT_OPEN_WITH2 50201
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -332,6 +332,8 @@
+@@ -321,6 +321,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
@@ -538,53 +539,53 @@
    E(kActionContentContextLanguageSettings, \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -618,13 +618,14 @@ const std::map<int, int>& GetIdcToUmaMap
-        {IDC_CONTENT_CONTEXT_DICTATION, 165},
-        {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
-        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 167},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 168},
+@@ -626,13 +626,14 @@ const std::map<int, int>& GetIdcToUmaMap
+        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
+        {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
+        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 169},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 170},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the RenderViewContextMenuItem enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {0, 167}});
-+       {0, 168}});
+-       {0, 170}});
++       {0, 171}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -663,13 +664,14 @@ const std::map<int, int>& GetIdcToUmaMap
-        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
+@@ -672,13 +673,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 33},
+        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 34},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the ContextMenuOptionDesktop enum in
-        //     tools/metrics/histograms/metadata/enums.xml.
--       {0, 32}});
-+       {0, 33}});
+        //     tools/metrics/histograms/metadata/ui/enums.xml.
+-       {0, 33}});
++       {0, 34}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
  
    return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
 --- a/tools/metrics/histograms/metadata/ui/enums.xml
 +++ b/tools/metrics/histograms/metadata/ui/enums.xml
-@@ -78,6 +78,7 @@ chromium-metrics-reviews@google.com.
-   <int value="29" label="Search web for... in new tab"/>
+@@ -79,6 +79,7 @@ chromium-metrics-reviews@google.com.
    <int value="31" label="Open link in split view"/>
    <int value="32" label="Create image with Gemini in Chrome"/>
-+  <int value="33" label="Translate with macOS system translation"/>
+   <int value="33" label="Remove from dictionary"/>
++  <int value="34" label="Translate with macOS system translation"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -368,6 +369,7 @@ chromium-metrics-reviews@google.com.
-   <int value="165" label="IDC_CONTENT_CONTEXT_DICTATION"/>
-   <int value="166" label="IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST"/>
-   <int value="167" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
-+  <int value="168" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+@@ -372,6 +373,7 @@ chromium-metrics-reviews@google.com.
+   <int value="167" label="IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY"/>
+   <int value="168" label="IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS"/>
+   <int value="169" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
++  <int value="170" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
@@ -607,34 +608,33 @@
    bool IsCommandIdEnabled(int command_id) const override;
  
    // TextServicesContextMenu::Delegate:
-@@ -62,11 +65,24 @@ class RenderViewContextMenuMac : public
-   // Handler for the "Look Up" menu item.
-   void LookUpInDictionary();
+@@ -65,6 +68,14 @@ class RenderViewContextMenuMac : public
+   // Handler for the "Remove from Dictionary" menu item.
+   void RemoveFromDictionary();
  
 +  // Handler for the macOS system "Translate" menu item.
 +  void TranslateWithSystem();
 +
-+  // Combines native TranslationUI availability with the relevant Chromium
-+  // translate gates used by RenderViewContextMenu::IsTranslateEnabled(). The
-+  // result is memoized because it is queried several times while the menu is
-+  // built and shown, and it crosses into the private macOS framework.
++  // Combines native TranslationUI availability with Chromium translate policy
++  // and page eligibility. The result is memoized for this menu's lifetime.
 +  bool CanShowSystemTranslate() const;
 +  bool ComputeCanShowSystemTranslate() const;
 +
    // Returns the ContextMenuParams value associated with |direction|.
    int ParamsForTextDirection(base::i18n::TextDirection direction) const;
  
-   // The context menu that adds and handles Speech and BiDi.
-   ui::TextServicesContextMenu text_services_context_menu_;
+@@ -74,6 +85,8 @@ class RenderViewContextMenuMac : public
+   // The word under the cursor that the user has manually added to their
+   // dictionary. This will be empty if the word is not in the user dictionary.
+   std::u16string user_added_word_;
 +
-+  // Cached result of ComputeCanShowSystemTranslate() for this menu's lifetime.
 +  mutable std::optional<bool> can_show_system_translate_;
  };
  
  #endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_MAC_H_
 --- a/components/translate/core/browser/translate_manager.cc
 +++ b/components/translate/core/browser/translate_manager.cc
-@@ -264,6 +264,7 @@ bool TranslateManager::CanPartiallyTrans
+@@ -272,6 +272,7 @@ bool TranslateManager::CanPartiallyTrans
        target_lang);
  }
  
@@ -655,7 +655,7 @@
    void PageTranslated(std::string_view source_lang,
 --- a/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
 +++ b/chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.mm
-@@ -4,15 +4,25 @@
+@@ -4,19 +4,28 @@
  
  #include "chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h"
  
@@ -664,12 +664,15 @@
  
  #include "base/mac/mac_util.h"
  #include "base/strings/sys_string_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
  #include "chrome/app/chrome_command_ids.h"
 +#include "chrome/browser/profiles/profile.h"
 +#include "chrome/browser/search/search.h"
+ #include "chrome/browser/spellchecker/spellcheck_factory.h"
+ #include "chrome/browser/spellchecker/spellcheck_service.h"
 +#include "chrome/browser/translate/translate_service.h"
 +#include "chrome/browser/ui/cocoa/renderer_context_menu/native_translation_context_menu_mac.h"
-+#include "chrome/grit/generated_resources.h"
+ #include "chrome/grit/generated_resources.h"
 +#include "components/translate/core/browser/translate_manager.h"
 +#include "components/translate/core/browser/translate_prefs.h"
  #include "content/public/browser/render_frame_host.h"
@@ -681,16 +684,17 @@
  #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
  #include "ui/base/l10n/l10n_util.h"
  #include "ui/base/resource/resource_bundle.h"
-@@ -68,6 +78,8 @@ RenderViewContextMenuMac::~RenderViewCon
- void RenderViewContextMenuMac::ExecuteCommand(int command_id, int event_flags) {
-   if (command_id == IDC_CONTENT_CONTEXT_LOOK_UP) {
-     LookUpInDictionary();
-+  } else if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
-+    TranslateWithSystem();
-   } else {
-     RenderViewContextMenu::ExecuteCommand(command_id, event_flags);
+@@ -108,6 +117,9 @@ void RenderViewContextMenuMac::ExecuteCo
+     case IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY:
+       RemoveFromDictionary();
+       break;
++    case IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE:
++      TranslateWithSystem();
++      break;
+     default:
+       RenderViewContextMenu::ExecuteCommand(command_id, event_flags);
    }
-@@ -82,9 +94,21 @@ bool RenderViewContextMenuMac::IsCommand
+@@ -123,9 +135,21 @@ bool RenderViewContextMenuMac::IsCommand
      return false;
    }
  
@@ -712,18 +716,16 @@
  bool RenderViewContextMenuMac::IsCommandIdEnabled(int command_id) const {
    if (text_services_context_menu_.SupportsCommand(command_id)) {
      return text_services_context_menu_.IsCommandIdEnabled(command_id);
-@@ -94,6 +118,10 @@ bool RenderViewContextMenuMac::IsCommand
-     return true;
+@@ -136,6 +160,8 @@ bool RenderViewContextMenuMac::IsCommand
+       return true;
+     case IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY:
+       return !user_added_word_.empty();
++    case IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE:
++      return CanShowSystemTranslate();
+     default:
+       return RenderViewContextMenu::IsCommandIdEnabled(command_id);
    }
- 
-+  if (command_id == IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) {
-+    return CanShowSystemTranslate();
-+  }
-+
-   return RenderViewContextMenu::IsCommandIdEnabled(command_id);
- }
- 
-@@ -167,6 +195,20 @@ void RenderViewContextMenuMac::InitToolk
+@@ -217,6 +243,20 @@ void RenderViewContextMenuMac::InitToolk
          index++, IDC_CONTENT_CONTEXT_LOOK_UP,
          l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_LOOK_UP,
                                     printable_selection_text));
@@ -744,8 +746,8 @@
      menu_model_.InsertSeparatorAt(index++, ui::NORMAL_SEPARATOR);
    }
  
-@@ -183,6 +225,69 @@ void RenderViewContextMenuMac::LookUpInD
-   }
+@@ -246,6 +286,69 @@ void RenderViewContextMenuMac::RemoveFro
+                                   user_added_word_);
  }
  
 +void RenderViewContextMenuMac::TranslateWithSystem() {

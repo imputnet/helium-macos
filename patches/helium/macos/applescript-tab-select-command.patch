@@ -23,7 +23,7 @@
        <parameter name="javascript" code="JvSc" description="The javascript code to execute." type="text">
 --- a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
 +++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
-@@ -336,6 +336,14 @@ void ResumeAppleEventAndSendReply(NSAppl
+@@ -343,6 +343,14 @@ void ResumeAppleEventAndSendReply(NSAppl
    _webContents->SavePage(mainFile, directoryPath, savePageType);
  }
  

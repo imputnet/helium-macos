@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
 +++ b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
-@@ -56,17 +56,11 @@ bool WindowFeatureController::CanSupport
+@@ -60,17 +60,11 @@ bool WindowFeatureController::IsTrustedS
  
  #if BUILDFLAG(IS_MAC)
  bool WindowFeatureController::UsesImmersiveFullscreenMode() const {

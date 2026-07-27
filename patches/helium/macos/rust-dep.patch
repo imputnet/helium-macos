@@ -1,6 +1,6 @@
 --- a/services/webnn/BUILD.gn
 +++ b/services/webnn/BUILD.gn
-@@ -157,6 +157,7 @@ component("webnn_service") {
+@@ -160,6 +160,7 @@ component("webnn_service") {
      deps += [
        "//third_party/coremltools:modelformat_proto",
        "//third_party/fp16",
