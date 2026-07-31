@@ -3,7 +3,11 @@ set -e
 
 src_dir="$1"
 depot_tools_dir="$2"
-go_arch="mac-${3/x86_64/amd64}"
+arch="$(/usr/bin/uname -m)"
+go_arch="mac-arm64"
+if [[ $arch == "x86_64" ]]; then
+    go_arch="mac-amd64"
+fi
 go_dir="$src_dir/third_party/dawn/tools/golang/$go_arch"
 
 [ -x "$go_dir/bin/go" ] && exit
