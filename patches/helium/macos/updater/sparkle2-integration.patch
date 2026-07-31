@@ -176,12 +176,11 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3506,6 +3507,11 @@ static_library("ui") {
+@@ -3506,6 +3507,10 @@ static_library("ui") {
        "webui/settings/settings_utils_mac.mm",
      ]
  
 +    if (enable_sparkle) {
-+      sources -= [ "webui/help/version_updater_mac.mm" ]
 +      public_configs = [ "//third_party/sparkle:sparkle_link_test" ]
 +    }
 +
@@ -434,9 +433,9 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -4531,6 +4539,22 @@ source_set("browser") {
-       "//chrome/browser/local_discovery",
-       "//chrome/browser/local_discovery:impl",
+@@ -1563,6 +1571,21 @@ source_set("core") {
+       "UniformTypeIdentifiers.framework",
+       "VideoToolbox.framework",
      ]
 +
 +    if (enable_sparkle) {
@@ -453,10 +452,28 @@
 +      ]
 +      frameworks += [ "Sparkle.framework" ]
 +    }
-+
    }
  
-   if (enable_session_service) {
+   if (!is_win && !is_android) {
+--- a/chrome/browser/ui/webui/help/BUILD.gn
++++ b/chrome/browser/ui/webui/help/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//chrome/common/features.gni")
++import("//chrome/updater/sparkle.gni")
+ 
+ source_set("help") {
+   public = [ "version_updater.h" ]
+@@ -35,7 +36,7 @@ source_set("help") {
+     ]
+   }
+ 
+-  if (is_mac) {
++  if (is_mac && !enable_sparkle) {
+     sources = [ "version_updater_mac.mm" ]
+     deps += [
+       "//base:i18n",
 --- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 +++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 @@ -152,4 +152,24 @@ static BOOL SPUUpdateRequiresUserAttenti
