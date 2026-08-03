@@ -792,7 +792,7 @@
  
  class ChangeDirectory(object):
    """
-@@ -27,26 +32,36 @@ class ChangeDirectory(object):
+@@ -27,26 +32,37 @@ class ChangeDirectory(object):
  def main(args):
    build_dir = 'CONFIGURATION_BUILD_DIR=' + os.getcwd()
  
@@ -826,6 +826,7 @@
 +        'SPARKLE_EMBED_INSTALLER_STATUS_XPC_SERVICE=0',
 +        'SPARKLE_EMBED_INSTALLER_CONNECTION_XPC_SERVICE=0',
 +        'ENABLE_MODULE_VERIFIER=NO',
++        'MACOSX_DEPLOYMENT_TARGET=13.0',
          'build',
        ]
  

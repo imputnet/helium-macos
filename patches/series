@@ -1,3 +1,5 @@
+upstream-fixes/fix-xcode27-seatbelt.patch
+
 ungoogled-chromium/macos/fix-disabling-safebrowsing.patch
 ungoogled-chromium/macos/fix-dsymutil.patch
 ungoogled-chromium/macos/no-unknown-warnings.patch
