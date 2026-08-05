@@ -37,6 +37,8 @@ mkdir -p "$_src_dir/out/Default"
 
 python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
 "$_root_dir/retrieve_and_unpack_resource.sh" -t
+"$_root_dir/devutils/setup_dawn_go.sh" \
+    "$_src_dir" "$_depot_tools_dir" "$_arch"
 
 # Apply patches, substitutions and translations
 python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
