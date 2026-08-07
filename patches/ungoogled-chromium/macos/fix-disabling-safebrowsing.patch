@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -873,9 +873,6 @@ source_set("extensions") {
+@@ -874,9 +874,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -12,7 +12,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -907,7 +904,6 @@ source_set("extensions") {
+@@ -908,7 +905,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -186,7 +186,7 @@
      ash::prefs::kAuthenticationFlowAutoReloadInterval,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -8429,33 +8429,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -8447,33 +8447,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));

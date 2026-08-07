@@ -539,7 +539,7 @@
    E(kActionContentContextLanguageSettings, \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -626,13 +626,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -627,13 +627,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
         {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
         {IDC_CONTENT_CONTEXT_FORCE_PASTE, 169},
@@ -555,7 +555,7 @@
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -672,13 +673,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -673,13 +674,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
