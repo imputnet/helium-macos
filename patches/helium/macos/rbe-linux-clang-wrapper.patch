@@ -1,0 +1,47 @@
+--- a/build/config/siso/clang_mac.star
++++ b/build/config/siso/clang_mac.star
+@@ -22,6 +22,9 @@
+ def __step_config(ctx, step_config):
+     cfg = "buildtools/reclient_cfgs/chromium-browser-clang/rewrapper_mac.cfg"
+     if ctx.fs.exists(cfg):
++        step_config["executables"].append(
++            "buildtools/reclient_cfgs/chromium-browser-clang/clang_remote_wrapper",
++        )
+         rewrapper_config = rewrapper_cfg.parse(ctx, cfg)
+         largePlatform = {}
+         for k, v in rewrapper_config["platform"].items():
+--- /dev/null
++++ b/buildtools/reclient_cfgs/chromium-browser-clang/clang_remote_wrapper
+@@ -0,0 +1,21 @@
++#!/bin/bash
++# Copyright 2026 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++set -e
++
++clang_dir=../../third_party/llvm-build/Release+Asserts
++linux_clang_dir="${clang_dir}_linux"
++
++[ -e "$linux_clang_dir/bin/clang++" ] || \
++    ln -sr "$linux_clang_dir/bin/clang" "$linux_clang_dir/bin/clang++"
++
++linux_include_dir="$("$linux_clang_dir/bin/clang" -print-resource-dir)/include"
++clang_include_dir="${linux_include_dir/Release+Asserts_linux/Release+Asserts}"
++if [ -d "$clang_include_dir" ] && [ ! -e "$linux_include_dir" ]; then
++    mkdir -p "$(dirname "$linux_include_dir")"
++    ln -sr "$clang_include_dir" "$linux_include_dir"
++fi
++
++exec "${1/Release+Asserts/Release+Asserts_linux}" "${@:2}"
+--- /dev/null
++++ b/buildtools/reclient_cfgs/chromium-browser-clang/rewrapper_mac.cfg
+@@ -0,0 +1,8 @@
++# Copyright 2026 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++platform=cpu_count=1
++inputs=buildtools/reclient_cfgs/chromium-browser-clang/clang_remote_wrapper
++toolchain_inputs=third_party/llvm-build/Release+Asserts_linux/bin/clang
++remote_wrapper=../../buildtools/reclient_cfgs/chromium-browser-clang/clang_remote_wrapper
