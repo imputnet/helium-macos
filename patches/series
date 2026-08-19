@@ -12,6 +12,7 @@ helium/macos/rust-dep.patch
 helium/macos/rbe-linux-clang-wrapper.patch
 helium/macos/clean-main-menu.patch
 helium/macos/disable-immersive-fullscreen.patch
+helium/macos/vibrancy.patch
 
 rebel/macos/sparkle-integration.patch
 helium/macos/updater/fixup-sparkle-glue.patch
