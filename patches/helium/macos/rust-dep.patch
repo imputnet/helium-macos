@@ -1,6 +1,6 @@
 --- a/services/webnn/BUILD.gn
 +++ b/services/webnn/BUILD.gn
-@@ -160,6 +160,7 @@ component("webnn_service") {
+@@ -162,6 +162,7 @@ component("webnn_service") {
      deps += [
        "//third_party/coremltools:modelformat_proto",
        "//third_party/fp16",
@@ -10,7 +10,7 @@
  
 --- a/media/midi/BUILD.gn
 +++ b/media/midi/BUILD.gn
-@@ -117,6 +117,8 @@ component("midi") {
+@@ -141,6 +141,8 @@ component("midi") {
          "CoreMIDI.framework",
        ]
      }

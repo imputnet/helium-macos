@@ -2,7 +2,7 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
 
 --- a/base/mac/mac_util.h
 +++ b/base/mac/mac_util.h
-@@ -108,6 +108,9 @@ enum class SystemSettingsPane {
+@@ -123,6 +123,9 @@ enum class SystemSettingsPane {
    // General > Login Items & Extensions > Extensions > Sharing
    kGeneral_LoginItems_Extensions_Sharing,
  
@@ -14,7 +14,7 @@ Used by the keyboard shortcuts settings page to direct the user to macOS setting
  
 --- a/base/mac/mac_util.mm
 +++ b/base/mac/mac_util.mm
-@@ -474,6 +474,16 @@ void OpenSystemSettingsPane(SystemSettin
+@@ -490,6 +490,16 @@ void OpenSystemSettingsPane(SystemSettin
                @"Sharing";
        }
        break;

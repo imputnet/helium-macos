@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -647,6 +647,9 @@ are declared in tools/grit/grit_args.gni
+@@ -655,6 +655,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_CONTENT_CONTEXT_LIVE_CAPTION_DISABLE" desc="The name of the Live Caption command in the content area context menu to disable Live Caption">
            &amp;Disable Live Caption
          </message>
@@ -518,28 +518,28 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -457,6 +457,7 @@
+@@ -405,6 +405,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
 +#define IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE 50196
  // Open with items.
  #define IDC_CONTENT_CONTEXT_OPEN_WITH1 50200
- #define IDC_CONTENT_CONTEXT_OPEN_WITH2 50201
+ // Context menu items that provide fast access to input methods.
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -321,6 +321,8 @@
+@@ -280,6 +280,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
 +  E(kActionContentContextSystemTranslate, \
 +    IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) \
    E(kActionContentContextInspectElement, IDC_CONTENT_CONTEXT_INSPECTELEMENT) \
-   E(kActionContentContextViewPageInfo, IDC_CONTENT_CONTEXT_VIEWPAGEINFO) \
    E(kActionContentContextLanguageSettings, \
+     IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS) \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -627,13 +627,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -644,13 +644,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
         {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
         {IDC_CONTENT_CONTEXT_FORCE_PASTE, 169},
@@ -555,7 +555,7 @@
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -673,13 +674,14 @@ const std::map<int, int>& GetIdcToUmaMap
+@@ -690,13 +691,14 @@ const std::map<int, int>& GetIdcToUmaMap
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
@@ -581,7 +581,7 @@
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -372,6 +373,7 @@ chromium-metrics-reviews@google.com.
+@@ -377,6 +378,7 @@ chromium-metrics-reviews@google.com.
    <int value="167" label="IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY"/>
    <int value="168" label="IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS"/>
    <int value="169" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
