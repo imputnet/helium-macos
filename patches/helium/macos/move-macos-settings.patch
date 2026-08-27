@@ -1,39 +1,39 @@
---- a/chrome/browser/resources/settings/appearance_page/appearance_page.html
-+++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html
-@@ -334,16 +334,6 @@
-               label="$i18n{showZoomIndicator}">
-           </settings-toggle-button>
-         </div>
+--- a/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
++++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
+@@ -306,16 +306,6 @@ export function getHtml(this: SettingsAp
+           label="$i18n{showZoomIndicator}">
+       </settings-toggle-button>
+     </div>
 -<if expr="is_macosx">
--        <settings-toggle-button class="hr"
--            pref="{{prefs.webkit.webprefs.tabs_to_links}}"
--            label="$i18n{tabsToLinks}">
--        </settings-toggle-button>
--        <settings-toggle-button class="hr"
--            pref="{{prefs.browser.confirm_to_quit}}"
--            label="$i18n{warnBeforeQuitting}">
--        </settings-toggle-button>
+-    <settings-toggle-button class="hr"
+-        pref-key="webkit.webprefs.tabs_to_links"
+-        label="$i18n{tabsToLinks}">
+-    </settings-toggle-button>
+-    <settings-toggle-button class="hr"
+-        pref-key="browser.confirm_to_quit"
+-        label="$i18n{warnBeforeQuitting}">
+-    </settings-toggle-button>
 -</if>
-       </div>
-     </settings-section>
-     <template is="dom-if" if="[[showManagedThemeDialog_]]" restamp>
---- a/chrome/browser/resources/settings/system_page/system_page.html
-+++ b/chrome/browser/resources/settings/system_page/system_page.html
-@@ -54,6 +54,17 @@
-     </template>
-     <!-- </if> -->
+   </div>
+ </settings-section>
+ ${this.showManagedThemeDialog_ ? html`
+--- a/chrome/browser/resources/settings/system_page/system_page.html.ts
++++ b/chrome/browser/resources/settings/system_page/system_page.html.ts
+@@ -53,6 +53,17 @@ export function getHtml(this: SettingsSy
+   ` : ''}
+ </if>
  
 +<if expr="is_macosx">
 +    <settings-toggle-button class="hr"
-+        pref="{{prefs.webkit.webprefs.tabs_to_links}}"
++        pref-key="webkit.webprefs.tabs_to_links"
 +        label="$i18n{tabsToLinks}">
 +    </settings-toggle-button>
 +    <settings-toggle-button class="hr"
-+        pref="{{prefs.browser.confirm_to_quit}}"
++        pref-key="browser.confirm_to_quit"
 +        label="$i18n{warnBeforeQuitting}">
 +    </settings-toggle-button>
 +</if>
 +
-     <!-- <if expr="_google_chrome and is_win"> -->
-       <template is="dom-if" if="[[showFeatureNotificationsSetting_]]">
-         <div class="hr"></div>
+ <if expr="_google_chrome and is_win">
+   ${this.showFeatureNotificationsSetting_ ? html`
+     <div class="hr"></div>
