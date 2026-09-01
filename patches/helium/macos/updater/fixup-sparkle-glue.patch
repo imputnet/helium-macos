@@ -746,16 +746,21 @@
  # Copyright 2023 Viasat Inc. All rights reserved.
  # Use of this source code is governed by a BSD-style license that can be
  # found in the header of the corresponding patch.
-@@ -16,7 +20,7 @@ bundle_data("sparkle_framework") {
+@@ -16,8 +20,11 @@ bundle_data("sparkle_framework") {
  action("build_sparkle_framework") {
    script = "build_sparkle_framework.py"
  
 -  sources = [ "src/REVISION" ]
+-  outputs = [ "$root_out_dir/Sparkle.framework" ]
 +  sources = [ "Package.swift" ]
-   outputs = [ "$root_out_dir/Sparkle.framework" ]
++  outputs = [
++    "$root_out_dir/BinaryDelta",
++    "$root_out_dir/Sparkle.framework",
++  ]
  }
  
-@@ -29,6 +33,7 @@ config("sparkle_link_test") {
+ config("sparkle_link_test") {
+@@ -29,6 +36,7 @@ config("sparkle_link_test") {
      "-framework",
      "Sparkle",
    ]
@@ -763,7 +768,7 @@
  }
  
  config("sparkle_link_framework") {
-@@ -40,4 +45,5 @@ config("sparkle_link_framework") {
+@@ -40,4 +48,5 @@ config("sparkle_link_framework") {
      "-framework",
      "Sparkle",
    ]
@@ -788,11 +793,11 @@
  
  # In-order targets to build
 -TARGETS = ['bsdiff', 'ed25519', 'Sparkle']
-+TARGETS = ['Sparkle']
++TARGETS = ['Sparkle', 'BinaryDelta']
  
  class ChangeDirectory(object):
    """
-@@ -27,26 +32,37 @@ class ChangeDirectory(object):
+@@ -27,26 +32,38 @@ class ChangeDirectory(object):
  def main(args):
    build_dir = 'CONFIGURATION_BUILD_DIR=' + os.getcwd()
  
@@ -814,6 +819,7 @@
          'Release',
          build_dir,
 +        'PROJECT_TEMP_DIR=' + temp_dir,
++        'SYMROOT=' + temp_dir,
 +        'SPARKLE_BUILD_UI_BITS=0',
 +        'SPARKLE_BUILD_LEGACY_DSA_SUPPORT=0',
 +        'SPARKLE_BUILD_LEGACY_SUUPDATER=0',
