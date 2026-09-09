@@ -75,8 +75,12 @@ if $retrieve_toolchain; then
     cipd="$_src_dir/third_party/depot_tools/cipd"
     _host_cpu="$(uname -m)"
 
-    # Install the TypeScript compiler for macOS and Linux (for remote builds)
-    for platform in "mac-${_host_cpu/x86_64/amd64}" linux-amd64; do
+    # Install the TypeScript compiler for macOS, and Linux when using remote builds.
+    platforms=("mac-${_host_cpu/x86_64/amd64}")
+    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+      platforms+=(linux-amd64)
+    fi
+    for platform in "${platforms[@]}"; do
       typescript_package="chromium/third_party/typescript/$platform"
       typescript_version=$(python3 "$_src_dir/third_party/depot_tools/gclient.py" getdep \
         --deps-file "$_src_dir/DEPS" \
