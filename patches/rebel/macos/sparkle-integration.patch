@@ -655,9 +655,9 @@
  #include "chrome/browser/browser_process_platform_part.h"
 +#include "chrome/browser/buildflags.h"
  #include "chrome/browser/download/download_core_service.h"
+ #include "chrome/browser/global_features.h"
  #include "chrome/browser/lifetime/application_lifetime.h"
- #include "chrome/browser/lifetime/browser_close_manager.h"
-@@ -68,6 +69,10 @@
+@@ -70,6 +71,10 @@
  #include "chrome/browser/sessions/session_data_service_factory.h"
  #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
  

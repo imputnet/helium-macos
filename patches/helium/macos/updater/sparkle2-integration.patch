@@ -18,8 +18,8 @@
 +Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/build/apple/tweak_info_plist.py
 +++ b/build/apple/tweak_info_plist.py
-@@ -195,6 +195,21 @@ def _IsValidBundleId(bundle_identifier):
-   return re.match(r'^[0-9a-zA-Z-.]+$', bundle_identifier) is not None
+@@ -217,6 +217,21 @@ def _IsValidBundleId(bundle_identifier):
+     return re.match(r'^[0-9a-zA-Z-.]+$', bundle_identifier) is not None
  
  
 +def _AddSparkleKeys(plist, ed_key, auto_checks, check_interval):
@@ -38,59 +38,66 @@
 +
 +
  def _TagSuffixes():
-   # Keep this list sorted in the order that tag suffix components are to
-   # appear in a tag value. That is to say, it should be sorted per ASCII.
-@@ -324,6 +339,29 @@ def Main(argv):
-       action='store_true',
-       default=False,
-       help='Use staging breakpad to upload reports. Ignored if --breakpad=0.')
-+  parser.add_option('--sparkle',
-+                    dest='use_sparkle',
-+                    action='store',
-+                    type='int',
-+                    default=False,
-+                    help='Enable Sparkle [1 or 0]')
-+  parser.add_option('--sparkle_ed_key',
-+                    dest='sparkle_ed_key',
-+                    action='store',
-+                    default=None,
-+                    help='Sparkle update signing EdDSA key')
-+  parser.add_option('--sparkle_automatic_checks',
-+                    dest='sparkle_automatic_checks',
-+                    action='store',
-+                    type='int',
-+                    default=False,
-+                    help='Enable Sparkle automatic checks [1 or 0]')
-+  parser.add_option('--sparkle_check_interval',
-+                    dest='sparkle_check_interval',
-+                    action='store',
-+                    type='int',
-+                    default=0,
-+                    help='Sparkle check interval (min: 3600)')
-   parser.add_option('--keystone',
-                     dest='use_keystone',
-                     action='store',
-@@ -468,6 +506,20 @@ def Main(argv):
-   else:
-     _RemoveKeystoneKeys(plist)
+     # Keep this list sorted in the order that tag suffix components are to
+     # appear in a tag value. That is to say, it should be sorted per ASCII.
+@@ -360,6 +375,36 @@ def Main(argv):
+         help='Use staging breakpad to upload reports. Ignored if --breakpad=0.',
+     )
+     parser.add_option(
++        '--sparkle',
++        dest='use_sparkle',
++        action='store',
++        type='int',
++        default=False,
++        help='Enable Sparkle [1 or 0]'
++    )
++    parser.add_option('--sparkle_ed_key',
++        dest='sparkle_ed_key',
++        action='store',
++        default=None,
++        help='Sparkle update signing EdDSA key'
++    )
++    parser.add_option(
++        '--sparkle_automatic_checks',
++        dest='sparkle_automatic_checks',
++        action='store',
++        type='int',
++        default=False,
++        help='Enable Sparkle automatic checks [1 or 0]'
++    )
++    parser.add_option(
++        '--sparkle_check_interval',
++        dest='sparkle_check_interval',
++        action='store',
++        type='int',
++        default=0,
++        help='Sparkle check interval (min: 3600)'
++    )
++    parser.add_option(
+         '--keystone',
+         dest='use_keystone',
+         action='store',
+@@ -536,6 +581,20 @@ def Main(argv):
+     else:
+         _RemoveKeystoneKeys(plist)
  
-+  # Add Sparkle parameters if configured to do so.
-+  if options.use_sparkle:
-+    if not options.sparkle_ed_key:
-+      print('Sparkle updates require an EdDSA key.', file=sys.stderr)
-+      return 1
-+    if options.sparkle_check_interval < 3600:
-+      print('Sparkle update check interval must be at least 1 hour (3600).', file=sys.stderr)
-+      return 1
-+    _AddSparkleKeys(plist, options.sparkle_ed_key,
-+                    options.sparkle_automatic_checks,
-+                    options.sparkle_check_interval)
-+  else:
-+    _RemoveSparkleKeys(plist)
++    # Add Sparkle parameters if configured to do so.
++    if options.use_sparkle:
++      if not options.sparkle_ed_key:
++        print('Sparkle updates require an EdDSA key.', file=sys.stderr)
++        return 1
++      if options.sparkle_check_interval < 3600:
++        print('Sparkle update check interval must be at least 1 hour (3600).', file=sys.stderr)
++        return 1
++      _AddSparkleKeys(plist, options.sparkle_ed_key,
++                      options.sparkle_automatic_checks,
++                      options.sparkle_check_interval)
++    else:
++      _RemoveSparkleKeys(plist)
 +
-   # Adds or removes any SCM keys.
-   if not _DoSCMKeys(plist, options.add_scm_info):
-     return 3
+     # Adds or removes any SCM keys.
+     if not _DoSCMKeys(plist, options.add_scm_info):
+         return 3
 --- a/chrome/BUILD.gn
 +++ b/chrome/BUILD.gn
 @@ -51,6 +51,7 @@ if (is_android) {
@@ -101,7 +108,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -519,6 +520,20 @@ if (is_win) {
+@@ -547,6 +548,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -122,7 +129,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1209,6 +1224,10 @@ if (is_win) {
+@@ -1355,6 +1370,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -133,7 +140,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1266,6 +1285,12 @@ if (is_win) {
+@@ -1414,6 +1433,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -176,8 +183,8 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3483,6 +3484,10 @@ static_library("ui") {
-       "views/helium/native_frame_materials_mac.mm",
+@@ -3615,6 +3616,10 @@ static_library("ui") {
+       "//ui/base/cursor",
      ]
  
 +    if (enable_sparkle) {
@@ -354,7 +361,7 @@
 +@end
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
-@@ -44,6 +44,7 @@
+@@ -45,6 +45,7 @@
  #include "chrome/browser/browser_features.h"
  #include "chrome/browser/browser_process.h"
  #include "chrome/browser/browser_process_platform_part.h"
@@ -362,7 +369,7 @@
  #include "chrome/browser/command_updater_impl.h"
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/download/download_core_service_factory.h"
-@@ -55,6 +56,9 @@
+@@ -56,6 +57,9 @@
  #include "chrome/browser/lifetime/browser_shutdown.h"
  #include "chrome/browser/mac/auth_session_request.h"
  #include "chrome/browser/mac/key_window_notifier.h"
@@ -372,7 +379,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -927,6 +931,9 @@ class AppControllerProfileObserver : pub
+@@ -931,6 +935,9 @@ class AppControllerProfileObserver : pub
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -433,7 +440,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1579,6 +1587,21 @@ source_set("core") {
+@@ -1582,6 +1590,21 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]
