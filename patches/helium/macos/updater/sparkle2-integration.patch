@@ -539,3 +539,45 @@
  # Remove localization files if requested
  
  if [[ "$SPARKLE_COPY_LOCALIZATIONS" -eq 0 ]]; then
+--- a/chrome/browser/lifetime/application_lifetime_desktop.cc
++++ b/chrome/browser/lifetime/application_lifetime_desktop.cc
+@@ -21,6 +21,7 @@
+ #include "chrome/browser/background/glic/glic_background_mode_manager.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/browser_process_platform_part.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/download/download_core_service.h"
+ #include "chrome/browser/global_features.h"
+ #include "chrome/browser/lifetime/application_lifetime.h"
+@@ -70,6 +71,10 @@
+ #include "chrome/browser/sessions/session_data_service_factory.h"
+ #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
+ 
++#if BUILDFLAG(ENABLE_SPARKLE)
++#include "chrome/browser/mac/sparkle_glue.h"
++#endif
++
+ namespace chrome {
+ 
+ namespace {
+@@ -281,8 +286,19 @@ void AttemptRestartInternal(IgnoreUnload
+   content::GetUIThreadTaskRunner({})->PostTask(
+       FROM_HERE, base::BindOnce(&ExitIgnoreUnloadHandlers));
+ #else   // !BUILDFLAG(IS_CHROMEOS).
+-  // Set the flag to restore state after the restart.
++#if BUILDFLAG(ENABLE_SPARKLE)
++  if (helium::ApplicationIsNearlyUpdated()) {
++    helium::RelaunchBrowserUsingSparkle();
++    return;
++  }
++#endif
++
++  // This flag asks Chromium to launch another browser process on shutdown.
++  // Sparkle already does that for updates, so setting it before the branch above
++  // would request two relaunches. kWasRestarted still restores the session in
++  // either case.
+   pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
++
+   if (ignore_unload_handlers) {
+     ExitIgnoreUnloadHandlers();
+   } else {
