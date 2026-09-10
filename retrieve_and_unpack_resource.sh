@@ -75,11 +75,17 @@ if $retrieve_toolchain; then
     cipd="$_src_dir/third_party/depot_tools/cipd"
     _host_cpu="$(uname -m)"
 
-    # Install the TypeScript compiler for macOS, and Linux when using remote builds.
     platforms=("mac-${_host_cpu/x86_64/amd64}")
+
+    # Remote builds also need Linux Clang and TypeScript.
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+      python3 "$_src_dir/tools/clang/scripts/update.py" \
+        --host-os=linux \
+        --output-dir="$_src_dir/third_party/llvm-build/Release+Asserts_linux"
       platforms+=(linux-amd64)
     fi
+
+    # Install the TypeScript compiler for macOS, and Linux when using remote builds.
     for platform in "${platforms[@]}"; do
       typescript_package="chromium/third_party/typescript/$platform"
       typescript_version=$(python3 "$_src_dir/third_party/depot_tools/gclient.py" getdep \

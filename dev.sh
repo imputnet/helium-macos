@@ -42,16 +42,6 @@ ___helium_configure_siso() {
         --reapi_backend_config_path="$backend"
 }
 
-___helium_setup_remoteexec_toolchain() {
-    if [ -z "${SISO_REAPI_ADDRESS:-}" ]; then
-        return 0
-    fi
-
-    python3 "$_src_dir/tools/clang/scripts/update.py" \
-        --host-os=linux \
-        --output-dir="$_src_dir/third_party/llvm-build/Release+Asserts_linux"
-}
-
 ___helium_setup_gn() {
     local OUT_FILE="$_out_dir/args.gn"
     cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$OUT_FILE"
@@ -91,7 +81,6 @@ ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
     ___helium_configure_siso
-    ___helium_setup_remoteexec_toolchain
     "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir" "$_depot_tools_dir" "$_arch"
     python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
     "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
