@@ -1,7 +1,7 @@
 --- a/build/config/siso/clang_mac.star
 +++ b/build/config/siso/clang_mac.star
-@@ -22,6 +22,9 @@ __handlers = clang_unix.handlers
- def __step_config(ctx, step_config):
+@@ -25,6 +25,9 @@ def __step_config(ctx, step_config):
+         fail("remote-link is not supported on Mac/iOS yet")
      cfg = "buildtools/reclient_cfgs/chromium-browser-clang/rewrapper_mac.cfg"
      if ctx.fs.exists(cfg):
 +        step_config["executables"].append(

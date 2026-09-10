@@ -28,28 +28,18 @@ ___helium_setup_siso() {
         "$_depot_tools_dir/cipd" ensure --root "$_siso_dir" --ensure-file -
 }
 
-___helium_configure_remoteexec() {
-    if [ -z "${SISO_REAPI_ADDRESS:-}" ]; then
-        return 0
+___helium_configure_siso() {
+    local backend=""
+    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+        export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
+        backend=nativelink.star
     fi
-
-    export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
-    export RBE_service_no_security=true
 
     python3 "$_src_dir/build/config/siso/configure_siso.py" \
-        --reapi_address="$SISO_REAPI_ADDRESS" \
-        --reapi_instance="$SISO_REAPI_INSTANCE" \
-        --reapi_backend_config_path=nativelink.star
-}
-
-___helium_setup_remoteexec_toolchain() {
-    if [ -z "${SISO_REAPI_ADDRESS:-}" ]; then
-        return 0
-    fi
-
-    python3 "$_src_dir/tools/clang/scripts/update.py" \
-        --host-os=linux \
-        --output-dir="$_src_dir/third_party/llvm-build/Release+Asserts_linux"
+        --rbe_instance=projects/rbe-chrome-untrusted/instances/default_instance \
+        --reapi_address="${SISO_REAPI_ADDRESS:-}" \
+        --reapi_instance="${SISO_REAPI_INSTANCE:-}" \
+        --reapi_backend_config_path="$backend"
 }
 
 ___helium_setup_gn() {
@@ -90,7 +80,7 @@ ___helium_info_pull() {
 ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
-    ___helium_setup_remoteexec_toolchain
+    ___helium_configure_siso
     "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir" "$_depot_tools_dir" "$_arch"
     python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
     "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
@@ -201,7 +191,9 @@ ___helium_substitution() {
 
 ___helium_build() {
     cd "$_src_dir"
-    ___helium_configure_remoteexec
+    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+        export RBE_service_no_security=true
+    fi
     SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" \
     -k 0 -C "$_out_dir" chrome chromedriver
 }
