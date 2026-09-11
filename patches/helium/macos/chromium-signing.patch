@@ -113,3 +113,14 @@
                      profile_basename = '{}.{}'.format(
                          profile_basename,
                          _get_identity_hash(base_config.identity),
+--- a/chrome/installer/mac/signing/signing.py
++++ b/chrome/installer/mac/signing/signing.py
+@@ -23,7 +23,7 @@ class InvalidAppGeometryException(ValueE
+ 
+ class Invoker(invoker.Base):
+     def codesign(self, config, product, path):
+-        command = ['codesign', '--sign', config.identity]
++        command = ['codesign', '--force', '--sign', config.identity]
+         if config.notarize.should_notarize():
+             # If the products will be notarized, the signature requires a secure
+             # timestamp.
