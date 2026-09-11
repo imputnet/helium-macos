@@ -454,7 +454,7 @@
 +      ]
 +
 +      deps += [
-+        "//third_party/sparkle:sparkle_framework",
++        "//third_party/sparkle:build_sparkle_framework",
 +        "//components/helium_services",
 +      ]
 +      frameworks += [ "Sparkle.framework" ]
