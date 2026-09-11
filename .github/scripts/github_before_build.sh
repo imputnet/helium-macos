@@ -22,6 +22,10 @@ cp "$_main_repo/flags.gn" "$_src_dir/out/Default/args.gn"
 cat "$_root_dir/flags.macos.gn" >> "$_src_dir/out/Default/args.gn"
 echo 'cc_wrapper="sccache"' >> "$_src_dir/out/Default/args.gn"
 
+if [ -n "${PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64:-}" ]; then
+  echo 'include_branded_entitlements=true' >> "$_src_dir/out/Default/args.gn"
+fi
+
 if ! [ -z "${PROD_MACOS_SPARKLE_ED_PUB_KEY-}" ]; then
   echo 'enable_sparkle=true' >> "$_src_dir/out/Default/args.gn"
   echo 'sparkle_ed_key="'"$PROD_MACOS_SPARKLE_ED_PUB_KEY"'"' >> "$_src_dir/out/Default/args.gn"

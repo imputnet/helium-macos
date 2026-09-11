@@ -28,7 +28,7 @@ export SCCACHE_WEBDAV_KEY_PREFIX="$_target_cpu"
 
 set +e
 
-timeout -k 7m -s SIGTERM ${_remaining_time:-19680}s ninja -C out/Default chrome chromedriver # 328 m as default $_remaining_time
+timeout -k 7m -s SIGTERM ${_remaining_time:-19680}s ninja -C out/Default chrome chromedriver chrome/installer/mac
 
 _error_code="${?}"
 if [[ "$_error_code" -eq 124 ]]; then

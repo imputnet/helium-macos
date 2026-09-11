@@ -59,6 +59,10 @@ python3 "$_main_repo/utils/replace_resources.py" "$_main_repo/resources/helium_r
 # Set build flags
 cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$_src_dir/out/Default/args.gn"
 
+if [ -n "${MACOS_CERTIFICATE_NAME:-}" ] && [ -n "${PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_PATH:-}" ]; then
+  echo 'include_branded_entitlements=true' >> "$_src_dir/out/Default/args.gn"
+fi
+
 if command -v sccache 2>&1 >/dev/null; then
   echo 'cc_wrapper="sccache"' >> "$_src_dir/out/Default/args.gn";
 elif command -v ccache 2>&1 >/dev/null; then
@@ -83,6 +87,6 @@ cd "$_src_dir"
 ./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
 ./out/Default/gn gen out/Default --fail-on-unused-args
 
-ninja -C out/Default chrome chromedriver
+ninja -C out/Default chrome chromedriver chrome/installer/mac
 
 "$_root_dir/sign_and_package_app.sh"
