@@ -1,0 +1,115 @@
+--- a/chrome/installer/mac/signing/parts.py
++++ b/chrome/installer/mac/signing/parts.py
+@@ -259,6 +259,22 @@ async def sign_chrome(paths, config, sig
+     _sanity_check_version_keys(paths, parts)
+ 
+     if sign_framework:
++        sparkle = '{.framework_dir}/Frameworks/Sparkle.framework'.format(config)
++        if os.path.isdir(os.path.join(paths.work, sparkle)):
++            # Helium builds Sparkle without its optional XPC services.
++            for name, identifier in (
++                ('Autoupdate', 'org.sparkle-project.Sparkle.Autoupdate'),
++                ('Updater.app', 'org.sparkle-project.Sparkle.Updater'),
++            ):
++                parts['sparkle-' + name] = CodeSignedProduct(
++                    sparkle + '/Versions/Current/' + name,
++                    identifier,
++                    options=CodeSignOptions.FULL_HARDENED_RUNTIME_OPTIONS,
++                )
++            parts['sparkle'] = CodeSignedProduct(
++                sparkle, 'org.sparkle-project.Sparkle'
++            )
++
+         # To sign an .app bundle that contains nested code, the nested
+         # components themselves must be signed. Each of these components is
+         # signed below. Note that unless a framework has multiple versions
+--- a/chrome/installer/mac/signing/pipeline.py
++++ b/chrome/installer/mac/signing/pipeline.py
+@@ -767,6 +767,17 @@ async def sign_all(
+                 )
+                 _staple_chrome(notary_paths.replace_work(dest_dir), dist_config)
+ 
++        # Notarized apps remain in the temporary work directory. Export them
++        # before it is deleted so Helium's separate DMG packaging step can use
++        # the signed app, including its stapled ticket when requested.
++        if disable_packaging and config.notarize.should_notarize():
++            for dist_config in dist_configs:
++                dest_dir = os.path.join(
++                    notary_paths.work,
++                    _intermediate_work_dir_name(dist_config.distribution),
++                )
++                commands.copy_files(dest_dir, orig_paths.output)
++
+         # After all apps are optionally notarized, package as required.
+         if not disable_packaging:
+             await asyncio.wait_for(
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -72,7 +72,7 @@ declare_args() {
+   # launch because certain entitlements are tied to the official Google code
+   # signing identity. If `include_branded_entitlements` is set to false, these
+   # entitlements will be skipped.
+-  include_branded_entitlements = true
++  include_branded_entitlements = false
+ }
+ 
+ assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
+@@ -784,9 +784,7 @@ if (is_win) {
+ 
+   compile_entitlements("entitlements") {
+     entitlements_templates = [ "app/app-entitlements.plist" ]
+-    if (is_chrome_branded && include_branded_entitlements) {
+-      # These entitlements are bound to the official Google Chrome signing
+-      # certificate and will not necessarily work in any other build.
++    if (include_branded_entitlements) {
+       entitlements_templates += [ "app/app-entitlements-chrome.plist" ]
+     }
+     output_name = "$target_gen_dir/app-entitlements.plist"
+--- a/chrome/app/app-entitlements-chrome.plist
++++ b/chrome/app/app-entitlements-chrome.plist
+@@ -6,15 +6,11 @@
+ 	<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}</string>
+ 	<key>keychain-access-groups</key>
+ 	<array>
+-		<string>${CHROMIUM_TEAM_ID}.com.google.common.folsom</string>
+ 		<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}.devicetrust</string>
+-		<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}.secure-payment-confirmation</string>
+ 		<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}.unexportable-keys</string>
+ 		<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}.webauthn</string>
+ 		<string>${CHROMIUM_TEAM_ID}.${CHROMIUM_BUNDLE_ID}.webauthn-uvk</string>
+ 	</array>
+-	<key>com.apple.developer.associated-domains.applinks.read-write</key>
+-	<true/>
+ 	<key>com.apple.developer.web-browser.public-key-credential</key>
+ 	<true/>
+ </dict>
+--- a/chrome/installer/mac/signing/chromium_config.py
++++ b/chrome/installer/mac/signing/chromium_config.py
+@@ -2,6 +2,8 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import os
++
+ from signing.build_props_config import BuildPropsCodeSignConfig
+ 
+ 
+@@ -14,4 +16,6 @@ class ChromiumCodeSignConfig(BuildPropsC
+ 
+     @property
+     def provisioning_profile_basename(self):
++        if os.environ.get('PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_PATH'):
++            return 'Helium'
+         return None
+--- a/chrome/installer/mac/signing/model.py
++++ b/chrome/installer/mac/signing/model.py
+@@ -421,7 +421,8 @@ class Distribution(object):
+                     profile_basename = '{}_{}'.format(
+                         profile_basename, this.app_name_fragment
+                     )
+-                if base_config.identity:
++                # Helium stages its profile as Helium.provisionprofile.
++                if base_config.is_chrome_branded() and base_config.identity:
+                     profile_basename = '{}.{}'.format(
+                         profile_basename,
+                         _get_identity_hash(base_config.identity),

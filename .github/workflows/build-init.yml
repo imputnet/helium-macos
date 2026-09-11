@@ -42,6 +42,7 @@ jobs:
         run: ./github_before_build.sh ${{ inputs.arch }} | tee -a github_actions_build_${{ inputs.arch }}.log
         env:
           PROD_MACOS_SPARKLE_ED_PUB_KEY: ${{ secrets.PROD_MACOS_SPARKLE_ED_PUB_KEY }}
+          PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64: ${{ secrets.PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64 }}
 
       - uses: ./.github/actions/do-build
         id: build
