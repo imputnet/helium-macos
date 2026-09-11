@@ -6,21 +6,47 @@ permissions:
   contents: read
 
 jobs:
-  sanity:
+  check:
+    name: ${{ matrix.check }}
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [sanity, substitution]
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - uses: ./.github/actions/prepare-environment
-    - name: Run sanity check
-      run: ./sanity-check.sh
-  substitution:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v6
       with:
-        submodules: true
-    - uses: ./.github/actions/prepare-environment
-    - name: Run substitution check
-      run: ./sanity-check.sh sub
+        python-version: '3.14'
+    - name: Prepare check environment
+      run: |
+        cp -a .github/scripts/. .
+        sudo mdutil -a -i off
+        brew install coreutils quilt --overwrite
+        python3 -m pip install httplib2==0.22.0 requests Pillow
+    - name: Cache Chromium source
+      uses: actions/cache@v5
+      with:
+        path: build/chromium-source.tar
+        key: >-
+          chromium-source-v1-${{ runner.os }}-${{ runner.arch }}-${{
+            hashFiles(
+              'helium-chromium/chromium_version.txt',
+              'helium-chromium/*.ini',
+              'helium-chromium/pruning.list',
+              'helium-chromium/utils/**',
+              'downloads.ini',
+              'retrieve_and_unpack_resource.sh',
+              '.github/scripts/sanity-check.sh'
+            )
+          }}
+    - name: Prepare build tools
+      if: matrix.check == 'sanity'
+      run: |
+        ./github_prepare_xcode.sh
+        brew install ninja llvm@20 --overwrite
+        brew link llvm@20 --force
+    - name: Run check
+      run: ./sanity-check.sh '${{ matrix.check }}'
