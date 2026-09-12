@@ -65,8 +65,8 @@ ___helium_configure() {
     ___helium_setup_siso
     ___helium_configure_siso
     "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
-    python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
-    "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
+    install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+    "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
 
 ___helium_toolchain() {
