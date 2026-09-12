@@ -72,9 +72,9 @@ if $retrieve_toolchain; then
     mkdir -p "$NODE/mac_arm64"
     mv "$NODE/mac/node-darwin-arm64" "$NODE/mac_arm64/"
 
-    cipd="$_src_dir/third_party/depot_tools/cipd"
-    _host_cpu="$(uname -m)"
+    source "$_root_dir/devutils/cipd.sh"
 
+    _host_cpu="$(uname -m)"
     platforms=("mac-${_host_cpu/x86_64/amd64}")
 
     # Remote builds also need Linux Clang and TypeScript.
@@ -88,12 +88,9 @@ if $retrieve_toolchain; then
     # Install the TypeScript compiler for macOS, and Linux when using remote builds.
     for platform in "${platforms[@]}"; do
       typescript_package="chromium/third_party/typescript/$platform"
-      typescript_version=$(python3 "$_src_dir/third_party/depot_tools/gclient.py" getdep \
-        --deps-file "$_src_dir/DEPS" \
-        -r "src/third_party/typescript/$platform/src:$typescript_package")
-
-      "$cipd" install "$typescript_package" "$typescript_version" \
-        -root "$_src_dir/third_party/typescript/$platform/src"
+      install_cipd_package "$typescript_package" \
+        "third_party/typescript/$platform/src" \
+        "--revision=src/third_party/typescript/$platform/src:$typescript_package"
     done
   popd
 fi
