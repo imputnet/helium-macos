@@ -47,6 +47,7 @@ fi
 if command -v appdmg >/dev/null 2>&1 || [ -n "${NEEDS_APPDMG:-}" ]; then
   _app_dir="$(dirname "$_app")"
   ln -sf "$_root_dir/resources/dmg.json" "$_app_dir/dmg.json"
+  ln -sf "$_root_dir/resources/dmg_background.png" "$_app_dir/dmg_background.png"
   appdmg "$_app_dir/dmg.json" "$OUT_DMG_PATH"
 else
   echo "no appdmg, falling back to stock .dmg" >&2
