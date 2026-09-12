@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-src_dir="$1"
-depot_tools_dir="$2"
-arch="$(/usr/bin/uname -m)"
-go_arch="mac-arm64"
-if [[ $arch == "x86_64" ]]; then
-    go_arch="mac-amd64"
-fi
-go_dir="$src_dir/third_party/dawn/tools/golang/$go_arch"
+_src_dir="$1"
+source "$(dirname "$0")/cipd.sh"
 
-[ -x "$go_dir/bin/go" ] && exit
-
-go_version=$(sed -n "s/.*'dawn_go_version': '\\([^']*\\)'.*/\\1/p" \
-    "$src_dir/third_party/dawn/DEPS" | head -1)
-mkdir -p "$go_dir"
-printf '%s\n' "infra/3pp/tools/go/$go_arch $go_version" |
-    "$depot_tools_dir/cipd" ensure --root "$go_dir" --ensure-file -
+go_platform="mac-$(/usr/bin/uname -m)"
+go_platform="${go_platform/x86_64/amd64}"
+install_cipd_package 'infra/3pp/tools/go/${platform}' \
+    "third_party/dawn/tools/golang/$go_platform" --var=dawn_go_version third_party/dawn/DEPS

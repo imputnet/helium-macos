@@ -5,27 +5,10 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/env.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
+source "$_root_dir/devutils/cipd.sh"
+
 ___helium_setup_siso() {
-    if [ -x "$_siso_path" ]; then
-        return
-    fi
-
-    local siso_arch="mac-arm64"
-    if [[ $_arch == "x86_64" ]]; then
-        siso_arch="mac-amd64"
-    fi
-
-    local siso_package="build/siso/$siso_arch"
-
-    local siso_version=$(sed -n "s/.*'siso_version': '\([^']*\)'.*/\1/p" "$_src_dir/DEPS" | head -1)
-    if [ -z "$siso_version" ]; then
-        echo "error: couldn't find siso_version in DEPS" >&2
-        return 1
-    fi
-
-    mkdir -p "$_siso_dir"
-    printf '%s\n' "$siso_package $siso_version" |
-        "$_depot_tools_dir/cipd" ensure --root "$_siso_dir" --ensure-file -
+    install_cipd_package 'build/siso/${platform}' third_party/siso/cipd --var=siso_version
 }
 
 ___helium_configure_siso() {
@@ -81,7 +64,7 @@ ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
     ___helium_configure_siso
-    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir" "$_depot_tools_dir" "$_arch"
+    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
     python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
     "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
