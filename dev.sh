@@ -192,6 +192,7 @@ ___helium_substitution() {
 ___helium_build() {
     cd "$_src_dir"
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+        ___helium_configure_siso || return
         export RBE_service_no_security=true
     fi
     SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" \
