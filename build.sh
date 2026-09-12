@@ -6,6 +6,7 @@ set -eux
 _root_dir="$(dirname "$(greadlink -f "$0")")"
 
 source "$_root_dir/env.sh"
+source "$_root_dir/devutils/cipd.sh"
 
 # Clone to get the Chromium Source
 clone=true
@@ -83,8 +84,8 @@ fi
 
 cd "$_src_dir"
 
-./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
-./out/Default/gn gen out/Default --fail-on-unused-args
+install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+"$_gn_path" gen out/Default --fail-on-unused-args
 
 ninja -C out/Default chrome chromedriver chrome/installer/mac
 
