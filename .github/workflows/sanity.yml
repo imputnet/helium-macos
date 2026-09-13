@@ -46,7 +46,7 @@ jobs:
       if: matrix.check == 'sanity'
       run: |
         ./github_prepare_xcode.sh
-        brew install ninja llvm@20 --overwrite
+        brew install llvm@20 --overwrite
         brew link llvm@20 --force
     - name: Run check
       run: ./sanity-check.sh '${{ matrix.check }}'
