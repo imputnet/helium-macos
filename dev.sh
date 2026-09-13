@@ -5,42 +5,7 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/env.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
-___helium_setup_siso() {
-    if [ -x "$_siso_path" ]; then
-        return
-    fi
-
-    local siso_arch="mac-arm64"
-    if [[ $_arch == "x86_64" ]]; then
-        siso_arch="mac-amd64"
-    fi
-
-    local siso_package="build/siso/$siso_arch"
-
-    local siso_version=$(sed -n "s/.*'siso_version': '\([^']*\)'.*/\1/p" "$_src_dir/DEPS" | head -1)
-    if [ -z "$siso_version" ]; then
-        echo "error: couldn't find siso_version in DEPS" >&2
-        return 1
-    fi
-
-    mkdir -p "$_siso_dir"
-    printf '%s\n' "$siso_package $siso_version" |
-        "$_depot_tools_dir/cipd" ensure --root "$_siso_dir" --ensure-file -
-}
-
-___helium_configure_siso() {
-    local backend=""
-    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
-        backend=nativelink.star
-    fi
-
-    python3 "$_src_dir/build/config/siso/configure_siso.py" \
-        --rbe_instance=projects/rbe-chrome-untrusted/instances/default_instance \
-        --reapi_address="${SISO_REAPI_ADDRESS:-}" \
-        --reapi_instance="${SISO_REAPI_INSTANCE:-}" \
-        --reapi_backend_config_path="$backend"
-}
+source "$_root_dir/devutils/siso.sh"
 
 ___helium_setup_gn() {
     local OUT_FILE="$_out_dir/args.gn"
@@ -63,7 +28,6 @@ ___helium_setup_gn() {
 
     echo 'target_cpu = "'"$TARGET_CPU"'"' >> "$OUT_FILE"
     echo 'devtools_skip_typecheck = false' >> "$OUT_FILE"
-    echo 'use_siso = true' >> "$OUT_FILE"
 
     sed -i '' s/is_official_build/is_component_build/ "$OUT_FILE"
 }
@@ -81,9 +45,9 @@ ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
     ___helium_configure_siso
-    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir" "$_depot_tools_dir" "$_arch"
-    python3 ./tools/gn/bootstrap/bootstrap.py -o "$_out_dir/gn" --skip-generate-buildfiles
-    "$_out_dir/gn" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
+    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
+    install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+    "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
 
 ___helium_toolchain() {

@@ -6,9 +6,8 @@ _target_cpu="$1"
 
 # Some path variables
 _root_dir="$(dirname "$(greadlink -f "$0")")"
-_download_cache="$_root_dir/build/download_cache"
-_src_dir="$_root_dir/build/src"
-_main_repo="$_root_dir/helium-chromium"
+source "$_root_dir/env.sh"
+source "$_root_dir/devutils/siso.sh"
 
 shopt -s nocasematch
 
@@ -36,5 +35,8 @@ echo 'chrome_pgo_phase=2' >> "$_src_dir/out/Default/args.gn"
 
 cd "$_src_dir"
 
-./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
-./out/Default/gn gen out/Default --fail-on-unused-args
+___helium_setup_siso
+___helium_configure_siso
+
+install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+"$_gn_path" gen out/Default --fail-on-unused-args

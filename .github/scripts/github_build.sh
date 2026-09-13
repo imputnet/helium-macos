@@ -6,7 +6,7 @@
 _target_cpu="${1:-x86_64}"
 
 _root_dir="$(dirname "$(greadlink -f "$0")")"
-_src_dir="$_root_dir/build/src"
+source "$_root_dir/env.sh"
 if [[ -f "$_root_dir/epoch_job_start.txt" ]]; then
   epoch_job_start=$(cat "$_root_dir/epoch_job_start.txt")
   # GitHub's hard time limit is 6 h per job, we want to spare 1 h for steps before and after the build,
@@ -28,7 +28,8 @@ export SCCACHE_WEBDAV_KEY_PREFIX="$_target_cpu"
 
 set +e
 
-timeout -k 7m -s SIGTERM ${_remaining_time:-19680}s ninja -C out/Default chrome chromedriver chrome/installer/mac
+SISO_PATH="$_siso_path" timeout -k 7m -s SIGTERM ${_remaining_time:-19680}s \
+    python3 "$_depot_tools_dir/autoninja.py" -C out/Default chrome chromedriver chrome/installer/mac
 
 _error_code="${?}"
 if [[ "$_error_code" -eq 124 ]]; then

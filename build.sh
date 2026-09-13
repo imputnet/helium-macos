@@ -6,6 +6,7 @@ set -eux
 _root_dir="$(dirname "$(greadlink -f "$0")")"
 
 source "$_root_dir/env.sh"
+source "$_root_dir/devutils/siso.sh"
 
 # Clone to get the Chromium Source
 clone=true
@@ -37,8 +38,7 @@ mkdir -p "$_src_dir/out/Default"
 
 python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
 "$_root_dir/retrieve_and_unpack_resource.sh" -t "$_arch"
-"$_root_dir/devutils/setup_dawn_go.sh" \
-    "$_src_dir" "$_depot_tools_dir" "$_arch"
+"$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
 
 # Apply patches, substitutions and translations
 python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
@@ -84,9 +84,12 @@ fi
 
 cd "$_src_dir"
 
-./tools/gn/bootstrap/bootstrap.py -o out/Default/gn --skip-generate-buildfiles
-./out/Default/gn gen out/Default --fail-on-unused-args
+___helium_setup_siso
+___helium_configure_siso
 
-ninja -C out/Default chrome chromedriver chrome/installer/mac
+install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+"$_gn_path" gen out/Default --fail-on-unused-args
+
+SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" -C out/Default chrome chromedriver chrome/installer/mac
 
 "$_root_dir/sign_and_package_app.sh"
