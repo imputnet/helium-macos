@@ -28,9 +28,11 @@ jobs:
           submodules: true
       - uses: ./.github/actions/prepare-environment
       - name: Download and unpack required resources
-        run: ./github_fetch_resources.sh ${{ inputs.arch }} | tee -a github_actions_retrieve_resources.log
-      - name: List resources
-        run: ls -la
+        run: |
+          set -o pipefail
+          source ./devutils/shared.sh
+          prepare_sources '${{ inputs.arch }}' false | tee -a github_actions_retrieve_resources.log
+          rm -rf build/download_cache
       - name: Archive resources
         run: ./github_pack_resources.sh | tee -a github_actions_retrieve_resources.log
       - name: Upload resources
@@ -41,7 +43,7 @@ jobs:
 
   build_job_01:
     needs: retrieve-resources
-    uses: ./.github/workflows/build-init.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
@@ -52,98 +54,107 @@ jobs:
   build_job_02:
     needs: build_job_01
     if: ${{needs.build_job_01.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_03:
     needs: build_job_02
     if: ${{needs.build_job_02.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_04:
     needs: build_job_03
     if: ${{needs.build_job_03.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_05:
     needs: build_job_04
     if: ${{needs.build_job_04.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_06:
     needs: build_job_05
     if: ${{needs.build_job_05.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_07:
     needs: build_job_06
     if: ${{needs.build_job_06.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_08:
     needs: build_job_07
     if: ${{needs.build_job_07.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_09:
     needs: build_job_08
     if: ${{needs.build_job_08.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true
 
   build_job_10:
     needs: build_job_09
     if: ${{needs.build_job_09.outputs.status == 'running'}}
-    uses: ./.github/workflows/build-step.yml
+    uses: ./.github/workflows/build-phase.yml
     secrets: inherit
     permissions:
       contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
+      resume: true

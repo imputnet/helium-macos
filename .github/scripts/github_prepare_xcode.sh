@@ -1,15 +1,8 @@
 #!/bin/bash -eux
 
-set -o pipefail
-
 # Sometimes Xcode is 26.0, sometimes 26. We make sure it's usable no matter its name.
 BASE_XCODE_PATH=/Applications/Xcode_26.0.app
 TARGET_XCODE_PATH=/Applications/Xcode_26.app
-
-if [ ! -e "$BASE_XCODE_PATH" ] && [ ! -e "$TARGET_XCODE_PATH" ]; then
-  echo "Failed to find a suitable version of Xcode"
-  exit 1
-fi
 
 if [ -e "$BASE_XCODE_PATH" ] && [ ! -e "$TARGET_XCODE_PATH" ]; then
   REAL_XCODE_PATH="$(readlink -f "$BASE_XCODE_PATH")"

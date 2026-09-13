@@ -58,8 +58,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.bake.outputs.arm64_file_name }}
-      - name: List files
-        run: ls -la
       - name: Generate release note
         run: ./github_generate_release_note.sh | tee -a github_actions_release.log
       - name: List deltas

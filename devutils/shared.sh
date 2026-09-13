@@ -3,6 +3,8 @@
 # Shared build steps for local, development, and CI entry points.
 if [ "${BASH_SOURCE[0]:-}" = "$0" ]; then
   set -euo pipefail
+fi
+if [ -z "${_root_dir:-}" ]; then
   _root_dir="$(dirname "$(dirname "$(greadlink -f "${BASH_SOURCE[0]}")")")"
 fi
 
@@ -113,37 +115,11 @@ helium_build() {
 }
 
 if [ "${BASH_SOURCE[0]:-}" = "$0" ]; then
-  if [ $# -eq 0 ]; then
-    echo "Usage: $0 <prepare|configure> <arm64|x86_64> [--download|--ci|--pgo] | build [options and targets]" >&2
+  if [ "${1:-}" != build ]; then
+    echo "Usage: $0 build [options and targets]" >&2
     exit 2
   fi
-
-  case "$1" in
-    prepare)
-      [ $# -ge 2 ] && [ $# -le 3 ] || exit 2
-      case "$2" in arm64|x86_64) ;; *) exit 2 ;; esac
-      [ $# -eq 2 ] || [ "$3" = --download ] || exit 2
-      prepare_sources "$2" "${3:-}"
-      ;;
-    configure)
-      [ $# -ge 2 ] || exit 2
-      case "$2" in arm64|x86_64) ;; *) exit 2 ;; esac
-      ci=false
-      pgo=false
-      for option in "${@:3}"; do
-        case "$option" in
-          --ci) ci=true ;;
-          --pgo) pgo=true ;;
-          *) echo "Unknown option: $option" >&2; exit 2 ;;
-        esac
-      done
-      configure_build "$2" "$ci" "$pgo"
-      ;;
-    build)
-      shift
-      _helium_exec_build=true
-      helium_build "$@"
-      ;;
-    *) echo "Unknown command: $1" >&2; exit 2 ;;
-  esac
+  shift
+  _helium_exec_build=true
+  helium_build "$@"
 fi
