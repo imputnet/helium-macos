@@ -5,7 +5,7 @@ defaults:
     shell: bash
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   workflow_call:
@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          persist-credentials: false
       - uses: ./.github/actions/prepare-environment
       - name: Download and unpack required resources
         run: |
@@ -45,8 +46,6 @@ jobs:
     needs: retrieve-resources
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -56,8 +55,6 @@ jobs:
     if: ${{needs.build_job_01.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -68,8 +65,6 @@ jobs:
     if: ${{needs.build_job_02.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -80,8 +75,6 @@ jobs:
     if: ${{needs.build_job_03.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -92,8 +85,6 @@ jobs:
     if: ${{needs.build_job_04.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -104,8 +95,6 @@ jobs:
     if: ${{needs.build_job_05.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -116,8 +105,6 @@ jobs:
     if: ${{needs.build_job_06.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -128,8 +115,6 @@ jobs:
     if: ${{needs.build_job_07.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -140,8 +125,6 @@ jobs:
     if: ${{needs.build_job_08.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
@@ -152,8 +135,6 @@ jobs:
     if: ${{needs.build_job_09.outputs.status == 'running'}}
     uses: ./.github/workflows/build-phase.yml
     secrets: inherit
-    permissions:
-      contents: write
     with:
       arch: ${{ inputs.arch }}
       os: ${{ inputs.os }}
