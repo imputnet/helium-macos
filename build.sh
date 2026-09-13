@@ -6,7 +6,7 @@ set -eux
 _root_dir="$(dirname "$(greadlink -f "$0")")"
 
 source "$_root_dir/env.sh"
-source "$_root_dir/devutils/cipd.sh"
+source "$_root_dir/devutils/siso.sh"
 
 # Clone to get the Chromium Source
 clone=true
@@ -84,9 +84,12 @@ fi
 
 cd "$_src_dir"
 
+___helium_setup_siso
+___helium_configure_siso
+
 install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
 "$_gn_path" gen out/Default --fail-on-unused-args
 
-ninja -C out/Default chrome chromedriver chrome/installer/mac
+SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" -C out/Default chrome chromedriver chrome/installer/mac
 
 "$_root_dir/sign_and_package_app.sh"

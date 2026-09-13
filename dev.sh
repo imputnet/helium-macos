@@ -5,25 +5,7 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/env.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
-source "$_root_dir/devutils/cipd.sh"
-
-___helium_setup_siso() {
-    install_cipd_package 'build/siso/${platform}' third_party/siso/cipd --var=siso_version
-}
-
-___helium_configure_siso() {
-    local backend=""
-    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
-        backend=nativelink.star
-    fi
-
-    python3 "$_src_dir/build/config/siso/configure_siso.py" \
-        --rbe_instance=projects/rbe-chrome-untrusted/instances/default_instance \
-        --reapi_address="${SISO_REAPI_ADDRESS:-}" \
-        --reapi_instance="${SISO_REAPI_INSTANCE:-}" \
-        --reapi_backend_config_path="$backend"
-}
+source "$_root_dir/devutils/siso.sh"
 
 ___helium_setup_gn() {
     local OUT_FILE="$_out_dir/args.gn"
@@ -46,7 +28,6 @@ ___helium_setup_gn() {
 
     echo 'target_cpu = "'"$TARGET_CPU"'"' >> "$OUT_FILE"
     echo 'devtools_skip_typecheck = false' >> "$OUT_FILE"
-    echo 'use_siso = true' >> "$OUT_FILE"
 
     sed -i '' s/is_official_build/is_component_build/ "$OUT_FILE"
 }

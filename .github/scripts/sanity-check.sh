@@ -52,5 +52,5 @@ he configure
 
 cd "$_src_dir"
 _status_code=0
-timeout 30 ninja -C out/Default chrome chromedriver || _status_code=$?
+SISO_PATH="$_siso_path" timeout 30 python3 "$_depot_tools_dir/autoninja.py" -C out/Default chrome chromedriver || _status_code=$?
 test "$_status_code" -eq 124
