@@ -2,35 +2,8 @@
 
 _root_dir=$(dirname $(greadlink -f $0))
 
-source "$_root_dir/env.sh"
+source "$_root_dir/devutils/shared.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
-
-source "$_root_dir/devutils/siso.sh"
-
-___helium_setup_gn() {
-    local OUT_FILE="$_out_dir/args.gn"
-    cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$OUT_FILE"
-
-    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        echo 'use_remoteexec = true' >> "$OUT_FILE"
-    elif command -v sccache 2>&1 >/dev/null; then
-        echo 'cc_wrapper="sccache"' >> "$OUT_FILE"
-    elif command -v ccache 2>&1 >/dev/null; then
-        echo 'cc_wrapper="env CCACHE_COMPILERCHECK=content CCACHE_SLOPPINESS=time_macros ccache"' >> "$OUT_FILE"
-    else
-        echo 'warn: sccache or ccache is not available' >&2
-    fi
-
-    local TARGET_CPU="arm64"
-    if [[ $_arch == "x86_64" ]]; then
-        TARGET_CPU="x64"
-    fi
-
-    echo 'target_cpu = "'"$TARGET_CPU"'"' >> "$OUT_FILE"
-    echo 'devtools_skip_typecheck = false' >> "$OUT_FILE"
-
-    sed -i '' s/is_official_build/is_component_build/ "$OUT_FILE"
-}
 
 ___helium_info_pull() {
     # fall back to git clone if tarball is unavailable
@@ -45,19 +18,13 @@ ___helium_configure() {
     cd "$_src_dir"
     ___helium_setup_siso
     ___helium_configure_siso
-    "$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
-    install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+    ___helium_setup_dawn_go
+    ___helium_install_gn
     "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
 
 ___helium_toolchain() {
     "$_root_dir/retrieve_and_unpack_resource.sh" -t
-}
-
-___helium_resources() {
-    python3 "$_main_repo/utils/generate_resources.py" "$_main_repo/resources/generate_resources.txt" "$_main_repo/resources"
-    python3 "$_main_repo/utils/replace_resources.py" "$_root_dir/resources/platform_resources.txt" "$_root_dir/resources" "$_src_dir"
-    python3 "$_main_repo/utils/replace_resources.py" "$_main_repo/resources/helium_resources.txt" "$_main_repo/resources" "$_src_dir"
 }
 
 ___helium_setup_presetup() {
@@ -71,8 +38,8 @@ ___helium_setup_presetup() {
     ___helium_info_pull
     python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
     ___helium_toolchain
-    ___helium_resources
-    ___helium_setup_gn
+    helium_resources
+    write_gn_args "$_arch" dev false
 
     python3 "$_main_repo/utils/helium_version.py" \
         --tree "$_main_repo" \
@@ -159,8 +126,7 @@ ___helium_build() {
         ___helium_configure_siso || return
         export RBE_service_no_security=true
     fi
-    SISO_PATH="$_siso_path" python3 "$_depot_tools_dir/autoninja.py" \
-    -k 0 -C "$_out_dir" chrome chromedriver
+    helium_build -k 0
 }
 
 ___helium_run() {
@@ -283,7 +249,7 @@ __helium_menu() {
         setup) ___helium_setup;;
         presetup) ___helium_setup_presetup;;
         configure) ___helium_configure;;
-        resources) ___helium_resources;;
+        resources) helium_resources;;
 
         sub|unsub) ___helium_substitution "$1";;
         namesub|nameunsub) ___helium_name_substitution "$1";;

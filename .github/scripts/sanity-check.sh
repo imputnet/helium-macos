@@ -24,7 +24,7 @@ fi
 if [ "$_check" = "sanity" ]; then
     mkdir -p "$_out_dir"
     ___helium_toolchain
-    ___helium_setup_gn
+    write_gn_args "$_arch" dev false
 fi
 
 he resources
@@ -52,7 +52,5 @@ he configure
 
 cd "$_src_dir"
 _status_code=0
-SISO_PATH="$_siso_path" \
-    timeout 30 python3 "$_depot_tools_dir/autoninja.py" -C out/Default \
-    chrome chromedriver || _status_code=$?
+timeout 30 "$_root_dir/devutils/shared.sh" build || _status_code=$?
 test "$_status_code" -eq 124
