@@ -49,7 +49,7 @@ if [ -f "$_root_dir/build_finished_$_target_cpu.log" ]; then
 
   echo "file_name=$_file_name" >> $GITHUB_OUTPUT
 
-  printf '[Hashes](https://en.wikipedia.org/wiki/Cryptographic_hash_function) for the disk image `%s`: \n' "$_file_name" | tee -a ./${_hash_name}
+  printf 'Hashes for the disk image `%s`: \n' "$_file_name" | tee -a ./${_hash_name}
   printf '\n```\n%s\n```\n' "$_hash_md" | tee -a ./${_hash_name}
 
   # Use separate folder for build product, so that it can be used as individual asset in case the release action fails
