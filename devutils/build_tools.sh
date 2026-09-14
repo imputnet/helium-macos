@@ -2,6 +2,17 @@
 
 source "$_root_dir/devutils/cipd.sh"
 
+___helium_setup_dawn_go() {
+    local go_platform="mac-$(/usr/bin/uname -m)"
+    go_platform="${go_platform/x86_64/amd64}"
+    install_cipd_package 'infra/3pp/tools/go/${platform}' \
+        "third_party/dawn/tools/golang/$go_platform" --var=dawn_go_version third_party/dawn/DEPS
+}
+
+___helium_install_gn() {
+    install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
+}
+
 ___helium_setup_siso() {
     install_cipd_package 'build/siso/${platform}' third_party/siso/cipd --var=siso_version
 }

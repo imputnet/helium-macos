@@ -8,7 +8,7 @@ _main_repo="$_root_dir/helium-chromium"
 _src_dir="$_root_dir/build/src"
 
 # If build finished successfully
-if [[ -f "$_root_dir/build_finished_$_target_cpu.log" ]] ; then
+if [ -f "$_root_dir/build_finished_$_target_cpu.log" ]; then
   # For packaging
   _helium_version=$(python3 "$_main_repo/utils/helium_version.py" --tree "$_main_repo" --platform-tree "$_root_dir" --print)
 
@@ -49,14 +49,12 @@ if [[ -f "$_root_dir/build_finished_$_target_cpu.log" ]] ; then
 
   echo "file_name=$_file_name" >> $GITHUB_OUTPUT
 
-  _gh_run_href="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-  printf '[Hashes](https://en.wikipedia.org/wiki/Cryptographic_hash_function) for the disk image `%s`: \n' "$_file_name" | tee -a ./${_hash_name}
+  printf 'Hashes for the disk image `%s`: \n' "$_file_name" | tee -a ./${_hash_name}
   printf '\n```\n%s\n```\n' "$_hash_md" | tee -a ./${_hash_name}
 
   # Use separate folder for build product, so that it can be used as individual asset in case the release action fails
   mkdir -p release_asset
-  mv -vn ./*.dmg release_asset/ || true
+  mv "$_file_name" release_asset/
 
   if [ "$_target_cpu" = "x86_64" ]; then
     DELTA_ARG="--x86"
@@ -64,9 +62,15 @@ if [[ -f "$_root_dir/build_finished_$_target_cpu.log" ]] ; then
     DELTA_ARG="--arm"
   fi
 
-  ./github_prep_sparkle_deltas.sh \
-    $DELTA_ARG "./release_asset/$_file_name" \
+  PATH="$_src_dir/out/Default:$PATH" python3 "$_root_dir/devutils/generate_sparkle_deltas.py" \
+    "$DELTA_ARG" "./release_asset/$_file_name" \
     --out ./release_asset
+
+  {
+    echo 'deltas<<EOF'
+    find ./release_asset/ -name '*.delta'
+    echo EOF
+  } >> "$GITHUB_OUTPUT"
 
   ls -kahl release_asset/
   du -hs release_asset/
@@ -80,7 +84,7 @@ tar -C build -c -f - src | zstd -vv -11 -T0 -o build_src.tar.zst
 sha256sum ./build_src.tar.zst | tee ./sums.txt
 
 mkdir -p upload_part_build
-mv -vn ./*.zst ./sums.txt upload_part_build/ || true
+mv build_src.tar.zst sums.txt upload_part_build/
 cp -va ./*.log upload_part_build/
 
 ls -kahl upload_part_build/

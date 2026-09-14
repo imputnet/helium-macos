@@ -1,11 +1,11 @@
-name: Start Building Helium for macOS
+name: Build Helium for macOS
 
 defaults:
   run:
     shell: bash
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   workflow_call:
@@ -16,13 +16,17 @@ on:
       os:
         required: true
         type: string
+      resume:
+        required: false
+        type: boolean
+        default: false
     outputs:
       status:
         value: ${{ jobs.build_job.outputs.status }}
 
 jobs:
   build_job:
-    name: Start Building Helium for macOS
+    name: Build Helium for macOS
     runs-on: ${{ inputs.os }}
     outputs:
       status: ${{ steps.build.outputs.status }}
@@ -31,24 +35,42 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          persist-credentials: false
       - uses: ./.github/actions/prepare-environment
       - name: Download resources
+        if: ${{ !inputs.resume }}
         uses: actions/download-artifact@v4
         with:
           name: helium_macos_resources_${{ inputs.arch }}
       - name: Unpack resources
-        run: ./github_unpack_resources.sh && ls -la
+        if: ${{ !inputs.resume }}
+        run: ./github_unpack_resources.sh
       - name: Prepare for building
-        run: ./github_before_build.sh ${{ inputs.arch }} | tee -a github_actions_build_${{ inputs.arch }}.log
+        if: ${{ !inputs.resume }}
+        run: |
+          set -o pipefail
+          source ./devutils/shared.sh
+          configure_build '${{ inputs.arch }}' true true | tee -a github_actions_build_${{ inputs.arch }}.log
         env:
           PROD_MACOS_SPARKLE_ED_PUB_KEY: ${{ secrets.PROD_MACOS_SPARKLE_ED_PUB_KEY }}
           PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64: ${{ secrets.PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64 }}
-
+      - name: Get previous logs
+        if: ${{ inputs.resume }}
+        uses: actions/download-artifact@v4
+        with:
+          name: github_build_logs_${{ inputs.arch }}
+      - name: Download build
+        if: ${{ inputs.resume }}
+        uses: actions/download-artifact@v4
+        with:
+          name: github_build_artifact_${{ inputs.arch }}
+      - name: Unpack archive of build
+        if: ${{ inputs.resume }}
+        run: ./github_unpack_archive.sh
       - uses: ./.github/actions/do-build
         id: build
         with:
           arch: ${{ inputs.arch }}
-          os: ${{ inputs.os }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MACOS_CERTIFICATE: ${{ secrets.PROD_MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}

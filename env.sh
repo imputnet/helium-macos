@@ -3,7 +3,7 @@
 _arch="$(/usr/bin/uname -m)"
 
 # General paths
-_root_dir=$(dirname $(greadlink -f $0))
+_root_dir=${_root_dir:-$(dirname "$(greadlink -f "$0")")}
 _download_cache="$_root_dir/build/download_cache"
 _src_dir="$_root_dir/build/src"
 _out_dir="$_src_dir/out/Default"

@@ -1,97 +1,31 @@
 #!/usr/bin/env bash
 
-set -eux
+set -euo pipefail
 
-# Build script for local macOS environment
 _root_dir="$(dirname "$(greadlink -f "$0")")"
-
-source "$_root_dir/env.sh"
-source "$_root_dir/devutils/siso.sh"
-
-# Clone to get the Chromium Source
-clone=true
-while getopts 'd' OPTION; do
-  case "$OPTION" in
-    d)
-      clone=false
-      ;;
+source "$_root_dir/devutils/shared.sh"
+_download=false
+while getopts 'd' option; do
+  case "$option" in
+    d) _download=true ;;
+    *) echo "Usage: $0 [-d] [arm64|x86_64]" >&2; exit 2 ;;
   esac
 done
+shift "$((OPTIND - 1))"
 
-shift "$(($OPTIND -1))"
+_arch="${1:-arm64}"
+case "$_arch" in
+  arm64|x86_64) ;;
+  *) echo "Usage: $0 [-d] [arm64|x86_64]" >&2; exit 2 ;;
+esac
 
-_arch=${1:-arm64}
-
-# Add local clang and build tools to PATH
-# export PATH="$PATH:$_src_dir/third_party/llvm-build/Release+Asserts/bin"
-
-rm -rf "$_src_dir/out" || true
-mkdir -p "$_download_cache"
-
-if $clone; then
-  "$_root_dir/retrieve_and_unpack_resource.sh" -g $_arch
+if [ "$_download" = true ]; then
+  prepare_sources "$_arch" true
+  configure_build "$_arch" false false
 else
-  "$_root_dir/retrieve_and_unpack_resource.sh" -d -g $_arch
+  prepare_sources "$_arch" false
+  configure_build "$_arch" false true
 fi
 
-mkdir -p "$_src_dir/out/Default"
-
-python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
-"$_root_dir/retrieve_and_unpack_resource.sh" -t "$_arch"
-"$_root_dir/devutils/setup_dawn_go.sh" "$_src_dir"
-
-# Apply patches, substitutions and translations
-python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
-python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
-python3 "$_main_repo/utils/name_substitution.py" --sub -t "$_src_dir"
-python3 "$_main_repo/utils/i18n_apply.py" -t "$_src_dir"
-
-python3 "$_main_repo/utils/helium_version.py" \
-    --tree "$_main_repo" \
-    --platform-tree "$_root_dir" \
-    --chromium-tree "$_src_dir"
-
-# Generate and apply Helium resources
-python3 "$_main_repo/utils/generate_resources.py" "$_main_repo/resources/generate_resources.txt" "$_main_repo/resources"
-python3 "$_main_repo/utils/replace_resources.py" "$_root_dir/resources/platform_resources.txt" "$_root_dir/resources" "$_src_dir"
-python3 "$_main_repo/utils/replace_resources.py" "$_main_repo/resources/helium_resources.txt" "$_main_repo/resources" "$_src_dir"
-
-# Set build flags
-cat "$_main_repo/flags.gn" "$_root_dir/flags.macos.gn" > "$_src_dir/out/Default/args.gn"
-
-if [ -n "${MACOS_CERTIFICATE_NAME:-}" ] && [ -n "${PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_PATH:-}" ]; then
-  echo 'include_branded_entitlements=true' >> "$_src_dir/out/Default/args.gn"
-fi
-
-if command -v sccache 2>&1 >/dev/null; then
-  echo 'cc_wrapper="sccache"' >> "$_src_dir/out/Default/args.gn";
-elif command -v ccache 2>&1 >/dev/null; then
-  echo 'cc_wrapper="env CCACHE_COMPILERCHECK=content CCACHE_SLOPPINESS=time_macros ccache"' >> "$_src_dir/out/Default/args.gn";
-else
-  echo 'warn: sccache or ccache is not available' >&2
-fi
-
-# Set target_cpu to the corresponding architecture
-if [[ $_arch == "arm64" ]]; then
-  echo 'target_cpu = "arm64"' >> "$_src_dir/out/Default/args.gn"
-else
-  echo 'target_cpu = "x64"' >> "$_src_dir/out/Default/args.gn"
-fi
-
-if $clone; then
-  echo 'chrome_pgo_phase=2' >> "$_src_dir/out/Default/args.gn"
-fi
-
-cd "$_src_dir"
-
-___helium_setup_siso
-___helium_configure_siso
-
-install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
-"$_gn_path" gen out/Default --fail-on-unused-args
-
-SISO_PATH="$_siso_path" \
-    python3 "$_depot_tools_dir/autoninja.py" -C out/Default \
-    chrome chromedriver chrome/installer/mac
-
+helium_build chrome/installer/mac
 "$_root_dir/sign_and_package_app.sh"

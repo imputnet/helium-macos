@@ -19,5 +19,7 @@ runs:
       run: sudo mdutil -a -i off
       shell: bash
     - name: Setup Environment and Toolchain
-      run: ./github_setup_env_toolchain.sh ${{ inputs.arch }} | tee -a github_actions_setup_env_toolchain.log
+      run: |
+        set -o pipefail
+        ./github_setup_env_toolchain.sh | tee -a github_actions_setup_env_toolchain.log
       shell: bash
