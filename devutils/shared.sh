@@ -31,7 +31,6 @@ prepare_sources() {
   mkdir -p "$_out_dir"
   python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
   "$_root_dir/retrieve_and_unpack_resource.sh" -t "$arch"
-  ___helium_setup_dawn_go
 
   python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
   python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
@@ -97,9 +96,8 @@ configure_build() {
     write_gn_args "$arch" release "$pgo"
   fi
   cd "$_src_dir"
-  ___helium_setup_siso
+  ___helium_install_cipd_deps
   ___helium_configure_siso
-  ___helium_install_gn
   "$_gn_path" gen out/Default --fail-on-unused-args
 }
 

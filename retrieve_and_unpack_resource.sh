@@ -72,25 +72,11 @@ if $retrieve_toolchain; then
     mkdir -p "$NODE/mac_arm64"
     mv "$NODE/mac/node-darwin-arm64" "$NODE/mac_arm64/"
 
-    source "$_root_dir/devutils/cipd.sh"
-
-    _host_cpu="$(uname -m)"
-    platforms=("mac-${_host_cpu/x86_64/amd64}")
-
-    # Remote builds also need Linux Clang and TypeScript.
+    # Remote builds also need Linux Clang.
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
       python3 "$_src_dir/tools/clang/scripts/update.py" \
         --host-os=linux \
         --output-dir="$_src_dir/third_party/llvm-build/Release+Asserts_linux"
-      platforms+=(linux-amd64)
     fi
-
-    # Install the TypeScript compiler for macOS, and Linux when using remote builds.
-    for platform in "${platforms[@]}"; do
-      typescript_package="chromium/third_party/typescript/$platform"
-      install_cipd_package "$typescript_package" \
-        "third_party/typescript/$platform/src" \
-        "--revision=src/third_party/typescript/$platform/src:$typescript_package"
-    done
   popd
 fi

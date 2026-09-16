@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 
-source "$_root_dir/devutils/cipd.sh"
+___helium_install_cipd_deps() {
+    local -a args=("$_src_dir")
+    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+        args+=(--remote-exec)
+    fi
 
-___helium_setup_dawn_go() {
-    local go_platform="mac-$(/usr/bin/uname -m)"
-    go_platform="${go_platform/x86_64/amd64}"
-    install_cipd_package 'infra/3pp/tools/go/${platform}' \
-        "third_party/dawn/tools/golang/$go_platform" --var=dawn_go_version third_party/dawn/DEPS
-}
-
-___helium_install_gn() {
-    install_cipd_package 'gn/gn/${platform}' buildtools/mac --var=gn_version
-}
-
-___helium_setup_siso() {
-    install_cipd_package 'build/siso/${platform}' third_party/siso/cipd --var=siso_version
+    export CIPD_CACHE_DIR="$_download_cache/cipd"
+    mkdir -p "$CIPD_CACHE_DIR"
+    python3 "$_main_repo/utils/install_cipd_deps.py" "${args[@]}"
 }
 
 ___helium_configure_siso() {

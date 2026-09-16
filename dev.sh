@@ -16,10 +16,8 @@ ___helium_info_pull() {
 
 ___helium_configure() {
     cd "$_src_dir"
-    ___helium_setup_siso
+    ___helium_install_cipd_deps
     ___helium_configure_siso
-    ___helium_setup_dawn_go
-    ___helium_install_gn
     "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
 }
 
