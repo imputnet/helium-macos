@@ -1,0 +1,75 @@
+--- a/content/browser/sandbox_parameters_mac.mm
++++ b/content/browser/sandbox_parameters_mac.mm
+@@ -4,6 +4,7 @@
+ 
+ #include "content/browser/sandbox_parameters_mac.h"
+ 
++#include <sys/sysctl.h>
+ #include <unistd.h>
+ 
+ #include <optional>
+@@ -42,6 +43,11 @@ namespace {
+ BASE_FEATURE(kMacSandboxDistributedNotifications,
+              base::FEATURE_DISABLED_BY_DEFAULT);
+ 
++// Allows the renderer sandbox to look up Apple's ImageIO XPC service when
++// Lockdown Mode is active. macOS may remote ImageIO work, including emoji
++// rendering, to this service.
++BASE_FEATURE(kMacSandboxRemoteAppleImageIO, base::FEATURE_ENABLED_BY_DEFAULT);
++
+ // If enabled, the macOS sandbox for the Network process will allow read and
+ // write file access to the user's cache and temp directory
+ // (https://crbug.com/527885521).
+@@ -64,6 +70,14 @@ std::optional<base::FilePath>& GetNetwor
+   return *network_test_certs_dir;
+ }
+ 
++bool IsLockdownModeEnabled() {
++  int lockdown_mode_state = 0;
++  size_t size = sizeof(lockdown_mode_state);
++  return sysctlbyname("security.mac.lockdown_mode_state", &lockdown_mode_state,
++                      &size, nullptr, 0) == 0 &&
++         lockdown_mode_state == 1;
++}
++
+ // Produce the OS version as an integer "1010", etc. and pass that to the
+ // profile. The profile converts the string back to a number and can do
+ // comparison operations on OS version.
+@@ -126,6 +140,10 @@ void SetupCommonSandboxParameters(
+   CHECK(serializer->SetBooleanParameter(
+       sandbox::policy::kParamEnableDistributedNotifications,
+       base::FeatureList::IsEnabled(kMacSandboxDistributedNotifications)));
++  CHECK(serializer->SetBooleanParameter(
++      sandbox::policy::kParamAllowRemoteAppleImageio,
++      base::FeatureList::IsEnabled(kMacSandboxRemoteAppleImageIO) &&
++          IsLockdownModeEnabled()));
+ 
+   std::string bundle_path =
+       sandbox::policy::GetCanonicalPath(base::apple::MainBundlePath()).value();
+--- a/sandbox/policy/mac/common.sb
++++ b/sandbox/policy/mac/common.sb
+@@ -34,6 +34,10 @@
+ ; Sandboxed processes which use Metal may need to disable the shader cache.
+ (define disable-metal-shader-cache "DISABLE_METAL_SHADER_CACHE")
+ 
++; Whether to allow ImageIO to use its out-of-process XPC service when
++; Lockdown Mode is active.
++(define allow-remote-apple-imageio "ALLOW_REMOTE_APPLE_IMAGEIO")
++
+ ; --enable-sandbox-logging causes the sandbox to log failures to the syslog.
+ (if (param-true? disable-sandbox-denial-logging)
+   (deny default (with no-log))
+--- a/sandbox/policy/mac/renderer.sb
++++ b/sandbox/policy/mac/renderer.sb
+@@ -84,6 +84,11 @@
+   (global-name "com.apple.system.notification_center")  ; https://crbug.com/792217
+ )
+ 
++; macOS Lockdown Mode may remote ImageIO work, including emoji rendering, to
++; this XPC service.
++(if (param-true? allow-remote-apple-imageio)
++  (allow mach-lookup (global-name "com.apple.ImageIOXPCService")))
++
+ (if (param-true? enable-distributed-notifications)
+   (allow mach-lookup
+     (global-name "com.apple.distributed_notifications@Uv3")
