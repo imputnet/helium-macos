@@ -1,0 +1,145 @@
+--- a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
++++ b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
+@@ -60,17 +60,11 @@ bool WindowFeatureController::IsTrustedS
+ 
+ #if BUILDFLAG(IS_MAC)
+ bool WindowFeatureController::UsesImmersiveFullscreenMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
+-  return is_pwa || is_tabbed_window;
++  return false;
+ }
+ 
+ bool WindowFeatureController::UsesImmersiveFullscreenTabbedMode() const {
+-  const bool is_pwa = app_controller_ != nullptr;
+-  const bool is_tabbed_window =
+-      CanSupportWindowFeature(WindowFeature::kFeatureTabStrip);
+-  return is_tabbed_window && !is_pwa;
++  return false;
+ }
+ #endif
+ 
+--- a/chrome/browser/ui/browser_actions.cc
++++ b/chrome/browser/ui/browser_actions.cc
+@@ -2469,20 +2469,6 @@ void BrowserActions::InitializeToolbarAn
+           .SetActionId(kActionOpenInPwaWindow)
+           .Build());
+ 
+-#if BUILDFLAG(IS_MAC)
+-  root_action_item_->AddChild(
+-      actions::ActionItem::Builder(
+-          base::BindRepeating(
+-              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+-                 actions::ActionInvocationContext context) {
+-                chrome::ToggleAlwaysShowToolbarInFullscreen(
+-                    bwi->GetBrowserForMigrationOnly());
+-              },
+-              bwi))
+-          .SetActionId(kActionToggleFullscreenToolbar)
+-          .Build());
+-#endif  // BUILDFLAG(IS_MAC)
+-
+   root_action_item_->AddChild(
+       actions::ActionItem::Builder(
+           base::BindRepeating(
+--- a/chrome/browser/ui/browser_command_controller.cc
++++ b/chrome/browser/ui/browser_command_controller.cc
+@@ -2565,8 +2565,7 @@ void BrowserCommandController::UpdateCom
+ #endif
+ 
+   command_updater_->UpdateCommandEnabled(IDC_FULLSCREEN, fullscreen_enabled);
+-  command_updater_->UpdateCommandEnabled(IDC_TOGGLE_FULLSCREEN_TOOLBAR,
+-                                         fullscreen_enabled);
++  command_updater_->UpdateCommandEnabled(IDC_TOGGLE_FULLSCREEN_TOOLBAR, false);
+ 
+   UpdateCommandsForBookmarkBar();
+   UpdateCommandsForIncognitoAvailability();
+--- a/chrome/browser/ui/browser_commands_mac.mm
++++ b/chrome/browser/ui/browser_commands_mac.mm
+@@ -14,7 +14,6 @@
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+ #include "chrome/browser/ui/fullscreen_util_mac.h"
+-#include "chrome/browser/ui/web_applications/app_browser_controller.h"
+ #include "chrome/common/pref_names.h"
+ #include "components/prefs/pref_service.h"
+ #include "components/remote_cocoa/app_shim/native_widget_mac_nswindow.h"
+@@ -26,20 +25,7 @@
+ namespace chrome {
+ 
+ void ToggleAlwaysShowToolbarInFullscreen(Browser* browser) {
+-  DCHECK(browser);
+-
+-  // If this browser belongs to an app, toggle the value for that app.
+-  web_app::AppBrowserController* app_controller =
+-      web_app::AppBrowserController::From(browser);
+-  if (app_controller) {
+-    app_controller->ToggleAlwaysShowToolbarInFullscreen();
+-    return;
+-  }
+-
+-  // Otherwise toggle the value of the preference.
+-  PrefService* prefs = browser->GetProfile()->GetPrefs();
+-  bool show_toolbar = prefs->GetBoolean(prefs::kShowFullscreenToolbar);
+-  prefs->SetBoolean(prefs::kShowFullscreenToolbar, !show_toolbar);
++  // Helium controls fullscreen toolbar visibility through its layout and Zen mode.
+ }
+ 
+ void SetAlwaysShowToolbarInFullscreenForTesting(Browser* browser,  // IN-TEST
+--- a/chrome/browser/ui/cocoa/accelerators_cocoa.mm
++++ b/chrome/browser/ui/cocoa/accelerators_cocoa.mm
+@@ -108,8 +108,6 @@ const struct AcceleratorMapping {
+      ui::VKEY_TAB},
+     {IDC_HELP_PAGE_VIA_MENU, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN,
+      ui::VKEY_OEM_2},
+-    {IDC_TOGGLE_FULLSCREEN_TOOLBAR, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN,
+-     ui::VKEY_F},
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+     {IDC_FEEDBACK, ui::EF_COMMAND_DOWN | ui::EF_ALT_DOWN | ui::EF_SHIFT_DOWN,
+      ui::VKEY_I},
+--- a/chrome/browser/ui/cocoa/main_menu_builder.mm
++++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
+@@ -311,8 +311,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+               Item(IDS_BOOKMARK_BAR_ALWAYS_SHOW_MAC)
+                   .command_id(IDC_SHOW_BOOKMARK_BAR)
+                   .remove_if(is_pwa),
+-              Item(IDS_TOGGLE_FULLSCREEN_TOOLBAR_MAC)
+-                  .command_id(IDC_TOGGLE_FULLSCREEN_TOOLBAR),
+               Item(IDS_CONTEXT_MENU_SHOW_FULL_URLS)
+                   .command_id(IDC_SHOW_FULL_URLS),
+               Item(IDS_CUSTOMIZE_TOUCH_BAR)
+--- a/chrome/browser/ui/fullscreen_util_mac.cc
++++ b/chrome/browser/ui/fullscreen_util_mac.cc
+@@ -4,14 +4,10 @@
+ 
+ #include "chrome/browser/ui/fullscreen_util_mac.h"
+ 
+-#include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+ #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+-#include "chrome/browser/ui/web_applications/app_browser_controller.h"
+-#include "chrome/common/pref_names.h"
+-#include "components/prefs/pref_service.h"
+ 
+ namespace fullscreen_utils {
+ 
+@@ -31,13 +27,9 @@ bool IsInContentFullscreen(
+ 
+ bool IsAlwaysShowToolbarEnabled(
+     const BrowserWindowInterface* browser_window_interface) {
+-  if (web_app::AppBrowserController::IsWebApp(browser_window_interface)) {
+-    const web_app::AppBrowserController* controller =
+-        web_app::AppBrowserController::From(browser_window_interface);
+-    return controller->AlwaysShowToolbarInFullscreen();
+-  }
+-  return browser_window_interface->GetProfile()->GetPrefs()->GetBoolean(
+-      prefs::kShowFullscreenToolbar);
++  // Keep the toolbar available to Helium's layout and Zen mode, independently
++  // of the legacy profile or web app fullscreen toolbar setting.
++  return true;
+ }
+ 
+ }  // namespace fullscreen_utils
