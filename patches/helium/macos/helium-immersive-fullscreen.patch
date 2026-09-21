@@ -1,0 +1,672 @@
+--- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
++++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.h
+@@ -12,6 +12,11 @@ REMOTE_COCOA_APP_SHIM_EXPORT
+ // When set to `YES`, the traffic lights will always be shown. When set to `NO`,
+ // the traffic lights follow the default AppKit behavior.
+ - (void)setAlwaysShowTrafficLights:(BOOL)alwaysShow;
++
++// Hide AppKit's fullscreen overlay and pass mouse events through it while
++// Helium hosts the controls in its tab strip or toolbar.
++- (void)setAppKitFullscreenOverlaySuppressed:(BOOL)suppressed;
++
+ // A controller that keeps a small portion (0.5px) of the fullscreen AppKit
+ // NSWindow on screen.
+ // This controller is used as a workaround for an AppKit bug
+--- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
++++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
+@@ -141,7 +141,13 @@ WEAK_IMPORT_ATTRIBUTE
+ 
+ @end
+ 
+-@implementation BrowserNativeWidgetWindow
++@implementation BrowserNativeWidgetWindow {
++  BOOL _appKitFullscreenOverlaySuppressed;
++  NSWindow* __weak _appKitFullscreenOverlayWindow;
++  // AppKit state to restore when Helium stops hosting the controls.
++  BOOL _savedToolbarWindowIgnoresMouseEvents;
++  BOOL _savedToolbarFrameHidden;
++}
+ 
+ @synthesize thinTitlebarViewController = _thinTitlebarViewController;
+ 
+@@ -217,4 +223,48 @@ WEAK_IMPORT_ATTRIBUTE
+       setAlwaysShowTrafficLights:alwaysShow];
+ }
+ 
++- (void)setAppKitFullscreenOverlaySuppressed:(BOOL)suppressed {
++  _appKitFullscreenOverlaySuppressed = suppressed;
++  [self updateAppKitFullscreenOverlay];
++}
++
++- (void)updateAppKitFullscreenOverlay {
++  NSWindow* toolbarWindow = nil;
++  if (_appKitFullscreenOverlaySuppressed) {
++    for (NSWindow* child in self.childWindows) {
++      if (remote_cocoa::IsNSToolbarFullScreenWindow(child)) {
++        toolbarWindow = child;
++        break;
++      }
++    }
++  }
++  if (toolbarWindow != _appKitFullscreenOverlayWindow) {
++    _appKitFullscreenOverlayWindow.ignoresMouseEvents =
++        _savedToolbarWindowIgnoresMouseEvents;
++    _appKitFullscreenOverlayWindow.contentView.superview.hidden =
++        _savedToolbarFrameHidden;
++    _appKitFullscreenOverlayWindow = toolbarWindow;
++    _savedToolbarWindowIgnoresMouseEvents = toolbarWindow.ignoresMouseEvents;
++    _savedToolbarFrameHidden = toolbarWindow.contentView.superview.hidden;
++  }
++  // AppKit animates the toolbar window's alpha when revealing the menu bar.
++  // Hide its frame view instead, without changing its geometry.
++  toolbarWindow.contentView.superview.hidden = YES;
++  toolbarWindow.ignoresMouseEvents = YES;
++}
++
++- (void)addChildWindow:(NSWindow*)child ordered:(NSWindowOrderingMode)place {
++  [super addChildWindow:child ordered:place];
++  [self updateAppKitFullscreenOverlay];
++}
++
++- (void)removeChildWindow:(NSWindow*)child {
++  if (child == _appKitFullscreenOverlayWindow) {
++    child.ignoresMouseEvents = _savedToolbarWindowIgnoresMouseEvents;
++    child.contentView.superview.hidden = _savedToolbarFrameHidden;
++    _appKitFullscreenOverlayWindow = nil;
++  }
++  [super removeChildWindow:child];
++}
++
+ @end
+--- /dev/null
++++ b/chrome/browser/ui/views/helium/fullscreen_window_controls_mac.h
+@@ -0,0 +1,18 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_VIEWS_HELIUM_FULLSCREEN_WINDOW_CONTROLS_MAC_H_
++#define CHROME_BROWSER_UI_VIEWS_HELIUM_FULLSCREEN_WINDOW_CONTROLS_MAC_H_
++
++#import <Cocoa/Cocoa.h>
++
++// Native traffic lights hosted in Helium's tab strip or toolbar. The system
++// titlebar is restored when entering content fullscreen or leaving fullscreen.
++@interface HeliumFullscreenWindowControls : NSView
++- (instancetype)initWithWindow:(NSWindow*)window size:(NSSize)size;
++- (void)hideTitlebarButtons;
++- (void)restoreTitlebarButtons;
++@end
++
++#endif  // CHROME_BROWSER_UI_VIEWS_HELIUM_FULLSCREEN_WINDOW_CONTROLS_MAC_H_
+--- /dev/null
++++ b/chrome/browser/ui/views/helium/fullscreen_window_controls_mac.mm
+@@ -0,0 +1,150 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#import "chrome/browser/ui/views/helium/fullscreen_window_controls_mac.h"
++
++#include <iterator>
++
++#include "base/apple/foundation_util.h"
++#import "components/remote_cocoa/app_shim/browser_native_widget_window_mac.h"
++
++// Native titlebar buttons cache their presentation separately from NSView's
++// display invalidation. Let AppKit refresh that state when group hover changes.
++@interface NSButton (HeliumFullscreenWindowControlsHover)
++- (void)mouseEnteredOrExited;
++@end
++
++@implementation HeliumFullscreenWindowControls {
++  BrowserNativeWidgetWindow* __weak _browserWindow;
++  NSDictionary<NSNumber*, NSNumber*>* _originalWindowButtonHiddenStates;
++  BOOL _mouseInsideControls;
++}
++
++- (instancetype)initWithWindow:(NSWindow*)window size:(NSSize)size {
++  self = [super initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
++  if (!self) {
++    return nil;
++  }
++  _browserWindow = base::apple::ObjCCast<BrowserNativeWidgetWindow>(window);
++  const NSWindowStyleMask style = window.styleMask & ~NSWindowStyleMaskFullScreen;
++  const struct {
++    NSWindowButton type;
++    SEL action;
++    bool enabled;
++  } buttons[] = {
++      {NSWindowCloseButton, @selector(performClose:),
++       (style & NSWindowStyleMaskClosable) != 0},
++      // Fullscreen windows cannot be minimized.
++      {NSWindowMiniaturizeButton, @selector(performMiniaturize:), false},
++      {NSWindowZoomButton, @selector(toggleFullScreen:),
++       (style & NSWindowStyleMaskResizable) != 0},
++  };
++
++  NSMutableDictionary<NSNumber*, NSNumber*>* hiddenStates =
++      [NSMutableDictionary dictionary];
++  for (const auto& entry : buttons) {
++    NSButton* original = [window standardWindowButton:entry.type];
++    if (original) {
++      hiddenStates[@(entry.type)] = @(original.hidden);
++    }
++  }
++  _originalWindowButtonHiddenStates = hiddenStates;
++
++  // Create ordinary window buttons even while AppKit's fullscreen titlebar
++  // is hidden. Their visibility is controlled by Helium's toolbar instead.
++  const bool rtl = window.windowTitlebarLayoutDirection ==
++                   NSUserInterfaceLayoutDirectionRightToLeft;
++  for (size_t i = 0; i < std::size(buttons); ++i) {
++    const auto& entry = buttons[i];
++    NSButton* button = [NSWindow standardWindowButton:entry.type
++                                       forStyleMask:style];
++    if (!button) {
++      continue;
++    }
++    button.target = window;
++    button.action = entry.action;
++    button.enabled = entry.enabled;
++    NSRect frame = button.frame;
++    const CGFloat offset = (size.width - frame.size.width) * i / 2;
++    frame.origin.x = rtl ? size.width - frame.size.width - offset : offset;
++    frame.origin.y = (size.height - frame.size.height) / 2;
++    button.frame = frame;
++    [self addSubview:button];
++  }
++
++  // NSTrackingInVisibleRect follows layout changes without replacing the
++  // tracking area and queuing enter/exit events for obsolete areas.
++  NSTrackingArea* trackingArea = [[NSTrackingArea alloc]
++      initWithRect:NSZeroRect
++           options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow |
++                   NSTrackingInVisibleRect
++             owner:self
++          userInfo:nil];
++  [self addTrackingArea:trackingArea];
++  return self;
++}
++
++- (void)hideTitlebarButtons {
++  [_browserWindow setAppKitFullscreenOverlaySuppressed:YES];
++  // Look up current buttons because AppKit can recreate them.
++  for (NSNumber* type in _originalWindowButtonHiddenStates) {
++    NSButton* button = [_browserWindow standardWindowButton:
++        static_cast<NSWindowButton>(type.unsignedIntegerValue)];
++    button.hidden = YES;
++  }
++}
++
++- (void)restoreTitlebarButtons {
++  [_browserWindow setAppKitFullscreenOverlaySuppressed:NO];
++  for (NSNumber* type in _originalWindowButtonHiddenStates) {
++    NSButton* button = [_browserWindow standardWindowButton:
++        static_cast<NSWindowButton>(type.unsignedIntegerValue)];
++    // Restore the saved visibility while still fullscreen. Outside fullscreen,
++    // show the buttons even if AppKit hid them during the entry transition.
++    button.hidden = (button.window.styleMask & NSWindowStyleMaskFullScreen) &&
++                    _originalWindowButtonHiddenStates[type].boolValue;
++  }
++}
++
++- (void)setMouseInsideControls:(BOOL)inside {
++  if (_mouseInsideControls == inside) {
++    return;
++  }
++  _mouseInsideControls = inside;
++  for (NSButton* button in self.subviews) {
++    if ([button respondsToSelector:@selector(mouseEnteredOrExited)]) {
++      [button mouseEnteredOrExited];
++    }
++    button.needsDisplay = YES;
++  }
++}
++
++- (void)mouseEntered:(NSEvent*)event {
++  [self setMouseInsideControls:YES];
++}
++
++- (void)mouseExited:(NSEvent*)event {
++  [self setMouseInsideControls:NO];
++}
++
++- (void)setHidden:(BOOL)hidden {
++  [super setHidden:hidden];
++  if (hidden) {
++    [self setMouseInsideControls:NO];
++  }
++}
++
++// AppKit's standard window buttons ask their container for group hover state.
++- (BOOL)_mouseInGroup:(id)sender {
++  return _mouseInsideControls && self.window.isKeyWindow &&
++         !self.hiddenOrHasHiddenAncestor && self.alphaValue > 0;
++}
++
++// Let clicks between the buttons reach the browser frame.
++- (NSView*)hitTest:(NSPoint)point {
++  NSView* view = [super hitTest:point];
++  return view == self ? nil : view;
++}
++
++@end
+--- a/chrome/browser/ui/BUILD.gn
++++ b/chrome/browser/ui/BUILD.gn
+@@ -2383,6 +2383,8 @@ static_library("ui") {
+       "views/frame/immersive_mode_overlay_views_mac.h",
+       "views/frame/immersive_mode_overlay_views_mac.mm",
+       "views/helium/frame_corner_radius_mac.mm",
++      "views/helium/fullscreen_window_controls_mac.h",
++      "views/helium/fullscreen_window_controls_mac.mm",
+       "views/helium/native_frame_materials_mac.h",
+       "views/helium/native_frame_materials_mac.mm",
+     ]
+--- a/chrome/browser/ui/views/frame/browser_frame_view.h
++++ b/chrome/browser/ui/views/frame/browser_frame_view.h
+@@ -161,6 +161,9 @@ class BrowserFrameView : public views::F
+   // them in the layout for exclusion area calculations.
+   virtual void SetCaptionButtonsOpacity(float opacity) {}
+ 
++  // Updates the bounds and visibility of Helium Fullscreen window controls.
++  virtual void UpdateHeliumFullscreenWindowControls() {}
++
+   // Signals that the frame's minimum size may have changed. This prompts the
+   // widget to update its size constraints by re-querying `GetMinimumSize()`.
+   // This is typically called when child views (e.g. tab strip, toolbar,
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.h
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.h
+@@ -26,6 +26,11 @@ enum class ToolbarVisibilityStyle;
+ }
+ 
+ @class FullscreenToolbarController;
++@class HeliumFullscreenWindowControls;
++
++namespace views {
++class NativeViewHost;
++}
+ 
+ class CaptionButtonPlaceholderContainer;
+ 
+@@ -62,6 +67,7 @@ class BrowserFrameViewMac : public Brows
+   void UpdateMinimumSize() override;
+   void WindowControlsOverlayEnabledChanged() override;
+   void SetCaptionButtonsOpacity(float opacity) override;
++  void UpdateHeliumFullscreenWindowControls() override;
+ 
+   // views::View:
+   gfx::Size GetMinimumSize() const override;
+@@ -88,6 +94,10 @@ class BrowserFrameViewMac : public Brows
+   FRIEND_TEST_ALL_PREFIXES(BrowserFrameViewMacTest,
+                            GetCaptionButtonPlaceholderBounds);
+ 
++  // Whether this fullscreen session uses Helium Fullscreen window controls.
++  // Content fullscreen temporarily hides them without changing this result.
++  bool ShouldUseHeliumFullscreenWindowControls() const;
++
+   // Calculate the y offset the top UI needs to shift down due to showing the
+   // slide down menu bar at the very top in full screen.
+   int TopUIFullscreenYOffset() const;
+@@ -116,6 +126,11 @@ class BrowserFrameViewMac : public Brows
+ 
+   FullscreenToolbarController* __strong fullscreen_toolbar_controller_;
+ 
++  // Child view hosting the native controls across fullscreen sessions.
++  // The native controls are released when fullscreen ends.
++  raw_ptr<views::NativeViewHost> helium_fullscreen_controls_host_ = nullptr;
++  HeliumFullscreenWindowControls* __strong helium_fullscreen_controls_ = nil;
++
+   // Mark the start of a fullscreen session. Applies to both immersive and
+   // standard fullscreen.
+   std::optional<base::TimeTicks> fullscreen_session_start_;
+--- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
++++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
+@@ -28,6 +28,7 @@
+ #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+ #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+ #include "chrome/browser/ui/fullscreen_util_mac.h"
++#include "chrome/browser/ui/helium/helium_layout_state_controller.h"
+ #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
+ #include "chrome/browser/ui/layout_constants.h"
+ #include "chrome/browser/ui/tabs/tab_style.h"
+@@ -37,6 +38,7 @@
+ #include "chrome/browser/ui/views/frame/browser_widget.h"
+ #include "chrome/browser/ui/views/frame/caption_button_placeholder_container.h"
+ #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
++#import "chrome/browser/ui/views/helium/fullscreen_window_controls_mac.h"
+ #include "chrome/browser/ui/views/helium/native_frame_materials.h"
+ #include "chrome/browser/ui/views/tabs/tab_strip.h"
+ #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+@@ -61,6 +63,7 @@
+ #include "ui/native_theme/native_theme.h"
+ #include "ui/views/cocoa/native_widget_mac_ns_window_host.h"
+ #include "ui/views/controls/label.h"
++#include "ui/views/controls/native/native_view_host.h"
+ #include "ui/views/layout/layout_types.h"
+ #include "ui/views/widget/widget.h"
+ 
+@@ -119,6 +122,10 @@ BrowserFrameViewMac::BrowserFrameViewMac
+ }
+ 
+ BrowserFrameViewMac::~BrowserFrameViewMac() {
++  [helium_fullscreen_controls_ restoreTitlebarButtons];
++  if (helium_fullscreen_controls_host_) {
++    helium_fullscreen_controls_host_->Detach();
++  }
+   if ([fullscreen_toolbar_controller_ isInFullscreen]) {
+     [fullscreen_toolbar_controller_ exitFullscreenMode];
+   }
+@@ -163,14 +170,11 @@ void BrowserFrameViewMac::OnFullscreenSt
+     return;
+   }
+ 
++  // Update the toolbar style before entering or leaving fullscreen.
++  UpdateFullscreenTopUI();
+   if (GetBrowserView()->IsFullscreen()) {
+     [fullscreen_toolbar_controller_ enterFullscreenMode];
+   } else {
+-    // Exiting tab fullscreen requires updating Top UI.
+-    // Called from here so we can capture exiting tab fullscreen both by
+-    // pressing 'ESC' key and by clicking green traffic light button.
+-
+-    UpdateFullscreenTopUI();
+     [fullscreen_toolbar_controller_ exitFullscreenMode];
+   }
+   GetBrowserView()->DeprecatedLayoutImmediately();
+@@ -215,7 +219,10 @@ bool BrowserFrameViewMac::CaptionButtons
+ 
+ BrowserLayoutParams BrowserFrameViewMac::GetBrowserLayoutParams() const {
+   auto params = BrowserFrameView::GetBrowserLayoutParams();
+-  if (GetBrowserView()->IsFullscreen()) {
++  const bool keep_caption_exclusion =
++      ShouldUseHeliumFullscreenWindowControls() &&
++      !fullscreen_utils::IsInContentFullscreen(GetBrowserView()->browser());
++  if (GetBrowserView()->IsFullscreen() && !keep_caption_exclusion) {
+     // No insets for caption buttons in fullscreen, since caption buttons are on
+     // a separate pane that slides in. However, preserve the height of the
+     // caption area to ensure that the toolbar renders correctly (this is kind
+@@ -360,6 +367,7 @@ gfx::RoundedCornersF BrowserFrameViewMac
+ }
+ 
+ void BrowserFrameViewMac::SetCaptionButtonsOpacity(float opacity) {
++  helium_fullscreen_controls_.alphaValue = opacity;
+   NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
+   if (!window) {
+     return;
+@@ -371,6 +379,78 @@ void BrowserFrameViewMac::SetCaptionButt
+   }
+ }
+ 
++bool BrowserFrameViewMac::ShouldUseHeliumFullscreenWindowControls() const {
++  const auto* browser_view = GetBrowserView();
++  return browser_view->GetIsNormalType() && browser_view->IsFullscreen();
++}
++
++void BrowserFrameViewMac::UpdateHeliumFullscreenWindowControls() {
++  auto* browser_view = GetBrowserView();
++  if (!ShouldUseHeliumFullscreenWindowControls()) {
++    if (helium_fullscreen_controls_) {
++      helium_fullscreen_controls_host_->SetVisible(false);
++      helium_fullscreen_controls_host_->Detach();
++      [helium_fullscreen_controls_ restoreTitlebarButtons];
++      helium_fullscreen_controls_ = nil;
++    }
++    return;
++  }
++
++  NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
++  if (!window) {
++    return;
++  }
++  // Content fullscreen uses AppKit's titlebar. Keep the hosted controls for
++  // returning to browser fullscreen, but restore the native titlebar and input.
++  if (fullscreen_utils::IsInContentFullscreen(browser_view->browser())) {
++    if (helium_fullscreen_controls_host_) {
++      helium_fullscreen_controls_host_->SetVisible(false);
++      [helium_fullscreen_controls_ restoreTitlebarButtons];
++    }
++    return;
++  }
++  if (!helium_fullscreen_controls_host_) {
++    helium_fullscreen_controls_host_ =
++        AddChildView(std::make_unique<views::NativeViewHost>());
++    helium_fullscreen_controls_host_->SetVisible(false);
++  }
++  const gfx::Rect caption = gfx::ToEnclosingRect(GetCaptionButtonBounds().bounds);
++  if (!helium_fullscreen_controls_) {
++    helium_fullscreen_controls_ = [[HeliumFullscreenWindowControls alloc]
++        initWithWindow:window
++                  size:NSMakeSize(caption.width(), caption.height())];
++    helium_fullscreen_controls_host_->Attach(
++        gfx::NativeView(helium_fullscreen_controls_));
++  }
++  [helium_fullscreen_controls_ hideTitlebarButtons];
++
++  const auto* controller =
++      HeliumLayoutStateController::From(browser_view->browser());
++  const bool in_tab_strip = !controller || controller->IsClassicLayout();
++  views::View* controls_row = in_tab_strip
++                                  ? static_cast<views::View*>(
++                                        browser_view->tab_strip_view())
++                                  : browser_view->toolbar();
++  if (!controls_row) {
++    helium_fullscreen_controls_host_->SetVisible(false);
++    return;
++  }
++  const gfx::Rect row_bounds = views::View::ConvertRectToTarget(
++      controls_row, this, controls_row->GetLocalBounds());
++  // Layout reserves the regular caption exclusion in the top row. Reuse its
++  // logical bounds, moving only vertically with that row's reveal animation.
++  gfx::Rect bounds = caption;
++  bounds.Offset(0, row_bounds.y());
++  helium_fullscreen_controls_host_->SetBoundsRect(bounds);
++  helium_fullscreen_controls_.alphaValue = browser_view->GetTopChromeRevealRatio();
++  helium_fullscreen_controls_host_->SetVisible(
++      (in_tab_strip ? browser_view->GetTabStripVisible()
++                    : browser_view->IsToolbarVisible()) &&
++      controls_row->IsDrawn() && row_bounds.height() >= caption.bottom() &&
++      GetLocalBounds().Contains(bounds) &&
++      helium_fullscreen_controls_.alphaValue > 0);
++}
++
+ ///////////////////////////////////////////////////////////////////////////////
+ // BrowserFrameViewMac, views::FrameView implementation:
+ 
+@@ -396,6 +476,13 @@ gfx::Rect BrowserFrameViewMac::GetWindow
+ }
+ 
+ int BrowserFrameViewMac::NonClientHitTest(const gfx::Point& point) {
++  if (helium_fullscreen_controls_host_ &&
++      helium_fullscreen_controls_host_->IsDrawn() &&
++      helium_fullscreen_controls_host_->GetMirroredBounds().Contains(point)) {
++    // The reserved space is otherwise treated as draggable frame background,
++    // which prevents BridgedContentView from hit-testing the native buttons.
++    return HTCLIENT;
++  }
+   int super_component = BrowserFrameView::NonClientHitTest(point);
+   if (super_component != HTNOWHERE) {
+     return super_component;
+@@ -566,9 +653,14 @@ int BrowserFrameViewMac::TopUIFullscreen
+     menu_bar_height = 0;
+   }
+ 
+-  CGFloat title_bar_height =
+-      NSHeight([NSWindow frameRectForContentRect:NSZeroRect
+-                                       styleMask:NSWindowStyleMaskTitled]);
++  // Hosted controls need no extra titlebar space below the menu bar.
++  CGFloat title_bar_height = 0;
++  if (!ShouldUseHeliumFullscreenWindowControls() ||
++      fullscreen_utils::IsInContentFullscreen(GetBrowserView()->browser())) {
++    title_bar_height =
++        NSHeight([NSWindow frameRectForContentRect:NSZeroRect
++                                        styleMask:NSWindowStyleMaskTitled]);
++  }
+   return [[fullscreen_toolbar_controller_ menubarTracker] menubarFraction] *
+          (menu_bar_height + title_bar_height);
+ }
+--- a/chrome/browser/ui/views/frame/browser_view.h
++++ b/chrome/browser/ui/views/frame/browser_view.h
+@@ -1474,6 +1474,8 @@ class BrowserView : public BrowserWindow
+   base::OneShotTimer zen_cursor_exit_timer_;
+   std::optional<gfx::Point> zen_last_cursor_;
+   bool zen_mode_enabled_ = false;
++  // Ignore hover changes during native macOS fullscreen transitions.
++  bool zen_reveal_paused_ = false;
+ 
+   mutable base::WeakPtrFactory<BrowserView> weak_ptr_factory_{this};
+ };
+--- a/chrome/browser/ui/views/frame/browser_view.cc
++++ b/chrome/browser/ui/views/frame/browser_view.cc
+@@ -1926,7 +1926,7 @@ void BrowserView::UpdateZenModeEventMoni
+ }
+ 
+ void BrowserView::StartZenCollapseTimer(base::TimeDelta delay) {
+-  if (zen_cursor_exit_timer_.IsRunning()) {
++  if (zen_reveal_paused_ || zen_cursor_exit_timer_.IsRunning()) {
+     return;
+   }
+   zen_cursor_exit_timer_.Start(
+@@ -1955,7 +1955,7 @@ bool BrowserView::IsLeavingZenSideGap(co
+ }
+ 
+ void BrowserView::UpdateZenModeRevealFromCursor() {
+-  if (!zen_mode_enabled_) {
++  if (!zen_mode_enabled_ || zen_reveal_paused_) {
+     return;
+   }
+ 
+@@ -2001,7 +2001,7 @@ void BrowserView::UpdateZenModeRevealFro
+ }
+ 
+ void BrowserView::UpdateZenModeReveal(bool reveal_top, bool reveal_side) {
+-  if (!zen_mode_enabled_) {
++  if (!zen_mode_enabled_ || zen_reveal_paused_) {
+     return;
+   }
+ 
+@@ -2886,6 +2886,13 @@ void BrowserView::FullscreenStateChangin
+     return;
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  // Keep hovered chrome revealed while AppKit moves the window underneath
++  // the cursor. Ignore hover changes until the native transition completes.
++  zen_reveal_paused_ = true;
++  zen_cursor_exit_timer_.Stop();
++#endif
++
+   if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
+     PrepareFullscreen(IsFullscreen());
+   } else {
+@@ -2930,7 +2937,6 @@ void BrowserView::FullscreenStateChanged
+ 
+   multi_contents_view_->SetProperty(views::kWidgetForAnchoringKey,
+                                     widget_for_anchoring);
+-  GetFrameView()->OnFullscreenStateChanged();
+ 
+ #endif  // BUILDFLAG(IS_MAC)
+ 
+@@ -2939,6 +2945,12 @@ void BrowserView::FullscreenStateChanged
+       ->fullscreen_controller()
+       ->WindowFullscreenStateChanged();
+ 
++#if BUILDFLAG(IS_MAC)
++  // Exclusive access must clear its tab fullscreen state before the frame
++  // chooses the toolbar style for the completed window transition.
++  GetFrameView()->OnFullscreenStateChanged();
++#endif
++
+   multi_contents_view_->OnFullscreenStateChanged();
+ 
+   if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
+@@ -2954,6 +2966,10 @@ void BrowserView::FullscreenStateChanged
+     }
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  zen_reveal_paused_ = false;
++  zen_last_cursor_.reset();
++#endif
+   UpdateZenModeState();
+ }
+ 
+@@ -5500,10 +5516,18 @@ gfx::Size BrowserView::GetMinimumSize()
+ 
+ void BrowserView::Layout(PassKey) {
+   TRACE_EVENT0("ui", "BrowserView::Layout");
+-  if (!initialized_ || in_process_fullscreen_ ||
+-      suppress_layout_for_teardown_) {
++  if (!initialized_ || suppress_layout_for_teardown_) {
++    return;
++  }
++
++  // Allow layout during AppKit fullscreen transitions so the compositor can
++  // render the updated geometry. Other platforms defer it until the transition
++  // completes.
++#if !BUILDFLAG(IS_MAC)
++  if (in_process_fullscreen_) {
+     return;
+   }
++#endif
+ 
+   if (base::FeatureList::IsEnabled(
+           features::kDeferLayoutDuringBrowserStartup) &&
+@@ -5540,6 +5564,7 @@ void BrowserView::Layout(PassKey) {
+ 
+   // TODO(jamescook): Why was this in the middle of layout code?
+   toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
++  GetFrameView()->UpdateHeliumFullscreenWindowControls();
+   GetFrameView()->UpdateMinimumSize();
+ 
+   if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
+--- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
+@@ -312,6 +312,17 @@ BrowserViewTabbedLayoutImpl::CalculateSe
+       break;
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  if (is_fullscreen(layout_data_->window_state)) {
++    info.multi_contents_separator = has_infobar;
++    if (views().multi_contents_view->ShouldUseRoundedFrame()) {
++      // The rounded frame supplies the toolbar boundary.
++      info.top_container_separator = false;
++      info.multi_contents_separator = !infobar_attached_to_rounded_frame;
++    }
++  }
++#endif
++
+   return info;
+ }
+ 
+--- a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
++++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
+@@ -148,6 +148,11 @@ bool BrowserViewLayoutDelegateImpl::IsIn
+   if (!container || container->IsEmpty()) {
+     return false;
+   }
++#if BUILDFLAG(IS_MAC)
++  if (!fullscreen_utils::IsInContentFullscreen(browser_view_->browser())) {
++    return true;
++  }
++#endif
+   if (browser_view_->GetWidget()->IsFullscreen()) {
+     return !container->ShouldHideInFullscreen();
+   }
+--- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
++++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
+@@ -1788,13 +1788,6 @@ bool NativeWidgetNSWindowBridge::ShouldW
+   if (content_dip_size_.IsEmpty()) {
+     return false;
+   }
+-  // Suppress synchronous CA transactions during AppKit fullscreen transition
+-  // since there is no need for updates during such transition.
+-  // Re-layout and re-paint will be done after the transition. See
+-  // https://crbug.com/875707 for potential problems if we don't suppress.
+-  if (fullscreen_controller_.IsInFullscreenTransition()) {
+-    return false;
+-  }
+   return content_dip_size_ != compositor_frame_dip_size_;
+ }
+ 
