@@ -22,7 +22,7 @@
  
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
-@@ -2469,20 +2469,6 @@ void BrowserActions::InitializeToolbarAn
+@@ -2568,19 +2568,6 @@ void BrowserActions::InitializeToolbarAn
            .SetActionId(kActionOpenInPwaWindow)
            .Build());
  
@@ -32,8 +32,7 @@
 -          base::BindRepeating(
 -              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
 -                 actions::ActionInvocationContext context) {
--                chrome::ToggleAlwaysShowToolbarInFullscreen(
--                    bwi->GetBrowserForMigrationOnly());
+-                chrome::ToggleAlwaysShowToolbarInFullscreen(bwi);
 -              },
 -              bwi))
 -          .SetActionId(kActionToggleFullscreenToolbar)
@@ -45,7 +44,7 @@
            base::BindRepeating(
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -2565,8 +2565,7 @@ void BrowserCommandController::UpdateCom
+@@ -2572,8 +2572,7 @@ void BrowserCommandController::UpdateCom
  #endif
  
    command_updater_->UpdateCommandEnabled(IDC_FULLSCREEN, fullscreen_enabled);
@@ -57,18 +56,19 @@
    UpdateCommandsForIncognitoAvailability();
 --- a/chrome/browser/ui/browser_commands_mac.mm
 +++ b/chrome/browser/ui/browser_commands_mac.mm
-@@ -14,7 +14,6 @@
- #include "chrome/browser/ui/browser_window.h"
+@@ -15,7 +15,6 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
  #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
  #include "chrome/browser/ui/fullscreen_util_mac.h"
 -#include "chrome/browser/ui/web_applications/app_browser_controller.h"
  #include "chrome/common/pref_names.h"
  #include "components/prefs/pref_service.h"
  #include "components/remote_cocoa/app_shim/native_widget_mac_nswindow.h"
-@@ -26,20 +25,7 @@
+@@ -26,21 +25,8 @@
+ 
  namespace chrome {
  
- void ToggleAlwaysShowToolbarInFullscreen(Browser* browser) {
+-void ToggleAlwaysShowToolbarInFullscreen(BrowserWindowInterface* browser) {
 -  DCHECK(browser);
 -
 -  // If this browser belongs to an app, toggle the value for that app.
@@ -83,10 +83,11 @@
 -  PrefService* prefs = browser->GetProfile()->GetPrefs();
 -  bool show_toolbar = prefs->GetBoolean(prefs::kShowFullscreenToolbar);
 -  prefs->SetBoolean(prefs::kShowFullscreenToolbar, !show_toolbar);
++void ToggleAlwaysShowToolbarInFullscreen(BrowserWindowInterface*) {
 +  // Helium controls fullscreen toolbar visibility through its layout and Zen mode.
  }
  
- void SetAlwaysShowToolbarInFullscreenForTesting(Browser* browser,  // IN-TEST
+ void SetAlwaysShowToolbarInFullscreenForTesting(
 --- a/chrome/browser/ui/cocoa/accelerators_cocoa.mm
 +++ b/chrome/browser/ui/cocoa/accelerators_cocoa.mm
 @@ -108,8 +108,6 @@ const struct AcceleratorMapping {
@@ -100,7 +101,7 @@
       ui::VKEY_I},
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -311,8 +311,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+@@ -314,8 +314,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
                Item(IDS_BOOKMARK_BAR_ALWAYS_SHOW_MAC)
                    .command_id(IDC_SHOW_BOOKMARK_BAR)
                    .remove_if(is_pwa),
