@@ -219,7 +219,7 @@
  bool KeychainKeyProvider::UseForEncryption() {
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -11874,6 +11874,9 @@ Check your passwords anytime in <ph name
+@@ -11943,6 +11943,9 @@ Check your passwords anytime in <ph name
        </if> <!-- not is_android -->
  
        <if expr="is_macosx">
@@ -243,7 +243,7 @@
  #include "components/os_crypt/async/browser/keychain_key_provider.h"
  #endif
  
-@@ -309,6 +314,23 @@ static constexpr base::TimeDelta kEndSes
+@@ -312,6 +317,23 @@ static constexpr base::TimeDelta kEndSes
  using content::BrowserThread;
  using content::ChildProcessSecurityPolicy;
  
@@ -267,7 +267,7 @@
  BrowserProcessImpl::BrowserProcessImpl(StartupData* startup_data)
      : startup_data_(startup_data),
        browser_policy_connector_(startup_data->chrome_feature_list_creator()
-@@ -1615,9 +1637,10 @@ void BrowserProcessImpl::PreMainMessageL
+@@ -1669,9 +1691,10 @@ void BrowserProcessImpl::PreMainMessageL
  
  #if BUILDFLAG(IS_MAC)
    if (base::FeatureList::IsEnabled(features::kUseKeychainKeyProvider)) {

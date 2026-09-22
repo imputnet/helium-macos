@@ -108,7 +108,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -547,6 +548,20 @@ if (is_win) {
+@@ -526,6 +527,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -129,7 +129,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1355,6 +1370,10 @@ if (is_win) {
+@@ -1338,6 +1353,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -140,7 +140,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1414,6 +1433,12 @@ if (is_win) {
+@@ -1396,6 +1415,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -175,7 +175,7 @@
 +}
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -9,6 +9,7 @@ import("//build/config/ozone.gni")
+@@ -10,6 +10,7 @@ import("//build/config/ozone.gni")
  import("//build/config/ui.gni")
  import("//chrome/browser/buildflags.gni")
  import("//chrome/common/features.gni")
@@ -183,7 +183,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3615,6 +3616,10 @@ static_library("ui") {
+@@ -3447,6 +3448,10 @@ static_library("ui") {
        "//ui/base/cursor",
      ]
  
@@ -369,7 +369,7 @@
  #include "chrome/browser/command_updater_impl.h"
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/download/download_core_service_factory.h"
-@@ -56,6 +57,9 @@
+@@ -57,6 +58,9 @@
  #include "chrome/browser/lifetime/browser_shutdown.h"
  #include "chrome/browser/mac/auth_session_request.h"
  #include "chrome/browser/mac/key_window_notifier.h"
@@ -379,7 +379,7 @@
  #include "chrome/browser/policy/chrome_browser_policy_connector.h"
  #include "chrome/browser/prefs/incognito_mode_prefs.h"
  #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -931,6 +935,9 @@ class AppControllerProfileObserver : pub
+@@ -929,6 +933,9 @@ class AppControllerProfileObserver : pub
    NSWindow.allowsAutomaticWindowTabbing = NO;
  
    [self initShareMenu];
@@ -440,7 +440,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1582,6 +1590,21 @@ source_set("core") {
+@@ -1598,6 +1606,21 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]
@@ -549,7 +549,7 @@
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/global_features.h"
  #include "chrome/browser/lifetime/application_lifetime.h"
-@@ -70,6 +71,10 @@
+@@ -74,6 +75,10 @@
  #include "chrome/browser/sessions/session_data_service_factory.h"
  #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
  
@@ -560,7 +560,7 @@
  namespace chrome {
  
  namespace {
-@@ -281,8 +286,19 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -285,8 +290,19 @@ void AttemptRestartInternal(IgnoreUnload
    content::GetUIThreadTaskRunner({})->PostTask(
        FROM_HERE, base::BindOnce(&ExitIgnoreUnloadHandlers));
  #else   // !BUILDFLAG(IS_CHROMEOS).

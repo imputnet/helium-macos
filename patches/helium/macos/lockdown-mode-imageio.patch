@@ -8,9 +8,9 @@
  #include <unistd.h>
  
  #include <optional>
-@@ -42,6 +43,11 @@ namespace {
- BASE_FEATURE(kMacSandboxDistributedNotifications,
-              base::FEATURE_DISABLED_BY_DEFAULT);
+@@ -37,6 +38,11 @@ namespace content {
+ 
+ namespace {
  
 +// Allows the renderer sandbox to look up Apple's ImageIO XPC service when
 +// Lockdown Mode is active. macOS may remote ImageIO work, including emoji
@@ -20,7 +20,7 @@
  // If enabled, the macOS sandbox for the Network process will allow read and
  // write file access to the user's cache and temp directory
  // (https://crbug.com/527885521).
-@@ -64,6 +70,14 @@ std::optional<base::FilePath>& GetNetwor
+@@ -59,6 +65,14 @@ std::optional<base::FilePath>& GetNetwor
    return *network_test_certs_dir;
  }
  
@@ -35,10 +35,10 @@
  // Produce the OS version as an integer "1010", etc. and pass that to the
  // profile. The profile converts the string back to a number and can do
  // comparison operations on OS version.
-@@ -126,6 +140,10 @@ void SetupCommonSandboxParameters(
+@@ -117,6 +131,10 @@ void SetupCommonSandboxParameters(
+                                         enable_logging));
    CHECK(serializer->SetBooleanParameter(
-       sandbox::policy::kParamEnableDistributedNotifications,
-       base::FeatureList::IsEnabled(kMacSandboxDistributedNotifications)));
+       sandbox::policy::kParamDisableSandboxDenialLogging, !enable_logging));
 +  CHECK(serializer->SetBooleanParameter(
 +      sandbox::policy::kParamAllowRemoteAppleImageio,
 +      base::FeatureList::IsEnabled(kMacSandboxRemoteAppleImageIO) &&
@@ -48,7 +48,7 @@
        sandbox::policy::GetCanonicalPath(base::apple::MainBundlePath()).value();
 --- a/sandbox/policy/mac/common.sb
 +++ b/sandbox/policy/mac/common.sb
-@@ -34,6 +34,10 @@
+@@ -30,6 +30,10 @@
  ; Sandboxed processes which use Metal may need to disable the shader cache.
  (define disable-metal-shader-cache "DISABLE_METAL_SHADER_CACHE")
  
@@ -70,6 +70,6 @@
 +(if (param-true? allow-remote-apple-imageio)
 +  (allow mach-lookup (global-name "com.apple.ImageIOXPCService")))
 +
- (if (param-true? enable-distributed-notifications)
-   (allow mach-lookup
-     (global-name "com.apple.distributed_notifications@Uv3")
+ ; IOKit properties.
+ (allow iokit-get-properties
+   (iokit-property "CaseSensitive")
