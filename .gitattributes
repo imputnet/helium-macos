@@ -1,1 +1,2 @@
-*.patch linguist-language=C++
+# Unified diff context lines may consist of a single space.
+*.patch linguist-language=C++ whitespace=-blank-at-eol
