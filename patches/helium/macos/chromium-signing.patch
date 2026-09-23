@@ -1,6 +1,6 @@
 --- a/chrome/installer/mac/signing/parts.py
 +++ b/chrome/installer/mac/signing/parts.py
-@@ -259,6 +259,22 @@ async def sign_chrome(paths, config, sig
+@@ -258,6 +258,22 @@ async def sign_chrome(paths, config, sig
      _sanity_check_version_keys(paths, parts)
  
      if sign_framework:
@@ -54,7 +54,7 @@
  }
  
  assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
-@@ -784,9 +784,7 @@ if (is_win) {
+@@ -763,9 +763,7 @@ if (is_win) {
  
    compile_entitlements("entitlements") {
      entitlements_templates = [ "app/app-entitlements.plist" ]

@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -874,9 +874,6 @@ source_set("extensions") {
+@@ -879,9 +879,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -12,7 +12,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -904,7 +901,6 @@ source_set("extensions") {
+@@ -909,7 +906,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -22,7 +22,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -814,7 +814,6 @@ static_library("ui") {
+@@ -863,7 +863,6 @@ static_library("ui") {
      "//components/policy/core/browser",
      "//components/qr_code_generator:bitmap_generator",
      "//components/resources",
@@ -30,7 +30,7 @@
      "//components/search_engines",
      "//components/security_interstitials/content:security_interstitial_page",
      "//components/signin/public/identity_manager",
-@@ -3731,7 +3730,6 @@ group("ui_public_dependencies") {
+@@ -3556,7 +3555,6 @@ group("ui_public_dependencies") {
      "//components/dom_distiller/core",
      "//components/enterprise/buildflags",
      "//components/paint_preview/buildflags",
@@ -96,7 +96,7 @@
    static constexpr webui::LocalizedString kStrings[] = {
 --- a/chrome/browser/ui/extensions/download_danger_dialog.cc
 +++ b/chrome/browser/ui/extensions/download_danger_dialog.cc
-@@ -19,6 +19,7 @@
+@@ -20,6 +20,7 @@
  #include "chrome/grit/branded_strings.h"
  #include "chrome/grit/generated_resources.h"
  #include "components/download/public/common/download_item.h"
@@ -104,7 +104,7 @@
  #include "components/strings/grit/components_strings.h"
  #include "content/public/browser/web_contents.h"
  #include "extensions/buildflags/buildflags.h"
-@@ -98,11 +99,15 @@ std::u16string DownloadDangerDialogDeleg
+@@ -99,11 +100,15 @@ std::u16string DownloadDangerDialogDeleg
                                          filename);
      case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT:
        return l10n_util::GetStringFUTF16(
@@ -122,7 +122,7 @@
        return l10n_util::GetStringFUTF16(IDS_PROMPT_DOWNLOAD_CHANGES_SETTINGS,
 --- a/chrome/test/BUILD.gn
 +++ b/chrome/test/BUILD.gn
-@@ -6049,12 +6049,8 @@ test("unit_tests") {
+@@ -6116,12 +6116,8 @@ test("unit_tests") {
        "//chrome/browser/renderer_host:history_swiper",
        "//chrome/browser/renderer_host:history_swiping_control",
        "//chrome/common/notifications",
@@ -150,7 +150,7 @@
        "obfuscated_archive_analysis_delegate.cc",
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2443,22 +2443,6 @@ const PolicyToPreferenceMapEntry kSimple
+@@ -2450,22 +2450,6 @@ const PolicyToPreferenceMapEntry kSimple
      base::Value::Type::BOOLEAN },
  #endif
  
@@ -175,7 +175,7 @@
      ash::prefs::kAuthenticationFlowAutoReloadInterval,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -8374,33 +8374,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -8320,33 +8320,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));
