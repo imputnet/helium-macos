@@ -518,7 +518,7 @@
  };
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
-@@ -1944,7 +1944,7 @@ void BrowserView::UpdateZenModeEventMoni
+@@ -1947,7 +1947,7 @@ void BrowserView::UpdateZenModeEventMoni
  }
  
  void BrowserView::StartZenCollapseTimer(base::TimeDelta delay) {
@@ -527,7 +527,7 @@
      return;
    }
    zen_cursor_exit_timer_.Start(
-@@ -1973,7 +1973,7 @@ bool BrowserView::IsLeavingZenSideGap(co
+@@ -1976,7 +1976,7 @@ bool BrowserView::IsLeavingZenSideGap(co
  }
  
  void BrowserView::UpdateZenModeRevealFromCursor() {
@@ -536,7 +536,7 @@
      return;
    }
  
-@@ -2019,7 +2019,7 @@ void BrowserView::UpdateZenModeRevealFro
+@@ -2022,7 +2022,7 @@ void BrowserView::UpdateZenModeRevealFro
  }
  
  void BrowserView::UpdateZenModeReveal(bool reveal_top, bool reveal_side) {
@@ -545,7 +545,7 @@
      return;
    }
  
-@@ -2905,6 +2905,13 @@ void BrowserView::FullscreenStateChangin
+@@ -2908,6 +2908,13 @@ void BrowserView::FullscreenStateChangin
      return;
    }
  
@@ -559,7 +559,7 @@
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
      PrepareFullscreen(IsFullscreen());
    } else {
-@@ -2949,7 +2956,6 @@ void BrowserView::FullscreenStateChanged
+@@ -2952,7 +2959,6 @@ void BrowserView::FullscreenStateChanged
  
    multi_contents_view_->SetProperty(views::kWidgetForAnchoringKey,
                                      widget_for_anchoring);
@@ -567,7 +567,7 @@
  
  #endif  // BUILDFLAG(IS_MAC)
  
-@@ -2958,6 +2964,12 @@ void BrowserView::FullscreenStateChanged
+@@ -2961,6 +2967,12 @@ void BrowserView::FullscreenStateChanged
        ->fullscreen_controller()
        ->WindowFullscreenStateChanged();
  
@@ -580,7 +580,7 @@
    multi_contents_view_->OnFullscreenStateChanged();
  
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
-@@ -2973,6 +2985,10 @@ void BrowserView::FullscreenStateChanged
+@@ -2976,6 +2988,10 @@ void BrowserView::FullscreenStateChanged
      }
    }
  
@@ -591,7 +591,7 @@
    UpdateZenModeState();
  }
  
-@@ -5530,14 +5546,22 @@ gfx::Size BrowserView::GetMinimumSize()
+@@ -5533,14 +5549,22 @@ gfx::Size BrowserView::GetMinimumSize()
  
  void BrowserView::Layout(PassKey) {
    TRACE_EVENT0("ui", "BrowserView::Layout");
@@ -618,7 +618,7 @@
    if (base::FeatureList::IsEnabled(
            features::kDeferLayoutDuringBrowserStartup) &&
        startup_layout_state_ == StartupLayoutState::kDeferring &&
-@@ -5580,6 +5604,7 @@ void BrowserView::Layout(PassKey) {
+@@ -5583,6 +5607,7 @@ void BrowserView::Layout(PassKey) {
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
