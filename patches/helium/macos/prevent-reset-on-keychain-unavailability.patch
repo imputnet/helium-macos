@@ -26,7 +26,28 @@
    static KeychainNameType& GetAccountName();
 --- a/components/os_crypt/common/keychain_password_mac.mm
 +++ b/components/os_crypt/common/keychain_password_mac.mm
-@@ -121,6 +121,11 @@ KeychainPassword::KeychainPassword(Keych
+@@ -44,9 +44,8 @@ enum class FindGenericPasswordResult {
+ };
+ 
+ // Generates a random password and adds it to the Keychain.  The added password
+-// is returned from the function.  If an error occurs, an empty password is
+-// returned.
+-std::string AddRandomPasswordToKeychain(KeychainV2& keychain,
++// is returned from the function. If an error occurs, its OSStatus is returned.
++base::expected<std::string, OSStatus> AddRandomPasswordToKeychain(KeychainV2& keychain,
+                                         const std::string& service_name,
+                                         const std::string& account_name) {
+   // Generate a password with 128 bits of randomness.
+@@ -58,7 +57,7 @@ std::string AddRandomPasswordToKeychain(
+ 
+   if (error != noErr) {
+     OSSTATUS_DLOG(ERROR, error) << "Keychain add failed";
+-    return std::string();
++    return base::unexpected(error);
+   }
+ 
+   return password;
+@@ -84,6 +83,11 @@ KeychainPassword::KeychainPassword(Keych
  KeychainPassword::~KeychainPassword() = default;
  
  std::string KeychainPassword::GetPassword() const {
@@ -35,15 +56,15 @@
 +
 +base::expected<std::string, OSStatus>
 +KeychainPassword::GetPasswordWithError() const {
-   auto password =
-       GetPasswordImpl(*keychain_, GetServiceName(), GetAccountName());
- 
-@@ -133,5 +138,5 @@ std::string KeychainPassword::GetPasswor
-                              previous_error);
-   }
- 
--  return password.value_or(std::string());
-+  return password;
+   FindGenericPasswordResult uma_result;
+   absl::Cleanup log_uma_result = [&uma_result] {
+     base::UmaHistogramEnumeration("OSCrypt.Mac.FindGenericPasswordResult",
+@@ -108,5 +112,5 @@ std::string KeychainPassword::GetPasswor
+   uma_result = FindGenericPasswordResult::kErrorOccurred;
+   base::UmaHistogramSparse("OSCrypt.Mac.FindGenericPasswordError",
+                            password.error());
+-  return std::string();
++  return base::unexpected(password.error());
  }
 --- a/components/os_crypt/async/browser/keychain_key_provider.h
 +++ b/components/os_crypt/async/browser/keychain_key_provider.h
@@ -219,7 +240,7 @@
  bool KeychainKeyProvider::UseForEncryption() {
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -11943,6 +11943,9 @@ Check your passwords anytime in <ph name
+@@ -12018,6 +12018,9 @@ Check your passwords anytime in <ph name
        </if> <!-- not is_android -->
  
        <if expr="is_macosx">
@@ -231,7 +252,7 @@
            Hold <ph name="KEY_EQUIVALENT">$1<ex>⌘Q</ex></ph> to Quit
 --- a/chrome/browser/browser_process_impl.cc
 +++ b/chrome/browser/browser_process_impl.cc
-@@ -283,6 +283,11 @@ void OnLocalStatePrefsLoaded();
+@@ -284,6 +284,11 @@ void OnLocalStatePrefsLoaded();
  #endif
  
  #if BUILDFLAG(IS_MAC)
@@ -243,7 +264,7 @@
  #include "components/os_crypt/async/browser/keychain_key_provider.h"
  #endif
  
-@@ -312,6 +317,23 @@ static constexpr base::TimeDelta kEndSes
+@@ -313,6 +318,23 @@ static constexpr base::TimeDelta kEndSes
  using content::BrowserThread;
  using content::ChildProcessSecurityPolicy;
  
