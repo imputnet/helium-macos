@@ -24,4 +24,3 @@ helium/macos/lockdown-mode-imageio.patch
 helium/macos/disable-chromium-immersive-fullscreen.patch
 helium/macos/helium-immersive-fullscreen.patch
 helium/macos/fix-history-swiper-lifetime.patch
-helium/macos/fix-window-resize-jank.patch

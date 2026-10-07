@@ -78,7 +78,6 @@ write_gn_args() {
       echo 'include_branded_entitlements=true' >> "$args"
     fi
     if [ "$mode" = dev ]; then
-      echo 'devtools_skip_typecheck = false' >> "$args"
       sed -i '' s/is_official_build/is_component_build/ "$args"
     fi
   fi

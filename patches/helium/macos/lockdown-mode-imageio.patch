@@ -17,10 +17,10 @@
 +// rendering, to this service.
 +BASE_FEATURE(kMacSandboxRemoteAppleImageIO, base::FEATURE_ENABLED_BY_DEFAULT);
 +
- // If enabled, the macOS sandbox for the Network process will allow read and
- // write file access to the user's cache and temp directory
- // (https://crbug.com/527885521).
-@@ -59,6 +65,14 @@ std::optional<base::FilePath>& GetNetwor
+ std::optional<base::FilePath>& GetNetworkTestCertsDirectory() {
+   // Set by SetNetworkTestCertsDirectoryForTesting().
+   static base::NoDestructor<std::optional<base::FilePath>>
+@@ -44,6 +50,14 @@ std::optional<base::FilePath>& GetNetwor
    return *network_test_certs_dir;
  }
  
@@ -35,7 +35,7 @@
  // Produce the OS version as an integer "1010", etc. and pass that to the
  // profile. The profile converts the string back to a number and can do
  // comparison operations on OS version.
-@@ -117,6 +131,10 @@ void SetupCommonSandboxParameters(
+@@ -102,6 +116,10 @@ void SetupCommonSandboxParameters(
                                          enable_logging));
    CHECK(serializer->SetBooleanParameter(
        sandbox::policy::kParamDisableSandboxDenialLogging, !enable_logging));
@@ -48,7 +48,7 @@
        sandbox::policy::GetCanonicalPath(base::apple::MainBundlePath()).value();
 --- a/sandbox/policy/mac/common.sb
 +++ b/sandbox/policy/mac/common.sb
-@@ -30,6 +30,10 @@
+@@ -28,6 +28,10 @@
  ; Sandboxed processes which use Metal may need to disable the shader cache.
  (define disable-metal-shader-cache "DISABLE_METAL_SHADER_CACHE")
  
