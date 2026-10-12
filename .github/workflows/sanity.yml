@@ -25,8 +25,8 @@ jobs:
       run: |
         cp -a .github/scripts/. .
         sudo mdutil -a -i off
-        brew install coreutils quilt --overwrite
-        python3 -m pip install httplib2==0.22.0 requests Pillow
+        brew install coreutils quilt zstd --overwrite
+        python3 -m pip install requests Pillow
     - name: Cache Chromium source
       uses: actions/cache@v5
       with:
@@ -38,8 +38,8 @@ jobs:
               'helium-chromium/*.ini',
               'helium-chromium/pruning.list',
               'helium-chromium/utils/**',
-              'downloads.ini',
-              'retrieve_and_unpack_resource.sh',
+              'downloads*.ini',
+              'devutils/shared.sh',
               '.github/scripts/sanity-check.sh'
             )
           }}

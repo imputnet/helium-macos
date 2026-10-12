@@ -1,16 +1,5 @@
 #!/usr/bin/env bash
 
-___helium_install_cipd_deps() {
-    local -a args=("$_src_dir")
-    if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        args+=(--remote-exec)
-    fi
-
-    export CIPD_CACHE_DIR="$_download_cache/cipd"
-    mkdir -p "$CIPD_CACHE_DIR"
-    python3 "$_main_repo/utils/install_cipd_deps.py" "${args[@]}"
-}
-
 ___helium_configure_siso() {
     local backend=""
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then

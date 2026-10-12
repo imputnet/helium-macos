@@ -9,13 +9,12 @@ export QUILT_SERIES="series.merged"
 _check="${1:-sanity}"
 _source_archive="$_root_dir/build/chromium-source.tar"
 
-mkdir -p "$_src_dir" "$_download_cache"
+mkdir -p "$_src_dir"
 if [ -f "$_source_archive" ]; then
     tar -xf "$_source_archive" -C "$_src_dir"
 else
-    "$_root_dir/retrieve_and_unpack_resource.sh" -d -g || \
-        "$_root_dir/retrieve_and_unpack_resource.sh" -g
-    python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
+    fetch_sources
+    python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
 
     # Keep the cached archive unpatched, without clone history or staging files.
     tar -cf "$_source_archive" --exclude=.git --exclude=./uc_staging -C "$_src_dir" .
@@ -23,7 +22,6 @@ fi
 
 if [ "$_check" = "sanity" ]; then
     mkdir -p "$_out_dir"
-    ___helium_toolchain
     write_gn_args "$_arch" dev false
 fi
 

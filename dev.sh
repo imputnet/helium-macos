@@ -5,24 +5,10 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/devutils/shared.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
-___helium_info_pull() {
-    # fall back to git clone if tarball is unavailable
-    "$_root_dir/retrieve_and_unpack_resource.sh" -d -g || \
-      "$_root_dir/retrieve_and_unpack_resource.sh" -g
-
-    mkdir -p "$_out_dir"
-    cd "$_src_dir"
-}
-
 ___helium_configure() {
     cd "$_src_dir"
-    ___helium_install_cipd_deps
     ___helium_configure_siso
     "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
-}
-
-___helium_toolchain() {
-    "$_root_dir/retrieve_and_unpack_resource.sh" -t
 }
 
 ___helium_setup_presetup() {
@@ -31,11 +17,12 @@ ___helium_setup_presetup() {
         return
     fi
 
-    rm -rf "$_src_dir" && mkdir -p "$_download_cache" "$_src_dir"
+    rm -rf "$_src_dir" && mkdir -p "$_src_dir"
 
-    ___helium_info_pull
-    python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
-    ___helium_toolchain
+    fetch_sources
+    mkdir -p "$_out_dir"
+    cd "$_src_dir"
+    python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
     helium_resources
     write_gn_args "$_arch" dev false
 
