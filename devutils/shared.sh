@@ -121,7 +121,7 @@ configure_build() {
 
 helium_build() {
   cd "$_src_dir"
-  local SISO_PATH="$_siso_path"
+  local SISO_PATH="${SISO_PATH:-$_siso_path}"
   export SISO_PATH
   local -a command=(python3 "$_depot_tools_dir/autoninja.py" -C "$_out_dir" chrome chromedriver)
   if [ "${_helium_exec_build:-}" = true ]; then
