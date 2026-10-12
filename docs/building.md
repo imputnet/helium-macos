@@ -89,6 +89,8 @@ brew install quilt
     he setup
     ```
 
+   Use `he setup -c` to clone Chromium instead of downloading prepared archives.
+
 3. Build your first development binary:
     ```sh
     he build

@@ -12,6 +12,14 @@ ___helium_configure() {
 }
 
 ___helium_setup_presetup() {
+    local download=true
+    if [ $# -eq 1 ] && [ "$1" = -c ]; then
+        download=false
+    elif [ $# -ne 0 ]; then
+        echo "usage: he setup|presetup [-c]" >&2
+        return 1
+    fi
+
     if [ -d "$_src_dir/out" ]; then
         echo "$_src_dir/out already exists" >&2
         return
@@ -19,7 +27,7 @@ ___helium_setup_presetup() {
 
     rm -rf "$_src_dir" && mkdir -p "$_src_dir"
 
-    fetch_sources
+    fetch_sources "$download"
     mkdir -p "$_out_dir"
     cd "$_src_dir"
     python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
@@ -33,7 +41,7 @@ ___helium_setup_presetup() {
 }
 
 ___helium_setup() {
-    ___helium_setup_presetup
+    ___helium_setup_presetup "$@"
 
     "$_root_dir/devutils/update_patches.sh" merge
 
@@ -231,8 +239,8 @@ ___helium_lint() {
 __helium_menu() {
     set -e
     case $1 in
-        setup) ___helium_setup;;
-        presetup) ___helium_setup_presetup;;
+        setup) shift; ___helium_setup "$@";;
+        presetup) shift; ___helium_setup_presetup "$@";;
         configure) ___helium_configure;;
         resources) helium_resources;;
 
@@ -257,9 +265,9 @@ __helium_menu() {
         reset) ___helium_reset;;
         *)
             echo "usage: he <command>" >&2
-            echo "\tsetup - sets up the dev environment fully for the first time" >&2
+            echo "\tsetup [-c] - sets up the dev environment, optionally cloning Chromium" >&2
             echo "\t         equivalent of: [presetup, merge, push, configure]" >&2
-            echo "\tpresetup - downloads sources, sets up GN, and prepares third-party dependencies" >&2
+            echo "\tpresetup [-c] - prepares sources and dependencies, optionally cloning Chromium" >&2
             echo "\tconfigure - generates build configuration and tools" >&2
             echo "\tresources - generates and copies helium resources (such as icons)" >&2
 
