@@ -22,7 +22,7 @@ fi
 
 if [ "$_check" = "sanity" ]; then
     mkdir -p "$_out_dir"
-    write_gn_args "$_arch" dev false
+    write_gn_args "$_arch" dev
 fi
 
 he resources

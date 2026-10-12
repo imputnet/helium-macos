@@ -5,12 +5,6 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/devutils/shared.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
-___helium_configure() {
-    cd "$_src_dir"
-    ___helium_configure_siso
-    "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
-}
-
 ___helium_setup_presetup() {
     local download=true
     if [ $# -eq 1 ] && [ "$1" = -c ]; then
@@ -32,7 +26,7 @@ ___helium_setup_presetup() {
     cd "$_src_dir"
     python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
     helium_resources
-    write_gn_args "$_arch" dev false
+    write_gn_args "$_arch" dev
 
     python3 "$_main_repo/utils/helium_version.py" \
         --tree "$_main_repo" \
@@ -48,7 +42,7 @@ ___helium_setup() {
     cd "$_src_dir"
     quilt push -a --refresh
 
-    ___helium_configure
+    gn_gen --export-compile-commands
 }
 
 ___helium_reset() {
@@ -116,7 +110,7 @@ ___helium_substitution() {
 ___helium_build() {
     cd "$_src_dir"
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        ___helium_configure_siso || return
+        configure_siso || return
         export RBE_service_no_security=true
     fi
     helium_build -k 0
@@ -241,7 +235,7 @@ __helium_menu() {
     case $1 in
         setup) shift; ___helium_setup "$@";;
         presetup) shift; ___helium_setup_presetup "$@";;
-        configure) ___helium_configure;;
+        configure) gn_gen --export-compile-commands;;
         resources) helium_resources;;
 
         sub|unsub) ___helium_substitution "$1";;

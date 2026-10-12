@@ -21,7 +21,7 @@ case "$_arch" in
 esac
 
 prepare_sources "$_download"
-configure_build "$_arch" false true
+configure_build "$_arch" release
 
 helium_build chrome/installer/mac
 "$_root_dir/sign_and_package_app.sh"

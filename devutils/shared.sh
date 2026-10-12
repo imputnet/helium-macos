@@ -9,7 +9,6 @@ if [ -z "${_root_dir:-}" ]; then
 fi
 
 source "$_root_dir/env.sh"
-source "$_root_dir/devutils/build_tools.sh"
 
 helium_resources() {
   python3 "$_main_repo/utils/generate_resources.py" "$_main_repo/resources/generate_resources.txt" "$_main_repo/resources"
@@ -63,7 +62,7 @@ prepare_sources() {
 }
 
 write_gn_args() {
-  local arch="$1" mode="$2" pgo="$3" args="$_out_dir/args.gn"
+  local arch="$1" mode="$2" args="$_out_dir/args.gn"
   local target_cpu=arm64
   if [ "$arch" = x86_64 ]; then
     target_cpu=x64
@@ -102,21 +101,34 @@ write_gn_args() {
     fi
   fi
 
-  if [ "$pgo" = true ]; then
+  if [ "$mode" != dev ]; then
     echo 'chrome_pgo_phase=2' >> "$args"
   fi
 }
 
-configure_build() {
-  local arch="$1" ci="$2" pgo="$3"
-  if [ "$ci" = true ]; then
-    write_gn_args "$arch" ci "$pgo"
-  else
-    write_gn_args "$arch" release "$pgo"
+configure_siso() {
+  local backend=""
+  if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+    export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
+    backend=nativelink.star
   fi
+
+  python3 "$_src_dir/build/config/siso/configure_siso.py" \
+    --rbe_instance=projects/rbe-chrome-untrusted/instances/default_instance \
+    --reapi_address="${SISO_REAPI_ADDRESS:-}" \
+    --reapi_instance="${SISO_REAPI_INSTANCE:-}" \
+    --reapi_backend_config_path="$backend"
+}
+
+gn_gen() {
   cd "$_src_dir"
-  ___helium_configure_siso
-  "$_gn_path" gen out/Default --fail-on-unused-args
+  configure_siso
+  "$_gn_path" gen "$_out_dir" --fail-on-unused-args "$@"
+}
+
+configure_build() {
+  write_gn_args "$1" "$2"
+  gn_gen
 }
 
 helium_build() {
