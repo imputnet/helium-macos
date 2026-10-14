@@ -528,7 +528,7 @@
  // Context menu items that provide fast access to input methods.
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -287,6 +287,8 @@
+@@ -288,6 +288,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \

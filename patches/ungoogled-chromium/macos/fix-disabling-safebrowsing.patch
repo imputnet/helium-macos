@@ -150,7 +150,7 @@
        "obfuscated_archive_analysis_delegate.cc",
 --- a/chrome/browser/policy/configuration_policy_handler_list_factory.cc
 +++ b/chrome/browser/policy/configuration_policy_handler_list_factory.cc
-@@ -2456,22 +2456,6 @@ const PolicyToPreferenceMapEntry kSimple
+@@ -2474,22 +2474,6 @@ const PolicyToPreferenceMapEntry kSimple
      base::Value::Type::BOOLEAN },
  #endif
  
