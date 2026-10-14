@@ -9,7 +9,6 @@ if [ -z "${_root_dir:-}" ]; then
 fi
 
 source "$_root_dir/env.sh"
-source "$_root_dir/devutils/build_tools.sh"
 
 helium_resources() {
   python3 "$_main_repo/utils/generate_resources.py" "$_main_repo/resources/generate_resources.txt" "$_main_repo/resources"
@@ -17,20 +16,40 @@ helium_resources() {
   python3 "$_main_repo/utils/replace_resources.py" "$_main_repo/resources/helium_resources.txt" "$_main_repo/resources" "$_src_dir"
 }
 
-prepare_sources() {
-  local arch="$1" download="$2"
-  local retrieve_args=(-g)
-  if [ "$download" = true ]; then
-    retrieve_args=(-d -g)
+fetch_sources() {
+  local download="${1:-true}" host_arch
+  local downloads=("$_root_dir/downloads.ini" "$_main_repo/deps.ini")
+
+  mkdir -p "$_download_cache" || return
+  if [ "$download" = false ]; then
+    python3 "$_main_repo/utils/clone.py" -o "$_src_dir" || return
+  else
+    # Select host tools; each overlay supports both target architectures.
+    case "$(uname -m)" in
+      arm64) host_arch=arm64 ;;
+      x86_64) host_arch=x64 ;;
+      *) echo "Unsupported macOS host architecture: $(uname -m)" >&2; return 1 ;;
+    esac
+    downloads=("$_main_repo/downloads.ini" "$_root_dir/downloads.$host_arch.ini" "${downloads[@]}")
   fi
 
+  python3 "$_main_repo/utils/downloads.py" retrieve -i "${downloads[@]}" -c "$_download_cache" || return
+  python3 "$_main_repo/utils/downloads.py" unpack -i "${downloads[@]}" -c "$_download_cache" "$_src_dir" || return
+
+  # The macOS remote wrapper uses a separate Linux compiler on workers.
+  if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+    python3 "$_src_dir/tools/clang/scripts/update.py" \
+      --host-os=linux \
+      --output-dir="$_src_dir/third_party/llvm-build/Release+Asserts_linux"
+  fi
+}
+
+prepare_sources() {
   rm -rf "$_src_dir/out"
-  mkdir -p "$_download_cache"
-  "$_root_dir/retrieve_and_unpack_resource.sh" "${retrieve_args[@]}" "$arch"
+  fetch_sources "${1:-true}" || return
 
   mkdir -p "$_out_dir"
-  python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
-  "$_root_dir/retrieve_and_unpack_resource.sh" -t "$arch"
+  python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
 
   python3 "$_main_repo/utils/patches.py" apply "$_src_dir" "$_main_repo/patches" "$_root_dir/patches"
   python3 "$_main_repo/utils/domain_substitution.py" apply -r "$_main_repo/domain_regex.list" -f "$_main_repo/domain_substitution.list" "$_src_dir"
@@ -43,7 +62,7 @@ prepare_sources() {
 }
 
 write_gn_args() {
-  local arch="$1" mode="$2" pgo="$3" args="$_out_dir/args.gn"
+  local arch="$1" mode="$2" args="$_out_dir/args.gn"
   local target_cpu=arm64
   if [ "$arch" = x86_64 ]; then
     target_cpu=x64
@@ -82,27 +101,39 @@ write_gn_args() {
     fi
   fi
 
-  if [ "$pgo" = true ]; then
+  if [ "$mode" != dev ]; then
     echo 'chrome_pgo_phase=2' >> "$args"
   fi
 }
 
-configure_build() {
-  local arch="$1" ci="$2" pgo="$3"
-  if [ "$ci" = true ]; then
-    write_gn_args "$arch" ci "$pgo"
-  else
-    write_gn_args "$arch" release "$pgo"
+configure_siso() {
+  local backend=""
+  if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
+    export SISO_REAPI_INSTANCE="${SISO_REAPI_INSTANCE:-main}"
+    backend=nativelink.star
   fi
+
+  python3 "$_src_dir/build/config/siso/configure_siso.py" \
+    --rbe_instance=projects/rbe-chrome-untrusted/instances/default_instance \
+    --reapi_address="${SISO_REAPI_ADDRESS:-}" \
+    --reapi_instance="${SISO_REAPI_INSTANCE:-}" \
+    --reapi_backend_config_path="$backend"
+}
+
+gn_gen() {
   cd "$_src_dir"
-  ___helium_install_cipd_deps
-  ___helium_configure_siso
-  "$_gn_path" gen out/Default --fail-on-unused-args
+  configure_siso
+  "$_gn_path" gen "$_out_dir" --fail-on-unused-args "$@"
+}
+
+configure_build() {
+  write_gn_args "$1" "$2"
+  gn_gen
 }
 
 helium_build() {
   cd "$_src_dir"
-  local SISO_PATH="$_siso_path"
+  local SISO_PATH="${SISO_PATH:-$_siso_path}"
   export SISO_PATH
   local -a command=(python3 "$_depot_tools_dir/autoninja.py" -C "$_out_dir" chrome chromedriver)
   if [ "${_helium_exec_build:-}" = true ]; then

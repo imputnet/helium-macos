@@ -32,7 +32,7 @@ jobs:
         run: |
           set -o pipefail
           source ./devutils/shared.sh
-          prepare_sources '${{ inputs.arch }}' false | tee -a github_actions_retrieve_resources.log
+          prepare_sources | tee -a github_actions_retrieve_resources.log
           rm -rf build/download_cache
       - name: Archive resources
         run: ./github_pack_resources.sh | tee -a github_actions_retrieve_resources.log

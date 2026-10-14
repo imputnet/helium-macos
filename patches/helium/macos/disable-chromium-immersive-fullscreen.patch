@@ -22,7 +22,7 @@
  
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
-@@ -2582,19 +2582,6 @@ void BrowserActions::InitializeToolbarAn
+@@ -2577,19 +2577,6 @@ void BrowserActions::InitializeToolbarAn
            .SetActionId(kActionOpenInPwaWindow)
            .Build());
  

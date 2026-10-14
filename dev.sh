@@ -5,39 +5,28 @@ _root_dir=$(dirname $(greadlink -f $0))
 source "$_root_dir/devutils/shared.sh"
 source "$_root_dir/devutils/set_quilt_vars.sh"
 
-___helium_info_pull() {
-    # fall back to git clone if tarball is unavailable
-    "$_root_dir/retrieve_and_unpack_resource.sh" -d -g || \
-      "$_root_dir/retrieve_and_unpack_resource.sh" -g
-
-    mkdir -p "$_out_dir"
-    cd "$_src_dir"
-}
-
-___helium_configure() {
-    cd "$_src_dir"
-    ___helium_install_cipd_deps
-    ___helium_configure_siso
-    "$_gn_path" gen "$_out_dir" --fail-on-unused-args --export-compile-commands
-}
-
-___helium_toolchain() {
-    "$_root_dir/retrieve_and_unpack_resource.sh" -t
-}
-
 ___helium_setup_presetup() {
+    local download=true
+    if [ $# -eq 1 ] && [ "$1" = -c ]; then
+        download=false
+    elif [ $# -ne 0 ]; then
+        echo "usage: he setup|presetup [-c]" >&2
+        return 1
+    fi
+
     if [ -d "$_src_dir/out" ]; then
         echo "$_src_dir/out already exists" >&2
         return
     fi
 
-    rm -rf "$_src_dir" && mkdir -p "$_download_cache" "$_src_dir"
+    rm -rf "$_src_dir" && mkdir -p "$_src_dir"
 
-    ___helium_info_pull
-    python3 "$_main_repo/utils/prune_binaries.py" "$_src_dir" "$_main_repo/pruning.list"
-    ___helium_toolchain
+    fetch_sources "$download"
+    mkdir -p "$_out_dir"
+    cd "$_src_dir"
+    python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
     helium_resources
-    write_gn_args "$_arch" dev false
+    write_gn_args "$_arch" dev
 
     python3 "$_main_repo/utils/helium_version.py" \
         --tree "$_main_repo" \
@@ -46,14 +35,14 @@ ___helium_setup_presetup() {
 }
 
 ___helium_setup() {
-    ___helium_setup_presetup
+    ___helium_setup_presetup "$@"
 
     "$_root_dir/devutils/update_patches.sh" merge
 
     cd "$_src_dir"
     quilt push -a --refresh
 
-    ___helium_configure
+    gn_gen --export-compile-commands
 }
 
 ___helium_reset() {
@@ -121,7 +110,7 @@ ___helium_substitution() {
 ___helium_build() {
     cd "$_src_dir"
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
-        ___helium_configure_siso || return
+        configure_siso || return
         export RBE_service_no_security=true
     fi
     helium_build -k 0
@@ -244,9 +233,9 @@ ___helium_lint() {
 __helium_menu() {
     set -e
     case $1 in
-        setup) ___helium_setup;;
-        presetup) ___helium_setup_presetup;;
-        configure) ___helium_configure;;
+        setup) shift; ___helium_setup "$@";;
+        presetup) shift; ___helium_setup_presetup "$@";;
+        configure) gn_gen --export-compile-commands;;
         resources) helium_resources;;
 
         sub|unsub) ___helium_substitution "$1";;
@@ -270,9 +259,9 @@ __helium_menu() {
         reset) ___helium_reset;;
         *)
             echo "usage: he <command>" >&2
-            echo "\tsetup - sets up the dev environment fully for the first time" >&2
+            echo "\tsetup [-c] - sets up the dev environment, optionally cloning Chromium" >&2
             echo "\t         equivalent of: [presetup, merge, push, configure]" >&2
-            echo "\tpresetup - downloads sources, sets up GN, and prepares third-party dependencies" >&2
+            echo "\tpresetup [-c] - prepares sources and dependencies, optionally cloning Chromium" >&2
             echo "\tconfigure - generates build configuration and tools" >&2
             echo "\tresources - generates and copies helium resources (such as icons)" >&2
 

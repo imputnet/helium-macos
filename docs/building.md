@@ -16,13 +16,12 @@
 
 ### Build dependencies
 
-1. Install Python 3 via Homebrew: `brew install python@3.13`
-1. Install Python dependencies via `pip3`: `pip3 install httplib2==0.22.0 requests pillow`
+1. Install package dependencies via Homebrew:
+   `brew install python@3.13 wget zstd coreutils readline`
+1. Install Python dependencies via `pip3`: `pip3 install requests pillow`
     * Note that you might need to use `--break-system-packages` if you don't want to use a
       dedicated Python environment for building Helium.
 1. Install Metal toolchain: `xcodebuild -downloadComponent MetalToolchain`
-1. Install wget via Homebrew: `brew install wget`
-1. Install GNU coreutils and readline via Homebrew: `brew install coreutils readline`
 1. Unlink binutils to use the one provided with Xcode: `brew unlink binutils`
 1. Restart your terminal.
 
@@ -59,6 +58,8 @@ or, if you want to build for x86_64 on an Apple Silicon Mac:
 ./build.sh x86_64
 ```
 
+Use `./build.sh -c` to clone Chromium instead of downloading prepared archives.
+
 Once it's complete, a `.dmg` should appear in `build/`.
 
 **NOTE**: If the build fails, you must take additional steps before re-running the build:
@@ -87,6 +88,8 @@ brew install quilt
     ```sh
     he setup
     ```
+
+   Use `he setup -c` to clone Chromium instead of downloading prepared archives.
 
 3. Build your first development binary:
     ```sh
