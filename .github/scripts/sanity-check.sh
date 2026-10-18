@@ -14,7 +14,7 @@ if [ -f "$_source_archive" ]; then
     tar -xf "$_source_archive" -C "$_src_dir"
 else
     fetch_sources
-    python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
+    python3 "$_main_repo/utils/prune_binaries.py" --keep-build-dependencies "$_src_dir" "$_main_repo/pruning.list"
 
     # Keep the cached archive unpatched, without clone history or staging files.
     tar -cf "$_source_archive" --exclude=.git --exclude=./uc_staging -C "$_src_dir" .
