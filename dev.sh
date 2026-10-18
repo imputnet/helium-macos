@@ -24,7 +24,7 @@ ___helium_setup_presetup() {
     fetch_sources "$download"
     mkdir -p "$_out_dir"
     cd "$_src_dir"
-    python3 "$_main_repo/utils/prune_binaries.py" --keep-contingent-paths "$_src_dir" "$_main_repo/pruning.list"
+    python3 "$_main_repo/utils/prune_binaries.py" --keep-build-dependencies "$_src_dir" "$_main_repo/pruning.list"
     helium_resources
     write_gn_args "$_arch" dev
 
