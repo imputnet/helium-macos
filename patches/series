@@ -23,6 +23,7 @@ helium/macos/native-translate/backend.patch
 helium/macos/native-translate/ui.patch
 helium/macos/native-translate/branding.patch
 helium/macos/native-translate/language-detection.patch
+helium/macos/native-translate/language-download.patch
 helium/macos/prevent-reset-on-keychain-unavailability.patch
 helium/macos/chromium-signing.patch
 helium/macos/lockdown-mode-imageio.patch
