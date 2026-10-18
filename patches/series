@@ -20,6 +20,7 @@ helium/macos/open-shortcuts-settings-action.patch
 helium/macos/native-translation-context-option.patch
 helium/macos/native-translate/core.patch
 helium/macos/native-translate/backend.patch
+helium/macos/native-translate/ui.patch
 helium/macos/prevent-reset-on-keychain-unavailability.patch
 helium/macos/chromium-signing.patch
 helium/macos/lockdown-mode-imageio.patch
