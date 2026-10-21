@@ -1,16 +1,12 @@
 #!/bin/bash -eux
 
-# Sometimes Xcode is 26.0, sometimes 26. We make sure it's usable no matter its name.
-BASE_XCODE_PATH=/Applications/Xcode_26.0.app
+BASE_XCODE_PATH=/Applications/Xcode_26.5.app
 TARGET_XCODE_PATH=/Applications/Xcode_26.app
 
-if [ -e "$BASE_XCODE_PATH" ] && [ ! -e "$TARGET_XCODE_PATH" ]; then
-  REAL_XCODE_PATH="$(readlink -f "$BASE_XCODE_PATH")"
-  sudo mv "$REAL_XCODE_PATH" "$TARGET_XCODE_PATH"
-fi
+REAL_XCODE_PATH="$(readlink -f "$BASE_XCODE_PATH")"
 
 # Cleanup any other Xcode versions
-sudo mv "$TARGET_XCODE_PATH" /Applications/tmp_Xcode_26.app
+sudo mv "$REAL_XCODE_PATH" /Applications/tmp_Xcode_26.app
 sudo rm -rf /Applications/Xcode*
 sudo mv /Applications/tmp_Xcode_26.app "$TARGET_XCODE_PATH"
 
