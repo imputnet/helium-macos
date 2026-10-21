@@ -1,6 +1,6 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
-@@ -310,16 +310,6 @@ export function getHtml(this: SettingsAp
+@@ -263,16 +263,6 @@ export function getHtml(this: SettingsAp
            label="$i18n{showZoomIndicator}">
        </settings-toggle-button>
      </div>

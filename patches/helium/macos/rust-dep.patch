@@ -10,7 +10,7 @@
  
 --- a/media/midi/BUILD.gn
 +++ b/media/midi/BUILD.gn
-@@ -141,6 +141,8 @@ component("midi") {
+@@ -140,6 +140,8 @@ component("midi") {
          "CoreMIDI.framework",
        ]
      }

@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -1535,6 +1535,9 @@ are declared in tools/grit/grit_args.gni
+@@ -1531,6 +1531,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_PROFILE_ROW_VERIFY_MESSAGE" desc="A label to indicate that the profile needs credential verification (reauthentication). This is a shorter version of 'Verify it's you' that is used in other places.">
            Verify
          </message>
@@ -34,9 +34,9 @@
      "//chrome/browser/themes",
 +    "//chrome/browser/translate",
      "//chrome/browser/ui:accelerator_utils_headers",
-     "//chrome/browser/ui:fullscreen_util_mac",
-     "//chrome/browser/ui:recently_audible_helper",
-@@ -185,7 +191,9 @@ source_set("cocoa") {
+     "//chrome/browser/ui:browser_command_controller",
+     "//chrome/browser/ui:browser_commands",
+@@ -190,7 +196,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
      "//components/tabs:impl",
@@ -518,7 +518,7 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -407,6 +407,7 @@
+@@ -408,6 +408,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
@@ -528,7 +528,7 @@
  // Context menu items that provide fast access to input methods.
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -288,6 +288,8 @@
+@@ -293,6 +293,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
@@ -539,53 +539,53 @@
      IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS) \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -661,13 +661,14 @@ int UmaEnumForCommand(int key, UmaEnumId
-        {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
-        {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 169},
-        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 170},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 171},
+@@ -669,13 +669,14 @@ int UmaEnumForCommand(int key, UmaEnumId
+        {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 170},
+        {IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU, 171},
+        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 172},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 173},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the RenderViewContextMenuItem enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {kUmaMaxValueKey, 171}});
-+       {kUmaMaxValueKey, 172}});
+-       {kUmaMaxValueKey, 173}});
++       {kUmaMaxValueKey, 174}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -708,13 +709,14 @@ int UmaEnumForCommand(int key, UmaEnumId
-        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
+@@ -717,13 +718,14 @@ int UmaEnumForCommand(int key, UmaEnumId
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
         {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 34},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 35},
+        {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 35},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 36},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the ContextMenuOptionDesktop enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {kUmaMaxValueKey, 35}});
-+       {kUmaMaxValueKey, 36}});
+-       {kUmaMaxValueKey, 36}});
++       {kUmaMaxValueKey, 37}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
  
    switch (type) {
 --- a/tools/metrics/histograms/metadata/ui/enums.xml
 +++ b/tools/metrics/histograms/metadata/ui/enums.xml
-@@ -80,6 +80,7 @@ chromium-metrics-reviews@google.com.
-   <int value="32" label="Create image with Gemini in Chrome"/>
+@@ -81,6 +81,7 @@ chromium-metrics-reviews@google.com.
    <int value="33" label="Remove from dictionary"/>
    <int value="34" label="Open link in isolated window"/>
-+  <int value="35" label="Translate with macOS system translation"/>
+   <int value="35" label="Ask Google about this page"/>
++  <int value="36" label="Translate with macOS system translation"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -428,6 +429,7 @@ chromium-metrics-reviews@google.com.
-   <int value="168" label="IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS"/>
-   <int value="169" label="IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED"/>
-   <int value="170" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
-+  <int value="171" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+@@ -433,6 +434,7 @@ chromium-metrics-reviews@google.com.
+   <int value="170" label="IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE"/>
+   <int value="171" label="IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU"/>
+   <int value="172" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
++  <int value="173" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->

@@ -240,7 +240,7 @@
  bool KeychainKeyProvider::UseForEncryption() {
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -12018,6 +12018,9 @@ Check your passwords anytime in <ph name
+@@ -11998,6 +11998,9 @@ Check your passwords anytime in <ph name
        </if> <!-- not is_android -->
  
        <if expr="is_macosx">
@@ -288,7 +288,7 @@
  BrowserProcessImpl::BrowserProcessImpl(StartupData* startup_data)
      : startup_data_(startup_data),
        browser_policy_connector_(startup_data->chrome_feature_list_creator()
-@@ -1669,9 +1691,10 @@ void BrowserProcessImpl::PreMainMessageL
+@@ -1656,9 +1678,10 @@ void BrowserProcessImpl::PreMainMessageL
  
  #if BUILDFLAG(IS_MAC)
    if (base::FeatureList::IsEnabled(features::kUseKeychainKeyProvider)) {
