@@ -22,7 +22,7 @@
  
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
-@@ -2577,19 +2577,6 @@ void BrowserActions::InitializeToolbarAn
+@@ -2694,19 +2694,6 @@ void BrowserActions::InitializeToolbarAn
            .SetActionId(kActionOpenInPwaWindow)
            .Build());
  
@@ -44,7 +44,7 @@
            base::BindRepeating(
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -2554,8 +2554,7 @@ void BrowserCommandController::UpdateCom
+@@ -2552,8 +2552,7 @@ void BrowserCommandController::UpdateCom
  #endif
  
    command_updater_->UpdateCommandEnabled(IDC_FULLSCREEN, fullscreen_enabled);
@@ -52,8 +52,8 @@
 -                                         fullscreen_enabled);
 +  command_updater_->UpdateCommandEnabled(IDC_TOGGLE_FULLSCREEN_TOOLBAR, false);
  
-   UpdateCommandsForBookmarkBar();
-   UpdateCommandsForIncognitoAvailability();
+   if (auto* const fullscreen_action = FindAction(kActionFullscreen, browser_)) {
+     const int string_id =
 --- a/chrome/browser/ui/browser_commands_mac.mm
 +++ b/chrome/browser/ui/browser_commands_mac.mm
 @@ -14,7 +14,6 @@
@@ -101,7 +101,7 @@
       ui::VKEY_I},
 --- a/chrome/browser/ui/cocoa/main_menu_builder.mm
 +++ b/chrome/browser/ui/cocoa/main_menu_builder.mm
-@@ -314,8 +314,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
+@@ -298,8 +298,6 @@ NSMenuItem* BuildViewMenu(NSApplication*
                Item(IDS_BOOKMARK_BAR_ALWAYS_SHOW_MAC)
                    .command_id(IDC_SHOW_BOOKMARK_BAR)
                    .remove_if(is_pwa),

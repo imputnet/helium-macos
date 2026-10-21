@@ -108,7 +108,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -526,6 +527,20 @@ if (is_win) {
+@@ -532,6 +533,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -129,7 +129,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1341,6 +1356,10 @@ if (is_win) {
+@@ -1350,6 +1365,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -140,7 +140,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1399,6 +1418,12 @@ if (is_win) {
+@@ -1408,6 +1427,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -183,7 +183,7 @@
  import("//components/captive_portal/core/features.gni")
  import("//components/compose/features.gni")
  import("//components/enterprise/buildflags/buildflags.gni")
-@@ -3709,6 +3710,10 @@ static_library("ui") {
+@@ -4606,6 +4607,10 @@ static_library("ui") {
        "//ui/base/cursor",
      ]
  
@@ -418,7 +418,7 @@
  
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -56,6 +56,10 @@ if (is_win) {
+@@ -57,6 +57,10 @@ if (is_win) {
    import("//build/config/win/manifest.gni")
  }
  
@@ -429,7 +429,7 @@
  assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
  
  declare_args() {
-@@ -102,6 +106,10 @@ buildflag_header("buildflags") {
+@@ -103,6 +107,10 @@ buildflag_header("buildflags") {
      flags += [ "ENABLE_SEGMENT_HEAP=$enable_segment_heap" ]
    }
  
@@ -440,7 +440,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1590,6 +1598,21 @@ source_set("core") {
+@@ -1608,6 +1616,21 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]

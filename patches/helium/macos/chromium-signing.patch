@@ -25,7 +25,7 @@
          # signed below. Note that unless a framework has multiple versions
 --- a/chrome/installer/mac/signing/pipeline.py
 +++ b/chrome/installer/mac/signing/pipeline.py
-@@ -767,6 +767,17 @@ async def sign_all(
+@@ -775,6 +775,17 @@ async def sign_all(
                  )
                  _staple_chrome(notary_paths.replace_work(dest_dir), dist_config)
  
@@ -54,7 +54,7 @@
  }
  
  assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
-@@ -764,9 +764,7 @@ if (is_win) {
+@@ -773,9 +773,7 @@ if (is_win) {
  
    compile_entitlements("entitlements") {
      entitlements_templates = [ "app/app-entitlements.plist" ]
@@ -115,7 +115,7 @@
                          _get_identity_hash(base_config.identity),
 --- a/chrome/installer/mac/signing/signing.py
 +++ b/chrome/installer/mac/signing/signing.py
-@@ -23,7 +23,7 @@ class InvalidAppGeometryException(ValueE
+@@ -24,7 +24,7 @@ class InvalidAppGeometryException(ValueE
  
  class Invoker(invoker.Base):
      def codesign(self, config, product, path):

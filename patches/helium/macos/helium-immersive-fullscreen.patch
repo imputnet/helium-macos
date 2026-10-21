@@ -14,7 +14,7 @@
  // This controller is used as a workaround for an AppKit bug
 --- a/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
 +++ b/components/remote_cocoa/app_shim/browser_native_widget_window_mac.mm
-@@ -141,7 +141,13 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -159,7 +159,13 @@ WEAK_IMPORT_ATTRIBUTE
  
  @end
  
@@ -29,7 +29,7 @@
  
  @synthesize thinTitlebarViewController = _thinTitlebarViewController;
  
-@@ -217,4 +223,48 @@ WEAK_IMPORT_ATTRIBUTE
+@@ -235,4 +241,48 @@ WEAK_IMPORT_ATTRIBUTE
        setAlwaysShowTrafficLights:alwaysShow];
  }
  
@@ -254,9 +254,9 @@
 +@end
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -2569,6 +2569,8 @@ static_library("ui") {
-       "views/frame/immersive_mode_overlay_views_mac.h",
-       "views/frame/immersive_mode_overlay_views_mac.mm",
+@@ -3357,6 +3357,8 @@ static_library("ui") {
+       "browser_shortcuts/browser_shortcut_platform_mac.h",
+       "browser_shortcuts/browser_shortcut_platform_mac.mm",
        "views/helium/frame_corner_radius_mac.mm",
 +      "views/helium/fullscreen_window_controls_mac.h",
 +      "views/helium/fullscreen_window_controls_mac.mm",
@@ -487,7 +487,7 @@
    int super_component = BrowserFrameView::NonClientHitTest(point);
    if (super_component != HTNOWHERE) {
      return super_component;
-@@ -566,9 +653,14 @@ int BrowserFrameViewMac::TopUIFullscreen
+@@ -570,9 +657,14 @@ int BrowserFrameViewMac::TopUIFullscreen
      menu_bar_height = 0;
    }
  
@@ -507,7 +507,7 @@
  }
 --- a/chrome/browser/ui/views/frame/browser_view.h
 +++ b/chrome/browser/ui/views/frame/browser_view.h
-@@ -1497,6 +1497,8 @@ class BrowserView : public BrowserWindow
+@@ -1509,6 +1509,8 @@ class BrowserView : public BrowserWindow
    base::OneShotTimer zen_cursor_exit_timer_;
    std::optional<gfx::Point> zen_last_cursor_;
    bool zen_mode_enabled_ = false;
@@ -518,7 +518,7 @@
  };
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
-@@ -1957,7 +1957,7 @@ void BrowserView::UpdateZenModeEventMoni
+@@ -1973,7 +1973,7 @@ void BrowserView::UpdateZenModeEventMoni
  }
  
  void BrowserView::StartZenCollapseTimer(base::TimeDelta delay) {
@@ -527,7 +527,7 @@
      return;
    }
    zen_cursor_exit_timer_.Start(
-@@ -1986,7 +1986,7 @@ bool BrowserView::IsLeavingZenSideGap(co
+@@ -2002,7 +2002,7 @@ bool BrowserView::IsLeavingZenSideGap(co
  }
  
  void BrowserView::UpdateZenModeRevealFromCursor() {
@@ -536,7 +536,7 @@
      return;
    }
  
-@@ -2032,7 +2032,7 @@ void BrowserView::UpdateZenModeRevealFro
+@@ -2048,7 +2048,7 @@ void BrowserView::UpdateZenModeRevealFro
  }
  
  void BrowserView::UpdateZenModeReveal(bool reveal_top, bool reveal_side) {
@@ -545,7 +545,7 @@
      return;
    }
  
-@@ -2912,6 +2912,13 @@ void BrowserView::FullscreenStateChangin
+@@ -2920,6 +2920,13 @@ void BrowserView::FullscreenStateChangin
      return;
    }
  
@@ -559,7 +559,7 @@
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
      PrepareFullscreen(IsFullscreen());
    } else {
-@@ -2956,7 +2963,6 @@ void BrowserView::FullscreenStateChanged
+@@ -2964,7 +2971,6 @@ void BrowserView::FullscreenStateChanged
  
    multi_contents_view_->SetProperty(views::kWidgetForAnchoringKey,
                                      widget_for_anchoring);
@@ -567,7 +567,7 @@
  
  #endif  // BUILDFLAG(IS_MAC)
  
-@@ -2964,6 +2970,12 @@ void BrowserView::FullscreenStateChanged
+@@ -2972,6 +2978,12 @@ void BrowserView::FullscreenStateChanged
        ->fullscreen_controller()
        ->WindowFullscreenStateChanged();
  
@@ -580,7 +580,7 @@
    multi_contents_view_->OnFullscreenStateChanged();
  
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
-@@ -2979,6 +2991,10 @@ void BrowserView::FullscreenStateChanged
+@@ -2987,6 +2999,10 @@ void BrowserView::FullscreenStateChanged
      }
    }
  
@@ -591,7 +591,7 @@
    UpdateZenModeState();
  }
  
-@@ -5532,14 +5548,22 @@ gfx::Size BrowserView::GetMinimumSize()
+@@ -5557,14 +5573,22 @@ gfx::Size BrowserView::GetMinimumSize()
  
  void BrowserView::Layout(PassKey) {
    TRACE_EVENT0("ui", "BrowserView::Layout");
@@ -618,7 +618,7 @@
    if (base::FeatureList::IsEnabled(
            features::kDeferLayoutDuringBrowserStartup) &&
        startup_layout_state_ == StartupLayoutState::kDeferring &&
-@@ -5586,6 +5610,7 @@ void BrowserView::Layout(PassKey) {
+@@ -5611,6 +5635,7 @@ void BrowserView::Layout(PassKey) {
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
@@ -628,7 +628,7 @@
    if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-@@ -333,6 +333,17 @@ BrowserViewTabbedLayoutImpl::CalculateSe
+@@ -343,6 +343,17 @@ BrowserViewTabbedLayoutImpl::CalculateSe
        break;
    }
  
@@ -648,7 +648,7 @@
  
 --- a/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_layout_delegate_impl.cc
-@@ -163,6 +163,11 @@ bool BrowserViewLayoutDelegateImpl::IsIn
+@@ -164,6 +164,11 @@ bool BrowserViewLayoutDelegateImpl::IsIn
    if (!container || container->IsEmpty()) {
      return false;
    }
@@ -662,7 +662,7 @@
    }
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-@@ -1812,13 +1812,6 @@ bool NativeWidgetNSWindowBridge::ShouldW
+@@ -1856,13 +1856,6 @@ bool NativeWidgetNSWindowBridge::ShouldW
    if (content_dip_size_.IsEmpty()) {
      return false;
    }
