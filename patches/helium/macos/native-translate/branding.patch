@@ -1,0 +1,521 @@
+--- a/chrome/app/settings_strings.grdp
++++ b/chrome/app/settings_strings.grdp
+@@ -1312,9 +1312,15 @@
+       <message name="IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE" desc="The label of the check-box that enables the prompt to translate a page.">
+         Use Google Translate
+       </message>
++      <message name="IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_HELIUM" desc="The label of the check-box that enables the prompt to translate a page.">
++        Site translation
++      </message>
+       <message name="IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL" desc="The sublabel of the check-box that enables the prompt to translate a page.">
+         When on, Google Translate will offer to translate sites into your preferred language. It can also automatically translate sites.
+       </message>
++      <message name="IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL_HELIUM" desc="The sublabel of the check-box that enables the prompt to translate a page. Translation happens on the device.">
++        Helium will offer to translate sites into your preferred language using Apple's on-device translation model.
++      </message>
+       <message name="IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL_WITH_PDF" desc="The sublabel of the check-box that enables the prompt to translate a page or PDF.">
+   When on, Google Translate will offer to translate sites and PDFs into your preferred language. It can also automatically translate sites.
+ </message>
+@@ -1339,6 +1345,9 @@
+       <message name="IDS_SETTINGS_TRANSLATE_PAGE_TITLE" desc="Name of the settings page which displays translate preferences.">
+         Google Translate
+       </message>
++      <message name="IDS_SETTINGS_TRANSLATE_PAGE_TITLE_HELIUM" desc="Name of the settings page which displays translate preferences.">
++        Translate
++      </message>
+       <message name="IDS_SETTINGS_TARGET_TRANSLATE_LABEL" desc="Label for the element to select the target language">
+         Translate into this language
+       </message>
+--- a/chrome/app/vector_icons/g_translate.icon
++++ b/chrome/app/vector_icons/g_translate.icon
+@@ -4,82 +4,62 @@
+ 
+ CANVAS_DIMENSIONS, 16,
+ FILL_RULE_NONZERO,
+-R_MOVE_TO, 8, 14.52f,
+-R_LINE_TO, -0.81f, -2.44f,
+-H_LINE_TO, 2.7f,
+-R_ARC_TO, 1.25f, 1.25f, 0, 0, 1, -0.87f, -0.36f,
+-R_ARC_TO, 1.16f, 1.16f, 0, 0, 1, -0.35f, -0.86f,
+-V_LINE_TO, 2.7f,
+-R_CUBIC_TO, 0, -0.33f, 0.12f, -0.62f, 0.36f, -0.86f,
+-R_CUBIC_TO, 0.24f, -0.24f, 0.53f, -0.37f, 0.87f, -0.37f,
+-R_H_LINE_TO, 3.67f,
+-R_LINE_TO, 0.81f, 2.44f,
+-H_LINE_TO, 13.3f,
+-R_CUBIC_TO, 0.33f, 0, 0.62f, 0.12f, 0.86f, 0.36f,
+-R_CUBIC_TO, 0.24f, 0.24f, 0.36f, 0.53f, 0.36f, 0.86f,
+-R_V_LINE_TO, 8.16f,
+-R_CUBIC_TO, 0, 0.34f, -0.12f, 0.63f, -0.36f, 0.87f,
+-R_ARC_TO, 1.19f, 1.19f, 0, 0, 1, -0.86f, 0.36f,
++R_MOVE_TO, 10.12f, 12.75f,
++R_LINE_TO, -0.46f, 1.31f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.66f, 0.47f,
++R_ARC_TO, 0.65f, 0.65f, 0, 0, 1, -0.58f, -0.3f,
++R_ARC_TO, 0.69f, 0.69f, 0, 0, 1, -0.07f, -0.65f,
++R_LINE_TO, 2.32f, -6.32f,
++R_ARC_TO, 0.87f, 0.87f, 0, 0, 1, 0.29f, -0.37f,
++R_ARC_TO, 0.72f, 0.72f, 0, 0, 1, 0.44f, -0.14f,
++R_H_LINE_TO, 0.55f,
++R_ARC_TO, 0.72f, 0.72f, 0, 0, 1, 0.43f, 0.14f,
++R_ARC_TO, 0.84f, 0.84f, 0, 0, 1, 0.29f, 0.37f,
++R_LINE_TO, 2.34f, 6.33f,
++R_ARC_TO, 0.66f, 0.66f, 0, 0, 1, -0.09f, 0.65f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.59f, 0.3f,
++R_ARC_TO, 0.69f, 0.69f, 0, 0, 1, -0.41f, -0.13f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.27f, -0.35f,
++R_LINE_TO, -0.44f, -1.3f,
+ CLOSE,
+-R_MOVE_TO, -3.21f, -4.89f,
+-R_CUBIC_TO, 0.65f, 0, 1.2f, -0.21f, 1.66f, -0.63f,
+-R_CUBIC_TO, 0.46f, -0.42f, 0.69f, -1.01f, 0.69f, -1.77f,
+-R_CUBIC_TO, 0, -0.08f, 0, -0.16f, -0.01f, -0.23f,
+-R_ARC_TO, 1.33f, 1.33f, 0, 0, 0, -0.04f, -0.25f,
+-H_LINE_TO, 4.79f,
+-R_V_LINE_TO, 0.83f,
+-R_H_LINE_TO, 1.43f,
+-R_CUBIC_TO, -0.04f, 0.38f, -0.19f, 0.66f, -0.46f, 0.88f,
+-R_ARC_TO, 1.56f, 1.56f, 0, 0, 1, -0.97f, 0.31f,
+-R_CUBIC_TO, -0.43f, 0, -0.79f, -0.15f, -1.09f, -0.46f,
+-R_ARC_TO, 1.55f, 1.55f, 0, 0, 1, -0.45f, -1.12f,
+-R_CUBIC_TO, 0, -0.43f, 0.15f, -0.8f, 0.45f, -1.11f,
+-R_CUBIC_TO, 0.3f, -0.31f, 0.66f, -0.46f, 1.1f, -0.46f,
+-R_CUBIC_TO, 0.18f, 0, 0.36f, 0.03f, 0.53f, 0.1f,
+-R_CUBIC_TO, 0.17f, 0.07f, 0.32f, 0.16f, 0.46f, 0.29f,
+-R_LINE_TO, 0.65f, -0.63f,
+-R_ARC_TO, 2.18f, 2.18f, 0, 0, 0, -0.77f, -0.47f,
+-R_ARC_TO, 2.58f, 2.58f, 0, 0, 0, -0.87f, -0.16f,
+-R_CUBIC_TO, -0.68f, 0, -1.26f, 0.24f, -1.74f, 0.72f,
+-R_ARC_TO, 2.37f, 2.37f, 0, 0, 0, -0.71f, 1.73f,
+-R_CUBIC_TO, 0, 0.68f, 0.24f, 1.25f, 0.71f, 1.73f,
+-R_ARC_TO, 2.37f, 2.37f, 0, 0, 0, 1.74f, 0.72f,
++R_MOVE_TO, -4.21f, -3.3f,
++R_LINE_TO, -2.67f, 2.64f,
++R_ARC_TO, 0.63f, 0.63f, 0, 0, 1, -0.48f, 0.2f,
++R_ARC_TO, 0.71f, 0.71f, 0, 0, 1, -0.48f, -0.22f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.21f, -0.48f,
++R_CUBIC_TO, 0, -0.18f, 0.07f, -0.34f, 0.21f, -0.48f,
++R_LINE_TO, 2.69f, -2.66f,
++R_ARC_TO, 18.24f, 18.24f, 0, 0, 1, -1.17f, -1.36f,
++R_ARC_TO, 8.33f, 8.33f, 0, 0, 1, -0.89f, -1.45f,
++H_LINE_TO, 4.5f,
++R_CUBIC_TO, 0.18f, 0.31f, 0.37f, 0.59f, 0.57f, 0.83f,
++R_CUBIC_TO, 0.2f, 0.23f, 0.48f, 0.56f, 0.85f, 0.98f,
++R_CUBIC_TO, 0.41f, -0.47f, 0.8f, -0.95f, 1.14f, -1.43f,
++R_CUBIC_TO, 0.34f, -0.48f, 0.62f, -1, 0.84f, -1.55f,
++H_LINE_TO, 1.33f,
++R_ARC_TO, 0.68f, 0.68f, 0, 0, 1, -0.49f, -0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.2f, -0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, -0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.49f, -0.2f,
++R_H_LINE_TO, 3.91f,
++R_V_LINE_TO, -0.91f,
++R_CUBIC_TO, 0, -0.19f, 0.07f, -0.35f, 0.2f, -0.49f,
++R_ARC_TO, 0.66f, 0.66f, 0, 0, 1, 0.49f, -0.2f,
++R_CUBIC_TO, 0.19f, 0, 0.35f, 0.07f, 0.49f, 0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, 0.49f,
++R_V_LINE_TO, 0.91f,
++R_H_LINE_TO, 3.91f,
++R_CUBIC_TO, 0.19f, 0, 0.36f, 0.07f, 0.49f, 0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, 0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.2f, 0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.49f, 0.2f,
++H_LINE_TO, 9.38f,
++R_ARC_TO, 7.85f, 7.85f, 0, 0, 1, -1.03f, 2.1f,
++R_ARC_TO, 18.99f, 18.99f, 0, 0, 1, -1.5f, 1.89f,
++LINE_TO, 8.18f, 9.75f,
++R_LINE_TO, -0.53f, 1.44f,
+ CLOSE,
+-R_MOVE_TO, 4.31f, 0.57f,
+-R_LINE_TO, 0.33f, -0.32f,
+-R_CUBIC_TO, -0.16f, -0.17f, -0.3f, -0.35f, -0.43f, -0.53f,
+-R_ARC_TO, 7.06f, 7.06f, 0, 0, 1, -0.36f, -0.59f,
+-CLOSE,
+-R_MOVE_TO, 0.8f, -0.83f,
+-R_CUBIC_TO, 0.23f, -0.27f, 0.44f, -0.56f, 0.63f, -0.86f,
+-R_CUBIC_TO, 0.2f, -0.3f, 0.34f, -0.63f, 0.43f, -0.99f,
+-H_LINE_TO, 8.26f,
+-R_LINE_TO, 0.24f, 0.71f,
+-R_LINE_TO, 0.66f, -0.02f,
+-R_CUBIC_TO, 0.1f, 0.22f, 0.21f, 0.42f, 0.33f, 0.61f,
+-R_CUBIC_TO, 0.12f, 0.19f, 0.26f, 0.37f, 0.42f, 0.54f,
+-CLOSE,
+-R_MOVE_TO, -1.09f, 4.34f,
+-R_H_LINE_TO, 4.49f,
+-R_ARC_TO, 0.41f, 0.41f, 0, 0, 0, 0.29f, -0.11f,
+-R_ARC_TO, 0.4f, 0.4f, 0, 0, 0, 0.12f, -0.3f,
+-V_LINE_TO, 5.14f,
+-R_ARC_TO, 0.4f, 0.4f, 0, 0, 0, -0.12f, -0.29f,
+-R_ARC_TO, 0.4f, 0.4f, 0, 0, 0, -0.29f, -0.12f,
+-H_LINE_TO, 7.39f,
+-R_LINE_TO, 0.65f, 2.1f,
+-R_H_LINE_TO, 1.36f,
+-V_LINE_TO, 6.13f,
+-R_H_LINE_TO, 0.68f,
+-R_V_LINE_TO, 0.7f,
+-R_H_LINE_TO, 2.46f,
+-R_V_LINE_TO, 0.7f,
+-R_H_LINE_TO, -0.86f,
+-R_ARC_TO, 4.86f, 4.86f, 0, 0, 1, -0.51f, 1.26f,
+-R_ARC_TO, 7.07f, 7.07f, 0, 0, 1, -0.78f, 1.1f,
+-R_LINE_TO, 1.84f, 1.8f,
+-R_LINE_TO, -0.49f, 0.49f,
+-R_LINE_TO, -1.8f, -1.8f,
+-R_LINE_TO, -0.59f, 0.58f,
+-R_LINE_TO, 0.61f, 1.93f,
++R_MOVE_TO, 4.67f, 2.02f,
++R_H_LINE_TO, 2.17f,
++R_LINE_TO, -1.05f, -3.05f,
+ CLOSE
+--- a/chrome/browser/ui/views/translate/partial_translate_bubble_view.cc
++++ b/chrome/browser/ui/views/translate/partial_translate_bubble_view.cc
+@@ -85,15 +85,6 @@
+ 
+ namespace {
+ 
+-bool UseGoogleTranslateBranding() {
+-  // Only use Google Translate branding in Chrome branded builds.
+-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-  return true;
+-#else
+-  return false;
+-#endif
+-}
+-
+ std::unique_ptr<views::View> CreateWordmarkView() {
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   auto view = std::make_unique<views::View>();
+@@ -494,11 +485,6 @@ std::unique_ptr<views::View> PartialTran
+       ->SetOrientation(views::LayoutOrientation::kHorizontal);
+   tab_view_top_row_ = view->AddChildView(std::move(inner_view));
+ 
+-  views::View* icon = nullptr;
+-  if (!UseGoogleTranslateBranding()) {
+-    icon = tab_view_top_row_->AddChildView(CreateTranslateIcon());
+-  }
+-
+   // Tabbed pane for language selection. Can't use unique_ptr because
+   // tabs have to be added after the tabbed_pane is added to the parent,
+   // when we release ownership of the unique_ptr.
+@@ -527,10 +513,6 @@ std::unique_ptr<views::View> PartialTran
+ 
+   const int button_horizontal_spacing =
+       provider->GetDistanceMetric(views::DISTANCE_RELATED_BUTTON_HORIZONTAL);
+-  if (icon) {
+-    icon->SetProperty(views::kMarginsKey,
+-                      gfx::Insets().set_right(button_horizontal_spacing));
+-  }
+   tabbed_pane_->SetProperty(
+       views::kFlexBehaviorKey,
+       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+@@ -801,18 +783,6 @@ std::unique_ptr<views::View> PartialTran
+   auto view = std::make_unique<views::BoxLayoutView>();
+   view->SetBetweenChildSpacing(horizontal_spacing);
+ 
+-  std::unique_ptr<views::ImageView> language_icon = CreateTranslateIcon();
+-  if (!UseGoogleTranslateBranding()) {
+-    // If the bottom branding isn't showing, display the leading Translate
+-    // icon otherwise it's not obvious what the bubble is about. This should
+-    // only happen on non-Chrome-branded builds.
+-    auto* icon_view =
+-        view->AddChildView(std::make_unique<views::BoxLayoutView>());
+-    icon_view->SetOrientation(views::BoxLayout::Orientation::kVertical);
+-    icon_view->AddChildView(std::move(language_icon));
+-    icon_view->SetProperty(views::kMarginsKey,
+-                           gfx::Insets::VH(vertical_spacing, 0));
+-  }
+   auto* form_view = view->AddChildView(
+       views::Builder<views::BoxLayoutView>()
+           .SetOrientation(views::BoxLayout::Orientation::kVertical)
+@@ -865,15 +835,6 @@ std::unique_ptr<views::View> PartialTran
+   return view;
+ }
+ 
+-std::unique_ptr<views::ImageView>
+-PartialTranslateBubbleView::CreateTranslateIcon() {
+-  const int language_icon_id = IDR_TRANSLATE_BUBBLE_ICON;
+-  std::unique_ptr<views::ImageView> language_icon =
+-      std::make_unique<views::ImageView>();
+-  language_icon->SetImage(ui::ImageModel::FromResourceId(language_icon_id));
+-  return language_icon;
+-}
+-
+ std::unique_ptr<views::Button>
+ PartialTranslateBubbleView::CreateOptionsMenuButton() {
+   // Three dots options menu button
+--- a/chrome/browser/ui/views/translate/translate_bubble_view.cc
++++ b/chrome/browser/ui/views/translate/translate_bubble_view.cc
+@@ -87,15 +87,6 @@
+ 
+ namespace {
+ 
+-bool UseGoogleTranslateBranding() {
+-  // Only use Google Translate branding in Chrome branded builds.
+-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+-  return true;
+-#else
+-  return false;
+-#endif
+-}
+-
+ std::unique_ptr<views::View> CreateWordmarkView() {
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   auto view = std::make_unique<views::View>();
+@@ -641,11 +632,6 @@ std::unique_ptr<views::View> TranslateBu
+       ->SetOrientation(views::LayoutOrientation::kHorizontal);
+   auto* horizontal_view = view->AddChildView(std::move(inner_view));
+ 
+-  views::View* icon = nullptr;
+-  if (!UseGoogleTranslateBranding()) {
+-    icon = horizontal_view->AddChildView(CreateTranslateIcon());
+-  }
+-
+   // Tabbed pane for language selection. Can't use unique_ptr because
+   // tabs have to be added after the tabbed_pane is added to the parent,
+   // when we release ownership of the unique_ptr.
+@@ -710,10 +696,6 @@ std::unique_ptr<views::View> TranslateBu
+ 
+   const int button_horizontal_spacing =
+       provider->GetDistanceMetric(views::DISTANCE_RELATED_BUTTON_HORIZONTAL);
+-  if (icon) {
+-    icon->SetProperty(views::kMarginsKey,
+-                      gfx::Insets().set_right(button_horizontal_spacing));
+-  }
+   tabbed_pane_->SetProperty(
+       views::kFlexBehaviorKey,
+       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+@@ -973,20 +955,6 @@ std::unique_ptr<views::View> TranslateBu
+   auto view = std::make_unique<views::BoxLayoutView>();
+   view->SetBetweenChildSpacing(horizontal_spacing);
+ 
+-  std::unique_ptr<views::ImageView> language_icon = CreateTranslateIcon();
+-  if (!UseGoogleTranslateBranding()) {
+-    // If the bottom branding isn't showing, display the leading Translate
+-    // icon otherwise it's not obvious what the bubble is about. This should
+-    // only happen on non-Chrome-branded builds.
+-    auto* icon_view =
+-        view->AddChildView(std::make_unique<views::BoxLayoutView>());
+-    icon_view->SetCrossAxisAlignment(
+-        views::BoxLayout::CrossAxisAlignment::kStart);
+-    icon_view->SetOrientation(views::BoxLayout::Orientation::kVertical);
+-    icon_view->AddChildView(std::move(language_icon));
+-    icon_view->SetProperty(views::kMarginsKey,
+-                           gfx::Insets::VH(vertical_spacing, 0));
+-  }
+   auto* form_view = view->AddChildView(
+       views::Builder<views::BoxLayoutView>()
+           .SetOrientation(views::BoxLayout::Orientation::kVertical)
+@@ -1047,14 +1015,6 @@ std::unique_ptr<views::View> TranslateBu
+   return view;
+ }
+ 
+-std::unique_ptr<views::ImageView> TranslateBubbleView::CreateTranslateIcon() {
+-  const int language_icon_id = IDR_TRANSLATE_BUBBLE_ICON;
+-  std::unique_ptr<views::ImageView> language_icon =
+-      std::make_unique<views::ImageView>();
+-  language_icon->SetImage(ui::ImageModel::FromResourceId(language_icon_id));
+-  return language_icon;
+-}
+-
+ std::unique_ptr<views::Button> TranslateBubbleView::CreateOptionsMenuButton() {
+   // Three dots options menu button
+   auto tab_translate_options_button =
+--- a/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
++++ b/chrome/browser/ui/webui/settings/settings_localized_strings_provider.cc
+@@ -1480,14 +1480,14 @@ void AddLanguagesStrings(content::WebUID
+        IDS_SETTINGS_LANGUAGES_DISPLAY_IN_THIS_LANGUAGE},
+ #endif
+       {"offerToEnableTranslate",
+-       IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE},
++       IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_HELIUM},
+       {"noLanguagesAdded", IDS_SETTINGS_LANGUAGES_NO_LANGUAGES_ADDED},
+       {"addLanguageAriaLabel", IDS_SETTINGS_LANGUAGES_ADD_ARIA_LABEL},
+       {"removeAutomaticLanguageAriaLabel",
+        IDS_SETTINGS_LANGUAGES_REMOVE_AUTOMATIC_ARIA_LABEL},
+       {"removeNeverLanguageAriaLabel",
+        IDS_SETTINGS_LANGUAGES_REMOVE_NEVER_ARIA_LABEL},
+-      {"translatePageTitle", IDS_SETTINGS_TRANSLATE_PAGE_TITLE},
++      {"translatePageTitle", IDS_SETTINGS_TRANSLATE_PAGE_TITLE_HELIUM},
+       {"targetLanguageLabel", IDS_SETTINGS_TARGET_TRANSLATE_LABEL},
+       {"automaticallyTranslateLanguages",
+        IDS_SETTINGS_LANGUAGES_AUTOMATIC_TRANSLATE},
+@@ -1543,9 +1543,7 @@ void AddLanguagesStrings(content::WebUID
+ #if !BUILDFLAG(IS_CHROMEOS)
+   html_source->AddLocalizedString(
+       "offerToEnableTranslateSublabel",
+-      base::FeatureList::IsEnabled(translate::kEnableTranslatePdf)
+-          ? IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL_WITH_PDF
+-          : IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL);
++      IDS_SETTINGS_LANGUAGES_OFFER_TO_ENABLE_TRANSLATE_SUBLABEL_HELIUM);
+   html_source->AddBoolean("enableHeliumNativeTranslate",
+                           translate::IsHeliumNativeTranslateEnabled());
+ #endif  // !BUILDFLAG(IS_CHROMEOS)
+--- a/components/vector_icons/g_translate.icon
++++ b/components/vector_icons/g_translate.icon
+@@ -2,82 +2,64 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-CANVAS_DIMENSIONS, 20,
+-R_MOVE_TO, 10, 18.16,
+-R_LINE_TO, -1.02, -3.05,
+-H_LINE_TO, 3.38,
+-R_ARC_TO, 1.59, 1.59, 0, 0, 1, -1.08, -0.46,
+-R_ARC_TO, 1.46, 1.46, 0, 0, 1, -0.45, -1.07,
+-V_LINE_TO, 3.38,
+-R_CUBIC_TO, 0, -0.41, 0.15, -0.77, 0.45, -1.07,
+-R_CUBIC_TO, 0.3, -0.3, 0.66, -0.46, 1.08, -0.46,
+-R_H_LINE_TO, 4.59,
+-R_LINE_TO, 1.01, 3.05,
+-R_H_LINE_TO, 7.64,
+-R_CUBIC_TO, 0.41, 0, 0.77, 0.15, 1.07, 0.46,
+-R_CUBIC_TO, 0.31, 0.3, 0.46, 0.66, 0.46, 1.07,
+-R_V_LINE_TO, 10.2,
+-R_CUBIC_TO, 0, 0.43, -0.15, 0.79, -0.46, 1.08,
+-R_CUBIC_TO, -0.3, 0.3, -0.66, 0.45, -1.07, 0.45,
++CANVAS_DIMENSIONS, 16,
++FILL_RULE_NONZERO,
++R_MOVE_TO, 10.12f, 12.75f,
++R_LINE_TO, -0.46f, 1.31f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.66f, 0.47f,
++R_ARC_TO, 0.65f, 0.65f, 0, 0, 1, -0.58f, -0.3f,
++R_ARC_TO, 0.69f, 0.69f, 0, 0, 1, -0.07f, -0.65f,
++R_LINE_TO, 2.32f, -6.32f,
++R_ARC_TO, 0.87f, 0.87f, 0, 0, 1, 0.29f, -0.37f,
++R_ARC_TO, 0.72f, 0.72f, 0, 0, 1, 0.44f, -0.14f,
++R_H_LINE_TO, 0.55f,
++R_ARC_TO, 0.72f, 0.72f, 0, 0, 1, 0.43f, 0.14f,
++R_ARC_TO, 0.84f, 0.84f, 0, 0, 1, 0.29f, 0.37f,
++R_LINE_TO, 2.34f, 6.33f,
++R_ARC_TO, 0.66f, 0.66f, 0, 0, 1, -0.09f, 0.65f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.59f, 0.3f,
++R_ARC_TO, 0.69f, 0.69f, 0, 0, 1, -0.41f, -0.13f,
++R_ARC_TO, 0.7f, 0.7f, 0, 0, 1, -0.27f, -0.35f,
++R_LINE_TO, -0.44f, -1.3f,
+ CLOSE,
+-MOVE_TO, 5.99, 12.04,
+-R_CUBIC_TO, 0.81, 0, 1.5, -0.26, 2.07, -0.79,
+-R_CUBIC_TO, 0.57, -0.53, 0.86, -1.27, 0.86, -2.21,
+-R_CUBIC_TO, 0, -0.1, 0, -0.2, -0.01, -0.29,
+-R_ARC_TO, 2.07, 2.07, 0, 0, 0, -0.05, -0.32,
+-H_LINE_TO, 5.99,
+-R_V_LINE_TO, 1.04,
+-R_H_LINE_TO, 1.78,
+-R_CUBIC_TO, -0.05, 0.47, -0.24, 0.83, -0.58, 1.09,
+-R_CUBIC_TO, -0.34, 0.26, -0.74, 0.39, -1.21, 0.39,
+-R_CUBIC_TO, -0.54, 0, -1, -0.19, -1.37, -0.57,
+-R_ARC_TO, 1.94, 1.94, 0, 0, 1, -0.56, -1.4,
+-R_CUBIC_TO, 0, -0.54, 0.19, -1, 0.56, -1.39,
+-R_CUBIC_TO, 0.38, -0.39, 0.83, -0.59, 1.37, -0.59,
+-R_CUBIC_TO, 0.23, 0, 0.45, 0.04, 0.66, 0.13,
+-R_ARC_TO, 2, 2, 0, 0, 1, 0.57, 0.36,
+-R_LINE_TO, 0.81, -0.79,
+-R_ARC_TO, 2.75, 2.75, 0, 0, 0, -0.96, -0.59,
+-R_ARC_TO, 3.26, 3.26, 0, 0, 0, -1.09, -0.19,
+-R_CUBIC_TO, -0.85, 0, -1.58, 0.3, -2.17, 0.89,
+-R_ARC_TO, 2.95, 2.95, 0, 0, 0, -0.89, 2.17,
+-R_CUBIC_TO, 0, 0.84, 0.3, 1.57, 0.89, 2.16,
+-R_CUBIC_TO, 0.59, 0.6, 1.32, 0.9, 2.17, 0.9,
++R_MOVE_TO, -4.21f, -3.3f,
++R_LINE_TO, -2.67f, 2.64f,
++R_ARC_TO, 0.63f, 0.63f, 0, 0, 1, -0.48f, 0.2f,
++R_ARC_TO, 0.71f, 0.71f, 0, 0, 1, -0.48f, -0.22f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.21f, -0.48f,
++R_CUBIC_TO, 0, -0.18f, 0.07f, -0.34f, 0.21f, -0.48f,
++R_LINE_TO, 2.69f, -2.66f,
++R_ARC_TO, 18.24f, 18.24f, 0, 0, 1, -1.17f, -1.36f,
++R_ARC_TO, 8.33f, 8.33f, 0, 0, 1, -0.89f, -1.45f,
++H_LINE_TO, 4.5f,
++R_CUBIC_TO, 0.18f, 0.31f, 0.37f, 0.59f, 0.57f, 0.83f,
++R_CUBIC_TO, 0.2f, 0.23f, 0.48f, 0.56f, 0.85f, 0.98f,
++R_CUBIC_TO, 0.41f, -0.47f, 0.8f, -0.95f, 1.14f, -1.43f,
++R_CUBIC_TO, 0.34f, -0.48f, 0.62f, -1, 0.84f, -1.55f,
++H_LINE_TO, 1.33f,
++R_ARC_TO, 0.68f, 0.68f, 0, 0, 1, -0.49f, -0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.2f, -0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, -0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.49f, -0.2f,
++R_H_LINE_TO, 3.91f,
++R_V_LINE_TO, -0.91f,
++R_CUBIC_TO, 0, -0.19f, 0.07f, -0.35f, 0.2f, -0.49f,
++R_ARC_TO, 0.66f, 0.66f, 0, 0, 1, 0.49f, -0.2f,
++R_CUBIC_TO, 0.19f, 0, 0.35f, 0.07f, 0.49f, 0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, 0.49f,
++R_V_LINE_TO, 0.91f,
++R_H_LINE_TO, 3.91f,
++R_CUBIC_TO, 0.19f, 0, 0.36f, 0.07f, 0.49f, 0.2f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, 0.2f, 0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.2f, 0.49f,
++R_ARC_TO, 0.67f, 0.67f, 0, 0, 1, -0.49f, 0.2f,
++H_LINE_TO, 9.38f,
++R_ARC_TO, 7.85f, 7.85f, 0, 0, 1, -1.03f, 2.1f,
++R_ARC_TO, 18.99f, 18.99f, 0, 0, 1, -1.5f, 1.89f,
++LINE_TO, 8.18f, 9.75f,
++R_LINE_TO, -0.53f, 1.44f,
+ CLOSE,
+-R_MOVE_TO, 5.39, 0.72,
+-R_LINE_TO, 0.41, -0.4,
+-R_ARC_TO, 5.65, 5.65, 0, 0, 1, -0.53, -0.66,
+-R_ARC_TO, 7.64, 7.64, 0, 0, 1, -0.44, -0.73,
+-CLOSE,
+-R_MOVE_TO, 1, -1.04,
+-R_CUBIC_TO, 0.29, -0.34, 0.55, -0.69, 0.79, -1.07,
+-R_CUBIC_TO, 0.24, -0.37, 0.42, -0.79, 0.53, -1.24,
+-R_H_LINE_TO, -3.37,
+-R_LINE_TO, 0.29, 0.89,
+-R_LINE_TO, 0.83, -0.02,
+-R_CUBIC_TO, 0.13, 0.27, 0.26, 0.53, 0.41, 0.77,
+-R_CUBIC_TO, 0.15, 0.24, 0.32, 0.46, 0.52, 0.68,
+-CLOSE,
+-R_MOVE_TO, -1.36, 5.43,
+-R_H_LINE_TO, 5.61,
+-R_ARC_TO, 0.52, 0.52, 0, 0, 0, 0.37, -0.14,
+-R_ARC_TO, 0.5, 0.5, 0, 0, 0, 0.15, -0.37,
+-R_V_LINE_TO, -10.2,
+-R_ARC_TO, 0.5, 0.5, 0, 0, 0, -0.52, -0.51,
+-H_LINE_TO, 9.24,
+-R_LINE_TO, 0.81, 2.62,
+-R_H_LINE_TO, 1.7,
+-R_V_LINE_TO, -0.87,
+-R_H_LINE_TO, 0.85,
+-R_V_LINE_TO, 0.87,
+-R_H_LINE_TO, 3.07,
+-R_V_LINE_TO, 0.87,
+-H_LINE_TO, 14.59,
+-R_ARC_TO, 6.11, 6.11, 0, 0, 1, -0.64, 1.58,
+-R_CUBIC_TO, -0.29, 0.49, -0.61, 0.95, -0.98, 1.37,
+-R_LINE_TO, 2.29, 2.25,
+-R_LINE_TO, -0.61, 0.61,
+-R_LINE_TO, -2.25, -2.25,
+-R_LINE_TO, -0.74, 0.73,
+-R_LINE_TO, 0.76, 2.41,
++R_MOVE_TO, 4.67f, 2.02f,
++R_H_LINE_TO, 2.17f,
++R_LINE_TO, -1.05f, -3.05f,
+ CLOSE
+--- a/chrome/browser/ui/views/translate/partial_translate_bubble_view.h
++++ b/chrome/browser/ui/views/translate/partial_translate_bubble_view.h
+@@ -181,10 +181,6 @@ class PartialTranslateBubbleView : publi
+       std::unique_ptr<views::Button> advanced_reset_button,
+       std::unique_ptr<views::Button> advanced_done_button);
+ 
+-  // Creates a translate icon for when the bottom branding isn't showing. This
+-  // should only be used on non-Chrome-branded builds.
+-  std::unique_ptr<views::ImageView> CreateTranslateIcon();
+-
+   // Creates a three dot options menu button.
+   std::unique_ptr<views::Button> CreateOptionsMenuButton();
+ 
+--- a/chrome/browser/ui/views/translate/translate_bubble_view.h
++++ b/chrome/browser/ui/views/translate/translate_bubble_view.h
+@@ -229,10 +229,6 @@ class TranslateBubbleView : public Locat
+       std::unique_ptr<views::Button> advanced_done_button,
+       std::unique_ptr<views::Checkbox> advanced_always_translate_checkbox);
+ 
+-  // Creates a translate icon for when the bottom branding isn't showing. This
+-  // should only be used on non-Chrome-branded builds.
+-  std::unique_ptr<views::ImageView> CreateTranslateIcon();
+-
+   // Creates a three dot options menu button.
+   std::unique_ptr<views::Button> CreateOptionsMenuButton();
+ 

@@ -1,0 +1,288 @@
+--- a/components/translate/content/browser/BUILD.gn
++++ b/components/translate/content/browser/BUILD.gn
+@@ -45,6 +45,18 @@ static_library("browser") {
+     "//services/network/public/cpp",
+   ]
+ 
++  if (is_mac) {
++    sources += [
++      "helium_platform_language_detection_mac.h",
++      "helium_platform_language_detection_mac.mm",
++    ]
++    deps += [ "//components/language_detection/core" ]
++    frameworks = [
++      "Foundation.framework",
++      "NaturalLanguage.framework",
++    ]
++  }
++
+   if (enable_pdf_translation) {
+     sources += [
+       "pdf_translation_coordinator.cc",
+--- a/components/translate/content/browser/content_translate_driver.cc
++++ b/components/translate/content/browser/content_translate_driver.cc
+@@ -35,6 +35,7 @@
+ #include "components/translate/core/common/translate_constants.h"
+ #include "components/translate/core/common/translate_features.h"
+ #include "components/translate/core/common/translate_metrics.h"
++#include "components/translate/core/language_detection/language_detection_util.h"
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/navigation_details.h"
+@@ -52,6 +53,11 @@
+ #include "services/metrics/public/cpp/ukm_source_id.h"
+ #include "url/gurl.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "components/language_detection/core/constants.h"
++#include "components/translate/content/browser/helium_platform_language_detection_mac.h"
++#endif
++
+ namespace translate {
+ 
+ using ::base::i18n::GetKnownLanguageTag;
+@@ -392,6 +398,15 @@ void ContentTranslateDriver::DidFinishNa
+     return;
+   }
+ 
++#if BUILDFLAG(IS_MAC)
++  // Drop platform language detection results for the previous document. A
++  // prerendered page may have registered before its activation finished.
++  if (!navigation_handle->IsSameDocument() &&
++      !navigation_handle->IsPrerenderedPageActivation()) {
++    ++platform_language_detection_request_id_;
++  }
++#endif
++
+   // Store the main frame committed URL.
+   last_committed_url_ = web_contents()->GetLastCommittedURL();
+ 
+@@ -461,6 +476,69 @@ void ContentTranslateDriver::RegisterPag
+   if (!web_contents()) {
+     return;
+   }
++
++#if BUILDFLAG(IS_MAC)
++  const int request_id = ++platform_language_detection_request_id_;
++  if (ShouldUsePlatformLanguageDetection(details)) {
++    DetectLanguageWithPlatform(
++        details.contents,
++        base::BindOnce(&ContentTranslateDriver::OnPlatformLanguageDetected,
++                       weak_pointer_factory_.GetWeakPtr(), request_id,
++                       std::move(translate_agent), details));
++    return;
++  }
++#endif
++
++  RegisterPageWithDetails(std::move(translate_agent), details,
++                          page_level_translation_criteria_met);
++}
++
++#if BUILDFLAG(IS_MAC)
++// static
++bool ContentTranslateDriver::ShouldUsePlatformLanguageDetection(
++    const translate::LanguageDetectionDetails& details) {
++  if (!IsHeliumNativeTranslateEnabled() || !details.has_run_lang_detection ||
++      details.contents.empty()) {
++    return false;
++  }
++  return !details.is_model_reliable ||
++         details.model_detected_language.empty() ||
++         details.model_detected_language ==
++             language_detection::kUnknownLanguageCode;
++}
++
++void ContentTranslateDriver::OnPlatformLanguageDetected(
++    int request_id,
++    mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
++    translate::LanguageDetectionDetails details,
++    const std::string& language,
++    bool is_reliable) {
++  if (request_id != platform_language_detection_request_id_ ||
++      !web_contents()) {
++    return;
++  }
++
++  details.model_detected_language = language;
++  details.is_model_reliable = is_reliable;
++  details.detection_model_version = "NaturalLanguage";
++  // Combine with the declared language like the renderer does.
++  details.adopted_language = translate::DeterminePageLanguage(
++      details.content_language, details.html_root_language,
++      is_reliable ? language
++                  : std::string(language_detection::kUnknownLanguageCode),
++      is_reliable);
++  const bool page_level_translation_criteria_met =
++      !details.has_notranslate && !details.adopted_language.empty();
++
++  RegisterPageWithDetails(std::move(translate_agent), details,
++                          page_level_translation_criteria_met);
++}
++#endif
++
++void ContentTranslateDriver::RegisterPageWithDetails(
++    mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
++    const translate::LanguageDetectionDetails& details,
++    const bool page_level_translation_criteria_met) {
+   base::TimeTicks language_determined_time = base::TimeTicks::Now();
+ 
+   int page_seq_no = UpdatePageSequenceNumber();
+--- a/components/translate/content/browser/content_translate_driver.h
++++ b/components/translate/content/browser/content_translate_driver.h
+@@ -17,6 +17,7 @@
+ #include "base/observer_list.h"
+ #include "base/scoped_observation_traits.h"
+ #include "base/time/time.h"
++#include "build/build_config.h"
+ #include "components/translate/content/common/translate.mojom.h"
+ #include "components/translate/core/browser/translate_driver.h"
+ #include "components/translate/core/common/translate_errors.h"
+@@ -143,6 +144,24 @@ class ContentTranslateDriver : public Tr
+   void OnSidePanelAway(int page_seq_no);
+   bool IsPdfTranslation();
+ 
++  void RegisterPageWithDetails(
++      mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
++      const translate::LanguageDetectionDetails& details,
++      bool page_level_translation_criteria_met);
++
++#if BUILDFLAG(IS_MAC)
++  // Re-detects the page language when the renderer's model was unavailable
++  // or unreliable.
++  static bool ShouldUsePlatformLanguageDetection(
++      const translate::LanguageDetectionDetails& details);
++  void OnPlatformLanguageDetected(
++      int request_id,
++      mojo::PendingRemote<translate::mojom::TranslateAgent> translate_agent,
++      translate::LanguageDetectionDetails details,
++      const std::string& language,
++      bool is_reliable);
++#endif
++
+   int UpdatePageSequenceNumber();
+   void BindSidePanelTranslateAgent(
+       int page_seq_no,
+@@ -201,6 +220,11 @@ class ContentTranslateDriver : public Tr
+   // page language is determined.
+   base::TimeTicks finish_navigation_time_;
+ 
++#if BUILDFLAG(IS_MAC)
++  // Drops platform language detection results for older pages.
++  int platform_language_detection_request_id_ = 0;
++#endif
++
+   base::WeakPtrFactory<ContentTranslateDriver> weak_pointer_factory_{this};
+ };
+ 
+--- /dev/null
++++ b/components/translate/content/browser/helium_platform_language_detection_mac.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef COMPONENTS_TRANSLATE_CONTENT_BROWSER_HELIUM_PLATFORM_LANGUAGE_DETECTION_MAC_H_
++#define COMPONENTS_TRANSLATE_CONTENT_BROWSER_HELIUM_PLATFORM_LANGUAGE_DETECTION_MAC_H_
++
++#include <string>
++
++#include "base/functional/callback_forward.h"
++
++namespace translate {
++
++// Detects the language of |text| with the NaturalLanguage framework and
++// replies with a Chromium translate language code.
++void DetectLanguageWithPlatform(
++    std::u16string text,
++    base::OnceCallback<void(const std::string& language, bool is_reliable)>
++        callback);
++
++}  // namespace translate
++
++#endif  // COMPONENTS_TRANSLATE_CONTENT_BROWSER_HELIUM_PLATFORM_LANGUAGE_DETECTION_MAC_H_
+--- /dev/null
++++ b/components/translate/content/browser/helium_platform_language_detection_mac.mm
+@@ -0,0 +1,83 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "components/translate/content/browser/helium_platform_language_detection_mac.h"
++
++#import <Foundation/Foundation.h>
++#import <NaturalLanguage/NaturalLanguage.h>
++
++#include <string_view>
++#include <utility>
++
++#include "base/containers/fixed_flat_map.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/thread_pool.h"
++#include "components/language_detection/core/constants.h"
++#include "components/translate/core/common/translate_util.h"
++
++namespace translate {
++namespace {
++
++constexpr size_t kMaxDetectionCharacters = 10000;
++
++struct DetectionResult {
++  std::string language = language_detection::kUnknownLanguageCode;
++  bool is_reliable = false;
++};
++
++// Chromium's translate codes differ from Apple's for a few languages.
++std::string ToTranslateLanguageCode(NSString* language) {
++  static constexpr auto kSynonyms =
++      base::MakeFixedFlatMap<std::string_view, std::string_view>({
++          {"nb", "no"},
++          {"zh-Hans", "zh-CN"},
++          {"zh-Hant", "zh-TW"},
++      });
++  std::string code = base::SysNSStringToUTF8(language);
++  if (const auto it = kSynonyms.find(code); it != kSynonyms.end()) {
++    return std::string(it->second);
++  }
++  return code;
++}
++
++DetectionResult DetectLanguage(const std::u16string& text) {
++  @autoreleasepool {
++    NLLanguageRecognizer* recognizer = [[NLLanguageRecognizer alloc] init];
++    [recognizer processString:base::SysUTF16ToNSString(text)];
++
++    NLLanguage language = recognizer.dominantLanguage;
++    if (!language || [language isEqualToString:NLLanguageUndetermined]) {
++      return {};
++    }
++
++    NSNumber* confidence =
++        [recognizer languageHypothesesWithMaximum:1][language];
++    return {ToTranslateLanguageCode(language),
++            confidence.doubleValue > kTFLiteReliabilityThreshold};
++  }
++}
++
++}  // namespace
++
++void DetectLanguageWithPlatform(
++    std::u16string text,
++    base::OnceCallback<void(const std::string& language, bool is_reliable)>
++        callback) {
++  if (text.size() > kMaxDetectionCharacters) {
++    text.resize(kMaxDetectionCharacters);
++  }
++  base::ThreadPool::PostTaskAndReplyWithResult(
++      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++      base::BindOnce(&DetectLanguage, std::move(text)),
++      base::BindOnce(
++          [](base::OnceCallback<void(const std::string&, bool)> callback,
++             DetectionResult result) {
++            std::move(callback).Run(result.language, result.is_reliable);
++          },
++          std::move(callback)));
++}
++
++}  // namespace translate
