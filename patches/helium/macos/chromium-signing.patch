@@ -54,7 +54,7 @@
  }
  
  assert(!is_ios, "Chromium/iOS shouldn't use anything in //chrome")
-@@ -773,9 +773,7 @@ if (is_win) {
+@@ -776,9 +776,7 @@ if (is_win) {
  
    compile_entitlements("entitlements") {
      entitlements_templates = [ "app/app-entitlements.plist" ]

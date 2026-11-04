@@ -22,7 +22,7 @@
  
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
-@@ -2694,19 +2694,6 @@ void BrowserActions::InitializeToolbarAn
+@@ -2727,19 +2727,6 @@ void BrowserActions::InitializeToolbarAn
            .SetActionId(kActionOpenInPwaWindow)
            .Build());
  
@@ -44,7 +44,7 @@
            base::BindRepeating(
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -2552,8 +2552,7 @@ void BrowserCommandController::UpdateCom
+@@ -2617,8 +2617,7 @@ void BrowserCommandController::UpdateCom
  #endif
  
    command_updater_->UpdateCommandEnabled(IDC_FULLSCREEN, fullscreen_enabled);
