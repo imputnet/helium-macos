@@ -252,17 +252,6 @@
 +}
 +
 +@end
---- a/chrome/browser/ui/BUILD.gn
-+++ b/chrome/browser/ui/BUILD.gn
-@@ -3357,6 +3357,8 @@ static_library("ui") {
-       "browser_shortcuts/browser_shortcut_platform_mac.h",
-       "browser_shortcuts/browser_shortcut_platform_mac.mm",
-       "views/helium/frame_corner_radius_mac.mm",
-+      "views/helium/fullscreen_window_controls_mac.h",
-+      "views/helium/fullscreen_window_controls_mac.mm",
-       "views/helium/native_frame_materials_mac.h",
-       "views/helium/native_frame_materials_mac.mm",
-     ]
 --- a/chrome/browser/ui/views/frame/browser_frame_view.h
 +++ b/chrome/browser/ui/views/frame/browser_frame_view.h
 @@ -163,6 +163,9 @@ class BrowserFrameView : public views::F
@@ -386,7 +375,7 @@
      // No insets for caption buttons in fullscreen, since caption buttons are on
      // a separate pane that slides in. However, preserve the height of the
      // caption area to ensure that the toolbar renders correctly (this is kind
-@@ -359,6 +366,7 @@ gfx::RoundedCornersF BrowserFrameViewMac
+@@ -361,6 +368,7 @@ gfx::RoundedCornersF BrowserFrameViewMac
  }
  
  void BrowserFrameViewMac::SetCaptionButtonsOpacity(float opacity) {
@@ -394,7 +383,7 @@
    NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
    if (!window) {
      return;
-@@ -370,6 +378,78 @@ void BrowserFrameViewMac::SetCaptionButt
+@@ -372,6 +380,78 @@ void BrowserFrameViewMac::SetCaptionButt
    }
  }
  
@@ -473,7 +462,7 @@
  ///////////////////////////////////////////////////////////////////////////////
  // BrowserFrameViewMac, views::FrameView implementation:
  
-@@ -395,6 +475,13 @@ gfx::Rect BrowserFrameViewMac::GetWindow
+@@ -397,6 +477,13 @@ gfx::Rect BrowserFrameViewMac::GetWindow
  }
  
  int BrowserFrameViewMac::NonClientHitTest(const gfx::Point& point) {
@@ -487,7 +476,7 @@
    int super_component = BrowserFrameView::NonClientHitTest(point);
    if (super_component != HTNOWHERE) {
      return super_component;
-@@ -570,9 +657,14 @@ int BrowserFrameViewMac::TopUIFullscreen
+@@ -572,9 +659,14 @@ int BrowserFrameViewMac::TopUIFullscreen
      menu_bar_height = 0;
    }
  
@@ -507,7 +496,7 @@
  }
 --- a/chrome/browser/ui/views/frame/browser_view.h
 +++ b/chrome/browser/ui/views/frame/browser_view.h
-@@ -1509,6 +1509,8 @@ class BrowserView : public BrowserWindow
+@@ -1500,6 +1500,8 @@ class BrowserView : public BrowserWindow
    base::OneShotTimer zen_cursor_exit_timer_;
    std::optional<gfx::Point> zen_last_cursor_;
    bool zen_mode_enabled_ = false;
@@ -545,7 +534,7 @@
      return;
    }
  
-@@ -2920,6 +2920,13 @@ void BrowserView::FullscreenStateChangin
+@@ -2917,6 +2917,13 @@ void BrowserView::FullscreenStateChangin
      return;
    }
  
@@ -559,7 +548,7 @@
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
      PrepareFullscreen(IsFullscreen());
    } else {
-@@ -2964,7 +2971,6 @@ void BrowserView::FullscreenStateChanged
+@@ -2961,7 +2968,6 @@ void BrowserView::FullscreenStateChanged
  
    multi_contents_view_->SetProperty(views::kWidgetForAnchoringKey,
                                      widget_for_anchoring);
@@ -567,7 +556,7 @@
  
  #endif  // BUILDFLAG(IS_MAC)
  
-@@ -2972,6 +2978,12 @@ void BrowserView::FullscreenStateChanged
+@@ -2969,6 +2975,12 @@ void BrowserView::FullscreenStateChanged
        ->fullscreen_controller()
        ->WindowFullscreenStateChanged();
  
@@ -580,7 +569,7 @@
    multi_contents_view_->OnFullscreenStateChanged();
  
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
-@@ -2987,6 +2999,10 @@ void BrowserView::FullscreenStateChanged
+@@ -2984,6 +2996,10 @@ void BrowserView::FullscreenStateChanged
      }
    }
  
@@ -591,7 +580,7 @@
    UpdateZenModeState();
  }
  
-@@ -5557,14 +5573,22 @@ gfx::Size BrowserView::GetMinimumSize()
+@@ -5554,14 +5570,22 @@ gfx::Size BrowserView::GetMinimumSize()
  
  void BrowserView::Layout(PassKey) {
    TRACE_EVENT0("ui", "BrowserView::Layout");
@@ -618,7 +607,7 @@
    if (base::FeatureList::IsEnabled(
            features::kDeferLayoutDuringBrowserStartup) &&
        startup_layout_state_ == StartupLayoutState::kDeferring &&
-@@ -5611,6 +5635,7 @@ void BrowserView::Layout(PassKey) {
+@@ -5608,6 +5632,7 @@ void BrowserView::Layout(PassKey) {
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
@@ -628,7 +617,7 @@
    if (omnibox::IsWebUIOmniboxInBrowserViewEnabled()) {
 --- a/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
 +++ b/chrome/browser/ui/views/frame/layout/browser_view_tabbed_layout_impl.cc
-@@ -343,6 +343,17 @@ BrowserViewTabbedLayoutImpl::CalculateSe
+@@ -388,6 +388,17 @@ BrowserViewTabbedLayoutImpl::CalculateSe
        break;
    }
  
@@ -662,7 +651,7 @@
    }
 --- a/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
 +++ b/components/remote_cocoa/app_shim/native_widget_ns_window_bridge.mm
-@@ -1856,13 +1856,6 @@ bool NativeWidgetNSWindowBridge::ShouldW
+@@ -1860,13 +1860,6 @@ bool NativeWidgetNSWindowBridge::ShouldW
    if (content_dip_size_.IsEmpty()) {
      return false;
    }
@@ -676,3 +665,35 @@
    return content_dip_size_ != compositor_frame_dip_size_;
  }
  
+--- a/chrome/browser/ui/views/frame/BUILD.gn
++++ b/chrome/browser/ui/views/frame/BUILD.gn
+@@ -2033,6 +2033,7 @@ if (is_mac) {
+       "//chrome/browser/picture_in_picture",
+       "//chrome/browser/profiles:profile",
+       "//chrome/browser/themes",
++      "//chrome/browser/ui/views/helium:fullscreen_window_controls_mac",
+       "//chrome/browser/ui/views/helium:native_frame_materials",
+       "//chrome/browser/ui:fullscreen_util_mac",
+       "//chrome/browser/ui:layout_constants",
+--- a/chrome/browser/ui/views/helium/BUILD.gn
++++ b/chrome/browser/ui/views/helium/BUILD.gn
+@@ -20,6 +20,19 @@ source_set("frame_corner_radius") {
+   }
+ }
+ 
++if (is_mac) {
++  source_set("fullscreen_window_controls_mac") {
++    sources = [
++      "fullscreen_window_controls_mac.h",
++      "fullscreen_window_controls_mac.mm",
++    ]
++    deps = [
++      "//base",
++      "//components/remote_cocoa/app_shim",
++    ]
++  }
++}
++
+ source_set("native_frame_materials") {
+   sources = [
+     "native_frame_materials.cc",

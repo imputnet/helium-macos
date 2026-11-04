@@ -18,7 +18,7 @@
 +Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/build/apple/tweak_info_plist.py
 +++ b/build/apple/tweak_info_plist.py
-@@ -217,6 +217,21 @@ def _IsValidBundleId(bundle_identifier):
+@@ -216,6 +216,21 @@ def _IsValidBundleId(bundle_identifier):
      return re.match(r'^[0-9a-zA-Z-.]+$', bundle_identifier) is not None
  
  
@@ -40,7 +40,7 @@
  def _TagSuffixes():
      # Keep this list sorted in the order that tag suffix components are to
      # appear in a tag value. That is to say, it should be sorted per ASCII.
-@@ -360,6 +375,36 @@ def Main(argv):
+@@ -359,6 +374,36 @@ def Main(argv):
          help='Use staging breakpad to upload reports. Ignored if --breakpad=0.',
      )
      parser.add_option(
@@ -77,7 +77,7 @@
          '--keystone',
          dest='use_keystone',
          action='store',
-@@ -536,6 +581,20 @@ def Main(argv):
+@@ -535,6 +580,20 @@ def Main(argv):
      else:
          _RemoveKeystoneKeys(plist)
  
@@ -108,7 +108,7 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -532,6 +533,20 @@ if (is_win) {
+@@ -537,6 +538,20 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
@@ -129,7 +129,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1350,6 +1365,10 @@ if (is_win) {
+@@ -1351,6 +1366,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -140,7 +140,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1408,6 +1427,12 @@ if (is_win) {
+@@ -1405,6 +1424,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -173,27 +173,6 @@
 +  # SUScheduledCheckInterval: number of seconds between update checks (min: 3600)
 +  sparkle_check_interval = 3600
 +}
---- a/chrome/browser/ui/BUILD.gn
-+++ b/chrome/browser/ui/BUILD.gn
-@@ -10,6 +10,7 @@ import("//build/config/ozone.gni")
- import("//build/config/ui.gni")
- import("//chrome/browser/buildflags.gni")
- import("//chrome/common/features.gni")
-+import("//chrome/updater/sparkle.gni")
- import("//components/captive_portal/core/features.gni")
- import("//components/compose/features.gni")
- import("//components/enterprise/buildflags/buildflags.gni")
-@@ -4606,6 +4607,10 @@ static_library("ui") {
-       "//ui/base/cursor",
-     ]
- 
-+    if (enable_sparkle) {
-+      public_configs = [ "//third_party/sparkle:sparkle_link_test" ]
-+    }
-+
-     # Any circular includes must depend on the target
-     # "//chrome/browser:browser_public_dependencies".
-     allow_circular_includes_from += [
 --- a/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 +++ b/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
 @@ -465,6 +465,8 @@
@@ -440,7 +419,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1609,6 +1617,21 @@ source_set("core") {
+@@ -1787,6 +1795,21 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]
@@ -462,6 +441,17 @@
    }
  
    if (!is_win && !is_android) {
+@@ -4580,6 +4603,10 @@ source_set("browser") {
+       "Carbon.framework",
+       "Quartz.framework",
+     ]
++
++    if (enable_sparkle) {
++      public_configs = [ "//third_party/sparkle:sparkle_link_test" ]
++    }
+   }
+ 
+   if (is_win) {
 --- a/chrome/browser/ui/webui/help/BUILD.gn
 +++ b/chrome/browser/ui/webui/help/BUILD.gn
 @@ -3,6 +3,7 @@

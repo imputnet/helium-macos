@@ -8,7 +8,7 @@
  #include <unistd.h>
  
  #include <optional>
-@@ -57,6 +58,11 @@ BASE_FEATURE(kMacSandboxRestrictGpuDarwi
+@@ -59,6 +60,11 @@ BASE_FEATURE(kMacSandboxRestrictGpuDarwi
  
  namespace {
  
@@ -20,7 +20,7 @@
  std::optional<base::FilePath>& GetNetworkTestCertsDirectory() {
    // Set by SetNetworkTestCertsDirectoryForTesting().
    static base::NoDestructor<std::optional<base::FilePath>>
-@@ -64,6 +70,14 @@ std::optional<base::FilePath>& GetNetwor
+@@ -66,6 +72,14 @@ std::optional<base::FilePath>& GetNetwor
    return *network_test_certs_dir;
  }
  
@@ -35,7 +35,7 @@
  // Produce the OS version as an integer "1010", etc. and pass that to the
  // profile. The profile converts the string back to a number and can do
  // comparison operations on OS version.
-@@ -118,6 +132,10 @@ void SetupCommonSandboxParameters(
+@@ -122,6 +136,10 @@ void SetupCommonSandboxParameters(
                                          enable_logging));
    CHECK(serializer->SetBooleanParameter(
        sandbox::policy::kParamDisableSandboxDenialLogging, !enable_logging));
@@ -48,9 +48,9 @@
        sandbox::policy::GetCanonicalPath(base::apple::MainBundlePath()).value();
 --- a/sandbox/policy/mac/common.sb
 +++ b/sandbox/policy/mac/common.sb
-@@ -32,6 +32,10 @@
- ; directories and files.
- (define restrict-gpu-darwin-user-dirs "RESTRICT_GPU_DARWIN_USER_DIRS")
+@@ -36,6 +36,10 @@
+ ; process.
+ (define webnn-compiler-process "WEBNN_COMPILER_PROCESS")
  
 +; Whether to allow ImageIO to use its out-of-process XPC service when
 +; Lockdown Mode is active.

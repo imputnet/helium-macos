@@ -1,16 +1,14 @@
 --- a/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
 +++ b/chrome/browser/resources/settings/appearance_page/appearance_page.html.ts
-@@ -263,16 +263,6 @@ export function getHtml(this: SettingsAp
+@@ -265,14 +265,6 @@ export function getHtml(this: SettingsAp
            label="$i18n{showZoomIndicator}">
        </settings-toggle-button>
      </div>
 -<if expr="is_macosx">
--    <settings-toggle-button class="hr"
--        pref-key="webkit.webprefs.tabs_to_links"
+-    <settings-toggle-button class="hr" pref-key="webkit.webprefs.tabs_to_links"
 -        label="$i18n{tabsToLinks}">
 -    </settings-toggle-button>
--    <settings-toggle-button class="hr"
--        pref-key="browser.confirm_to_quit"
+-    <settings-toggle-button class="hr" pref-key="browser.confirm_to_quit"
 -        label="$i18n{warnBeforeQuitting}">
 -    </settings-toggle-button>
 -</if>
@@ -19,17 +17,15 @@
  ${this.showManagedThemeDialog_ ? html`
 --- a/chrome/browser/resources/settings/system_page/system_page.html.ts
 +++ b/chrome/browser/resources/settings/system_page/system_page.html.ts
-@@ -53,6 +53,17 @@ export function getHtml(this: SettingsSy
+@@ -53,6 +53,15 @@ export function getHtml(this: SettingsSy
    ` : ''}
  </if>
  
 +<if expr="is_macosx">
-+    <settings-toggle-button class="hr"
-+        pref-key="webkit.webprefs.tabs_to_links"
++    <settings-toggle-button class="hr" pref-key="webkit.webprefs.tabs_to_links"
 +        label="$i18n{tabsToLinks}">
 +    </settings-toggle-button>
-+    <settings-toggle-button class="hr"
-+        pref-key="browser.confirm_to_quit"
++    <settings-toggle-button class="hr" pref-key="browser.confirm_to_quit"
 +        label="$i18n{warnBeforeQuitting}">
 +    </settings-toggle-button>
 +</if>
