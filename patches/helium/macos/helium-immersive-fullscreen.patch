@@ -252,6 +252,38 @@
 +}
 +
 +@end
+--- a/chrome/browser/ui/views/frame/BUILD.gn
++++ b/chrome/browser/ui/views/frame/BUILD.gn
+@@ -2033,6 +2033,7 @@ if (is_mac) {
+       "//chrome/browser/picture_in_picture",
+       "//chrome/browser/profiles:profile",
+       "//chrome/browser/themes",
++      "//chrome/browser/ui/views/helium:fullscreen_window_controls_mac",
+       "//chrome/browser/ui/views/helium:native_frame_materials",
+       "//chrome/browser/ui:fullscreen_util_mac",
+       "//chrome/browser/ui:layout_constants",
+--- a/chrome/browser/ui/views/helium/BUILD.gn
++++ b/chrome/browser/ui/views/helium/BUILD.gn
+@@ -20,6 +20,19 @@ source_set("frame_corner_radius") {
+   }
+ }
+ 
++if (is_mac) {
++  source_set("fullscreen_window_controls_mac") {
++    sources = [
++      "fullscreen_window_controls_mac.h",
++      "fullscreen_window_controls_mac.mm",
++    ]
++    deps = [
++      "//base",
++      "//components/remote_cocoa/app_shim",
++    ]
++  }
++}
++
+ source_set("native_frame_materials") {
+   sources = [
+     "native_frame_materials.cc",
 --- a/chrome/browser/ui/views/frame/browser_frame_view.h
 +++ b/chrome/browser/ui/views/frame/browser_frame_view.h
 @@ -163,6 +163,9 @@ class BrowserFrameView : public views::F
@@ -665,35 +697,3 @@
    return content_dip_size_ != compositor_frame_dip_size_;
  }
  
---- a/chrome/browser/ui/views/frame/BUILD.gn
-+++ b/chrome/browser/ui/views/frame/BUILD.gn
-@@ -2033,6 +2033,7 @@ if (is_mac) {
-       "//chrome/browser/picture_in_picture",
-       "//chrome/browser/profiles:profile",
-       "//chrome/browser/themes",
-+      "//chrome/browser/ui/views/helium:fullscreen_window_controls_mac",
-       "//chrome/browser/ui/views/helium:native_frame_materials",
-       "//chrome/browser/ui:fullscreen_util_mac",
-       "//chrome/browser/ui:layout_constants",
---- a/chrome/browser/ui/views/helium/BUILD.gn
-+++ b/chrome/browser/ui/views/helium/BUILD.gn
-@@ -20,6 +20,19 @@ source_set("frame_corner_radius") {
-   }
- }
- 
-+if (is_mac) {
-+  source_set("fullscreen_window_controls_mac") {
-+    sources = [
-+      "fullscreen_window_controls_mac.h",
-+      "fullscreen_window_controls_mac.mm",
-+    ]
-+    deps = [
-+      "//base",
-+      "//components/remote_cocoa/app_shim",
-+    ]
-+  }
-+}
-+
- source_set("native_frame_materials") {
-   sources = [
-     "native_frame_materials.cc",

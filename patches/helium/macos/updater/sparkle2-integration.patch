@@ -471,6 +471,30 @@
      sources = [ "version_updater_mac.mm" ]
      deps += [
        "//base:i18n",
+--- a/chrome/browser/upgrade_detector/BUILD.gn
++++ b/chrome/browser/upgrade_detector/BUILD.gn
+@@ -4,6 +4,10 @@
+ 
+ import("//build/config/ui.gni")
+ 
++if (is_mac) {
++  import("//chrome/updater/sparkle.gni")
++}
++
+ source_set("build_state_observer") {
+   public = [ "build_state_observer.h" ]
+ 
+@@ -132,6 +136,10 @@ source_set("impl") {
+       "get_installed_version_mac.mm",
+     ]
+     deps += [ "//chrome/browser/updater" ]
++
++    if (enable_sparkle) {
++      include_dirs = [ "//third_party/sparkle" ]
++    }
+   }
+ 
+   if (is_linux) {
 --- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 +++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 @@ -152,4 +152,24 @@ static BOOL SPUUpdateRequiresUserAttenti

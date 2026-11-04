@@ -20,6 +20,16 @@
        "//components/safe_browsing/core/common/proto:realtimeapi_proto",
        "//components/translate/content/browser",
        "//content/public/browser",
+--- a/chrome/browser/ui/tabs/BUILD.gn
++++ b/chrome/browser/ui/tabs/BUILD.gn
+@@ -725,7 +725,6 @@ if (!is_android) {
+       "//components/privacy_sandbox:features",
+       "//components/record_replay/core/common",
+       "//components/safe_browsing:buildflags",
+-      "//components/safe_browsing/content/browser",
+       "//components/safe_browsing/core/common:features",
+       "//components/search",
+       "//components/security_interstitials/content:security_interstitial_page",
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
 @@ -1638,7 +1638,6 @@ group("ui_public_dependencies") {
@@ -184,13 +194,3 @@
    }
  
    return false;
---- a/chrome/browser/ui/tabs/BUILD.gn
-+++ b/chrome/browser/ui/tabs/BUILD.gn
-@@ -725,7 +725,6 @@ if (!is_android) {
-       "//components/privacy_sandbox:features",
-       "//components/record_replay/core/common",
-       "//components/safe_browsing:buildflags",
--      "//components/safe_browsing/content/browser",
-       "//components/safe_browsing/core/common:features",
-       "//components/search",
-       "//components/security_interstitials/content:security_interstitial_page",
