@@ -1,18 +1,18 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -1531,6 +1531,9 @@ are declared in tools/grit/grit_args.gni
-         <message name="IDS_PROFILE_ROW_VERIFY_MESSAGE" desc="A label to indicate that the profile needs credential verification (reauthentication). This is a shorter version of 'Verify it's you' that is used in other places.">
-           Verify
+@@ -6042,6 +6042,9 @@ are declared in tools/grit/grit_args.gni
+         <message name="IDS_EXTENSIONS_TOOLBAR_ACTION_HOVER_CARD_POLICY_LABEL_INSTALLED_TEXT" desc="The text in the card that shows up on mouse hover of a toolbar action when extension was installed by the administrator.">
+           Installed by your administrator
          </message>
 +        <message name="IDS_CONTENT_CONTEXT_SYSTEM_TRANSLATE" desc="The name of the macOS system Translate command in the content area context menu">
 +          Translate “<ph name="SELECTION_TEXT">$1<ex>Bonjour</ex></ph>”
 +        </message>
          <if expr="not use_titlecase">
-         <if expr="is_win or is_macosx or is_linux">
-           <message name="IDS_RELAUNCH_TO_UPDATE_ALT" desc="Alternate text label of the relaunch to update Chrome menu item">
+           <message name="IDS_EXTENSIONS_CONTEXT_MENU_SITE_PERMISSIONS" desc="The label in an extension's context menu for the submenu specifying the extension site permissions (sentence case).">
+             Site permissions
 --- a/chrome/browser/ui/cocoa/BUILD.gn
 +++ b/chrome/browser/ui/cocoa/BUILD.gn
-@@ -97,6 +97,10 @@ source_set("cocoa") {
+@@ -109,6 +109,10 @@ source_set("cocoa") {
      "main_menu_item.h",
      "profiles/profile_menu_controller.mm",
      "renderer_context_menu/chrome_swizzle_services_menu_updater.mm",
@@ -23,7 +23,7 @@
      "renderer_context_menu/render_view_context_menu_mac.mm",
      "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
      "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
-@@ -149,10 +153,12 @@ source_set("cocoa") {
+@@ -161,10 +165,12 @@ source_set("cocoa") {
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles/keep_alive",
@@ -36,7 +36,7 @@
      "//chrome/browser/ui:accelerator_utils_headers",
      "//chrome/browser/ui:browser_command_controller",
      "//chrome/browser/ui:browser_commands",
-@@ -190,7 +196,9 @@ source_set("cocoa") {
+@@ -203,7 +209,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
      "//components/tabs:impl",
@@ -528,7 +528,7 @@
  // Context menu items that provide fast access to input methods.
 --- a/chrome/browser/ui/actions/chrome_action_id.h
 +++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -293,6 +293,8 @@
+@@ -297,6 +297,8 @@
      IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
    /* Other items. */ \
    E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
@@ -539,23 +539,23 @@
      IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS) \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -669,13 +669,14 @@ int UmaEnumForCommand(int key, UmaEnumId
-        {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 170},
+@@ -677,13 +677,14 @@ int UmaEnumForCommand(int key, UmaEnumId
         {IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU, 171},
-        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 172},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 173},
+        {IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION, 172},
+        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 173},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 174},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the RenderViewContextMenuItem enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {kUmaMaxValueKey, 173}});
-+       {kUmaMaxValueKey, 174}});
+-       {kUmaMaxValueKey, 174}});
++       {kUmaMaxValueKey, 175}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -717,13 +718,14 @@ int UmaEnumForCommand(int key, UmaEnumId
+@@ -725,13 +726,14 @@ int UmaEnumForCommand(int key, UmaEnumId
         {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
         {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 34},
         {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 35},
@@ -581,11 +581,11 @@
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -433,6 +434,7 @@ chromium-metrics-reviews@google.com.
-   <int value="170" label="IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE"/>
+@@ -443,6 +444,7 @@ chromium-metrics-reviews@google.com.
    <int value="171" label="IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU"/>
-   <int value="172" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
-+  <int value="173" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+   <int value="172" label="IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION"/>
+   <int value="173" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
++  <int value="174" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
@@ -634,7 +634,7 @@
  #endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_MAC_H_
 --- a/components/translate/core/browser/translate_manager.cc
 +++ b/components/translate/core/browser/translate_manager.cc
-@@ -309,6 +309,7 @@ bool TranslateManager::CanPartiallyTrans
+@@ -298,6 +298,7 @@ bool TranslateManager::CanPartiallyTrans
        target_lang);
  }
  
