@@ -12,7 +12,7 @@
              Site permissions
 --- a/chrome/browser/ui/cocoa/BUILD.gn
 +++ b/chrome/browser/ui/cocoa/BUILD.gn
-@@ -109,6 +109,10 @@ source_set("cocoa") {
+@@ -110,6 +110,10 @@ source_set("cocoa") {
      "main_menu_item.h",
      "profiles/profile_menu_controller.mm",
      "renderer_context_menu/chrome_swizzle_services_menu_updater.mm",
@@ -23,7 +23,7 @@
      "renderer_context_menu/render_view_context_menu_mac.mm",
      "renderer_context_menu/render_view_context_menu_mac_cocoa.mm",
      "renderer_context_menu/render_view_context_menu_mac_remote_cocoa.mm",
-@@ -161,10 +165,12 @@ source_set("cocoa") {
+@@ -162,10 +166,12 @@ source_set("cocoa") {
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles/keep_alive",
@@ -36,7 +36,7 @@
      "//chrome/browser/ui:accelerator_utils_headers",
      "//chrome/browser/ui:browser_command_controller",
      "//chrome/browser/ui:browser_commands",
-@@ -203,7 +209,9 @@ source_set("cocoa") {
+@@ -204,7 +210,9 @@ source_set("cocoa") {
      "//components/startup_metric_utils",
      "//components/tab_groups",
      "//components/tabs:impl",
