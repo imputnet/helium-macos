@@ -1,0 +1,591 @@
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -15859,6 +15859,21 @@ Please help our engineers fix this probl
+         <message name="IDS_TRANSLATE_BUBBLE_COULD_NOT_TRANSLATE_TITLE" desc="Title text for the translate bubble label when the page could not be translated. This is also announced to the screenreader.">
+           This page couldn't be translated
+         </message>
++        <message name="IDS_TRANSLATE_BUBBLE_HELIUM_DOWNLOAD_TITLE" desc="Title text for the translate bubble when the page can't be translated until a translation language is downloaded.">
++          Language download needed
++        </message>
++        <message name="IDS_TRANSLATE_BUBBLE_HELIUM_DOWNLOAD_MESSAGE" desc="Message in the translate bubble explaining that translation languages must be downloaded before the page can be translated.">
++          To translate <ph name="SOURCE_LANGUAGE">$1<ex>German</ex></ph> to <ph name="TARGET_LANGUAGE">$2<ex>English</ex></ph>, download the languages for Apple's on-device translation model.
++        </message>
++        <message name="IDS_TRANSLATE_BUBBLE_HELIUM_OPEN_SETTINGS" desc="Text of the translate bubble button that opens the system settings for downloading translation languages.">
++          Open Settings
++        </message>
++        <message name="IDS_TRANSLATE_BUBBLE_HELIUM_UNSUPPORTED_TITLE" desc="Title text for the translate bubble when the language pair can't be translated on-device.">
++          Language not supported
++        </message>
++        <message name="IDS_TRANSLATE_BUBBLE_HELIUM_UNSUPPORTED_MESSAGE" desc="Message in the translate bubble explaining that the on-device translation model can't translate between the two languages.">
++          Apple's on-device translation model can't translate <ph name="SOURCE_LANGUAGE">$1<ex>Welsh</ex></ph> to <ph name="TARGET_LANGUAGE">$2<ex>English</ex></ph>.
++        </message>
+         <message name="IDS_TRANSLATE_BUBBLE_SOURCE_LANG_COMBOBOX_ACCNAME" desc="Accessible name for the source language selection combobox.">
+           Choose the page language to translate from
+         </message>
+--- a/chrome/browser/translate/BUILD.gn
++++ b/chrome/browser/translate/BUILD.gn
+@@ -12,6 +12,9 @@ source_set("translate") {
+     "translate_ranker_metrics_provider.h",
+     "translate_service.h",
+   ]
++  if (is_mac) {
++    public += [ "helium_native_translator_mac.h" ]
++  }
+ 
+   public_deps = [
+     "//base",
+@@ -94,10 +97,7 @@ source_set("impl") {
+   }
+ 
+   if (is_mac) {
+-    sources += [
+-      "helium_native_translator_mac.h",
+-      "helium_native_translator_mac.mm",
+-    ]
++    sources += [ "helium_native_translator_mac.mm" ]
+     frameworks = [
+       "Foundation.framework",
+       "NaturalLanguage.framework",
+--- a/chrome/browser/translate/helium_native_translator_mac.h
++++ b/chrome/browser/translate/helium_native_translator_mac.h
+@@ -5,6 +5,9 @@
+ #ifndef CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
+ #define CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
+ 
++#include <string>
++
++#include "base/functional/callback_forward.h"
+ #include "components/translate/content/common/translate.mojom-forward.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ 
+@@ -21,6 +24,24 @@ void CreateHeliumNativeTranslator(
+     content::RenderFrameHost* render_frame_host,
+     mojo::PendingReceiver<mojom::NativeTranslator> receiver);
+ 
++enum class HeliumLanguageStatus {
++  kUnknown,
++  kInstalled,
++  kNeedsDownload,
++  kUnsupported,
++};
++
++void GetHeliumLanguageStatus(
++    const std::string& source_lang,
++    const std::string& target_lang,
++    base::OnceCallback<void(HeliumLanguageStatus)> callback);
++
++// Runs |callback| with true once the language pair is installed, or with
++// false if it is unsupported or the wait times out.
++void WaitForHeliumLanguageInstall(const std::string& source_lang,
++                                  const std::string& target_lang,
++                                  base::OnceCallback<void(bool)> callback);
++
+ }  // namespace translate
+ 
+ #endif  // CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
+--- a/chrome/browser/translate/helium_native_translator_mac.mm
++++ b/chrome/browser/translate/helium_native_translator_mac.mm
+@@ -18,6 +18,8 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/sys_string_conversions.h"
+ #include "base/task/bind_post_task.h"
++#include "base/task/sequenced_task_runner.h"
++#include "base/time/time.h"
+ #include "components/translate/content/common/translate.mojom.h"
+ #include "components/translate/core/common/translate_errors.h"
+ #include "content/public/browser/document_service.h"
+@@ -51,6 +53,12 @@
+ - (NSString*)targetText;
+ @end
+ 
++@protocol HeliumLTLanguageAvailability <NSObject>
++- (void)statusFromLanguage:(NSLocale*)sourceLocale
++                toLanguage:(NSLocale*)targetLocale
++                completion:(void (^)(NSUInteger status))completion;
++@end
++
+ namespace translate {
+ namespace {
+ 
+@@ -105,6 +113,14 @@ const TranslationClasses& GetTranslation
+   return classes;
+ }
+ 
++constexpr base::TimeDelta kInstallPollInterval = base::Seconds(3);
++constexpr base::TimeDelta kInstallTimeout = base::Minutes(10);
++
++// Values of _LTLanguageAvailability's status for a language pair.
++constexpr NSUInteger kLanguageStatusInstalled = 1;
++constexpr NSUInteger kLanguageStatusSupported = 2;
++constexpr NSUInteger kLanguageStatusUnsupported = 3;
++
+ // Chromium's translate codes differ from Apple's for a few languages.
+ NSLocale* LocaleForLanguage(std::string_view language) {
+   static constexpr auto kSynonyms =
+@@ -120,6 +136,57 @@ NSLocale* LocaleForLanguage(std::string_
+       [NSLocale localeWithLocaleIdentifier:base::SysUTF8ToNSString(language)];
+ }
+ 
++Class LanguageAvailabilityClass() {
++  static Class availability_class = []() -> Class {
++    if (!GetTranslationClasses().session) {
++      return Nil;
++    }
++    Class cls = NSClassFromString(@"_LTLanguageAvailability");
++    if (![cls instancesRespondToSelector:
++                  @selector(statusFromLanguage:toLanguage:completion:)]) {
++      return Nil;
++    }
++    return cls;
++  }();
++  return availability_class;
++}
++
++HeliumLanguageStatus ToLanguageStatus(NSUInteger status) {
++  switch (status) {
++    case kLanguageStatusInstalled:
++      return HeliumLanguageStatus::kInstalled;
++    case kLanguageStatusSupported:
++      return HeliumLanguageStatus::kNeedsDownload;
++    case kLanguageStatusUnsupported:
++      return HeliumLanguageStatus::kUnsupported;
++    default:
++      return HeliumLanguageStatus::kUnknown;
++  }
++}
++
++void PollLanguageInstall(const std::string& source_lang,
++                         const std::string& target_lang,
++                         base::TimeTicks deadline,
++                         base::OnceCallback<void(bool)> callback,
++                         HeliumLanguageStatus status) {
++  if (status == HeliumLanguageStatus::kInstalled) {
++    std::move(callback).Run(true);
++    return;
++  }
++  if (status == HeliumLanguageStatus::kUnsupported ||
++      base::TimeTicks::Now() >= deadline) {
++    std::move(callback).Run(false);
++    return;
++  }
++  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE,
++      base::BindOnce(
++          &GetHeliumLanguageStatus, source_lang, target_lang,
++          base::BindOnce(&PollLanguageInstall, source_lang, target_lang,
++                         deadline, std::move(callback))),
++      kInstallPollInterval);
++}
++
+ // TranslateAgent asks for "auto" when the page language is unknown ("und").
+ bool IsUnknownLanguage(std::string_view language) {
+   return language.empty() || language == "auto" || language == "und";
+@@ -341,4 +408,36 @@ void CreateHeliumNativeTranslator(
+   new HeliumNativeTranslator(*render_frame_host, std::move(receiver));
+ }
+ 
++void GetHeliumLanguageStatus(
++    const std::string& source_lang,
++    const std::string& target_lang,
++    base::OnceCallback<void(HeliumLanguageStatus)> callback) {
++  Class availability_class = LanguageAvailabilityClass();
++  if (!availability_class) {
++    std::move(callback).Run(HeliumLanguageStatus::kUnknown);
++    return;
++  }
++
++  id<HeliumLTLanguageAvailability> availability =
++      [[availability_class alloc] init];
++  __block auto reply = base::BindPostTaskToCurrentDefault(std::move(callback));
++  [availability statusFromLanguage:LocaleForLanguage(source_lang)
++                        toLanguage:LocaleForLanguage(target_lang)
++                        completion:^(NSUInteger status) {
++                          // Keep |availability| alive until it replies.
++                          [availability self];
++                          std::move(reply).Run(ToLanguageStatus(status));
++                        }];
++}
++
++void WaitForHeliumLanguageInstall(const std::string& source_lang,
++                                  const std::string& target_lang,
++                                  base::OnceCallback<void(bool)> callback) {
++  GetHeliumLanguageStatus(
++      source_lang, target_lang,
++      base::BindOnce(&PollLanguageInstall, source_lang, target_lang,
++                     base::TimeTicks::Now() + kInstallTimeout,
++                     std::move(callback)));
++}
++
+ }  // namespace translate
+--- a/chrome/browser/ui/translate/translate_bubble_model.h
++++ b/chrome/browser/ui/translate/translate_bubble_model.h
+@@ -63,6 +63,8 @@ class TranslateBubbleModel : public Tran
+   // Returns the source language code.
+   virtual std::string GetSourceLanguageCode() const = 0;
+ 
++  virtual std::string GetTargetLanguageCode() const;
++
+   // Invoked when the user actively declines to translate the page - e.g.
+   // selects 'nope', 'never translate this language', etc.
+   // Should not be invoked on a passive decline - i.e. if the bubble is closed
+--- a/chrome/browser/ui/translate/translate_bubble_model_impl.cc
++++ b/chrome/browser/ui/translate/translate_bubble_model_impl.cc
+@@ -107,6 +107,14 @@ std::string TranslateBubbleModelImpl::Ge
+   return ui_languages_manager_->GetSourceLanguageCode();
+ }
+ 
++std::string TranslateBubbleModel::GetTargetLanguageCode() const {
++  return std::string();
++}
++
++std::string TranslateBubbleModelImpl::GetTargetLanguageCode() const {
++  return ui_languages_manager_->GetTargetLanguageCode();
++}
++
+ int TranslateBubbleModelImpl::GetSourceLanguageIndex() const {
+   return ui_languages_manager_->GetSourceLanguageIndex();
+ }
+--- a/chrome/browser/ui/translate/translate_bubble_model_impl.h
++++ b/chrome/browser/ui/translate/translate_bubble_model_impl.h
+@@ -44,6 +44,7 @@ class TranslateBubbleModelImpl : public
+   std::optional<size_t> GetTargetLanguageIndexForCode(
+       const std::string& language_code) const override;
+   std::string GetSourceLanguageCode() const override;
++  std::string GetTargetLanguageCode() const override;
+   int GetSourceLanguageIndex() const override;
+   void UpdateSourceLanguageIndex(int index) override;
+   int GetTargetLanguageIndex() const override;
+--- a/chrome/browser/ui/views/translate/translate_bubble_view.cc
++++ b/chrome/browser/ui/views/translate/translate_bubble_view.cc
+@@ -13,6 +13,7 @@
+ #include <utility>
+ #include <vector>
+ 
++#include "base/functional/callback_helpers.h"
+ #include "base/i18n/string_compare.h"
+ #include "base/memory/singleton.h"
+ #include "base/metrics/field_trial_params.h"
+@@ -26,6 +27,7 @@
+ #include "chrome/browser/translate/translate_service.h"
+ #include "chrome/browser/ui/actions/chrome_action_id.h"
+ #include "chrome/browser/ui/browser_actions.h"
++#include "chrome/browser/ui/browser_element_identifiers.h"
+ #include "chrome/browser/ui/chrome_pages.h"
+ #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
+ #include "chrome/browser/ui/translate/target_language_combobox_model.h"
+@@ -40,18 +42,24 @@
+ #include "components/language_detection/core/constants.h"
+ #include "components/prefs/pref_service.h"
+ #include "components/strings/grit/components_strings.h"
++#include "components/tabs/public/tab_interface.h"
+ #include "components/translate/core/browser/translate_download_manager.h"
+ #include "components/translate/core/browser/translate_manager.h"
+ #include "components/translate/core/browser/translate_metrics_logger.h"
+ #include "components/translate/core/browser/translate_prefs.h"
+ #include "components/translate/core/browser/translate_ui_delegate.h"
+ #include "components/translate/core/common/translate_features.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "ui/actions/actions.h"
+ #include "ui/base/interaction/element_identifier.h"
+ #include "ui/base/l10n/l10n_util.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
+ #include "ui/base/metadata/metadata_impl_macros.h"
+ #include "ui/base/models/combobox_model.h"
++#include "ui/base/models/dialog_model.h"
+ #include "ui/base/models/simple_combobox_model.h"
+ #include "ui/base/mojom/dialog_button.mojom.h"
+ #include "ui/base/mojom/menu_source_type.mojom.h"
+@@ -62,6 +70,8 @@
+ #include "ui/strings/grit/ui_strings.h"
+ #include "ui/views/accessibility/view_accessibility.h"
+ #include "ui/views/border.h"
++#include "ui/views/bubble/bubble_border.h"
++#include "ui/views/bubble/bubble_dialog_model_host.h"
+ #include "ui/views/bubble/bubble_frame_view.h"
+ #include "ui/views/controls/button/checkbox.h"
+ #include "ui/views/controls/button/image_button.h"
+@@ -84,6 +94,7 @@
+ #include "ui/views/style/platform_style.h"
+ #include "ui/views/view_class_properties.h"
+ #include "ui/views/widget/widget.h"
++#include "url/gurl.h"
+ 
+ namespace {
+ 
+@@ -105,6 +116,155 @@ std::unique_ptr<views::View> CreateWordm
+ #endif
+ }
+ 
++#if BUILDFLAG(IS_MAC)
++constexpr char kTranslationLanguagesSettingsUrl[] =
++    "x-apple.systempreferences:com.apple.Localization-Settings.extension?"
++    "translation";
++
++int GetLastCommittedEntryId(content::WebContents* web_contents) {
++  content::NavigationEntry* entry =
++      web_contents->GetController().GetLastCommittedEntry();
++  return entry ? entry->GetUniqueID() : 0;
++}
++
++void RetranslateAfterLanguageInstall(
++    base::WeakPtr<content::WebContents> web_contents,
++    int entry_id,
++    const std::string& source_lang,
++    const std::string& target_lang,
++    bool installed) {
++  // Skip pages navigated to while the languages were downloading.
++  if (!installed || !web_contents || !entry_id ||
++      GetLastCommittedEntryId(web_contents.get()) != entry_id) {
++    return;
++  }
++  ChromeTranslateClient* client =
++      ChromeTranslateClient::FromWebContents(web_contents.get());
++  if (!client) {
++    return;
++  }
++  // Another wait may have translated the page already.
++  const translate::LanguageState& language_state = client->GetLanguageState();
++  if (language_state.IsPageTranslated() ||
++      language_state.translation_pending()) {
++    return;
++  }
++  client->GetTranslateManager()->TranslatePage(
++      source_lang, target_lang, /*triggered_from_menu=*/false,
++      translate::TranslationType::kManualUiReTranslation);
++}
++
++void OpenTranslationLanguageSettings(
++    base::WeakPtr<content::WebContents> web_contents,
++    int entry_id,
++    const std::string& source_lang,
++    const std::string& target_lang) {
++  platform_util::OpenExternal(GURL(kTranslationLanguagesSettingsUrl));
++  if (!web_contents) {
++    return;
++  }
++  // Translate as soon as the languages are downloaded.
++  translate::WaitForHeliumLanguageInstall(
++      source_lang, target_lang,
++      base::BindOnce(&RetranslateAfterLanguageInstall, std::move(web_contents),
++                     entry_id, source_lang, target_lang));
++}
++
++// Closes the language status bubble when its page goes away, like the
++// translate bubble.
++class HeliumLanguageStatusBubbleCloser : public content::WebContentsObserver {
++ public:
++  explicit HeliumLanguageStatusBubbleCloser(content::WebContents* web_contents)
++      : content::WebContentsObserver(web_contents) {}
++
++  void set_widget(base::WeakPtr<views::Widget> widget) {
++    widget_ = std::move(widget);
++  }
++
++  // content::WebContentsObserver:
++  void PrimaryPageChanged(content::Page& page) override { Close(); }
++  void OnVisibilityChanged(content::Visibility visibility) override {
++    if (visibility == content::Visibility::HIDDEN) {
++      Close();
++    }
++  }
++  void WebContentsDestroyed() override { Close(); }
++
++ private:
++  void Close() {
++    if (widget_) {
++      widget_->Close();
++    }
++  }
++
++  base::WeakPtr<views::Widget> widget_;
++};
++
++void ShowHeliumLanguageStatusBubble(
++    views::View* anchor_view,
++    views::BubbleBorder::Arrow arrow,
++    translate::HeliumLanguageStatus status,
++    const std::string& source_lang,
++    const std::string& target_lang,
++    const std::u16string& source_name,
++    const std::u16string& target_name,
++    content::WebContents* web_contents,
++    base::WeakPtr<actions::ActionItem> translate_action) {
++  const bool needs_download =
++      status == translate::HeliumLanguageStatus::kNeedsDownload;
++  auto closer =
++      std::make_unique<HeliumLanguageStatusBubbleCloser>(web_contents);
++  HeliumLanguageStatusBubbleCloser* closer_ptr = closer.get();
++  ui::DialogModel::Builder builder;
++  if (translate_action) {
++    // Let the translate icon close this bubble, like the translate bubble.
++    translate_action->SetIsShowingBubble(true);
++  }
++  builder.SetDialogDestroyingCallback(base::BindOnce(
++      [](base::WeakPtr<actions::ActionItem> translate_action,
++         std::unique_ptr<HeliumLanguageStatusBubbleCloser> closer) {
++        if (translate_action) {
++          translate_action->SetIsShowingBubble(false);
++        }
++      },
++      std::move(translate_action), std::move(closer)));
++  builder
++      .SetTitle(l10n_util::GetStringUTF16(
++          needs_download ? IDS_TRANSLATE_BUBBLE_HELIUM_DOWNLOAD_TITLE
++                         : IDS_TRANSLATE_BUBBLE_HELIUM_UNSUPPORTED_TITLE))
++      .AddParagraph(
++          ui::DialogModelLabel(
++              l10n_util::GetStringFUTF16(
++                  needs_download
++                      ? IDS_TRANSLATE_BUBBLE_HELIUM_DOWNLOAD_MESSAGE
++                      : IDS_TRANSLATE_BUBBLE_HELIUM_UNSUPPORTED_MESSAGE,
++                  source_name, target_name))
++              .set_is_secondary());
++  if (needs_download) {
++    builder
++        .AddOkButton(
++            base::BindOnce(&OpenTranslationLanguageSettings,
++                           web_contents->GetWeakPtr(),
++                           GetLastCommittedEntryId(web_contents), source_lang,
++                           target_lang),
++            ui::DialogModel::Button::Params().SetLabel(
++                l10n_util::GetStringUTF16(
++                    IDS_TRANSLATE_BUBBLE_HELIUM_OPEN_SETTINGS)))
++        .AddCancelButton(base::DoNothing());
++  } else {
++    builder.AddOkButton(base::DoNothing());
++  }
++
++  auto bubble = std::make_unique<views::BubbleDialogModelHost>(
++      builder.Build(), anchor_view, arrow);
++  bubble->SetHighlightedElement(kTranslatePageActionElementId);
++  views::Widget* widget = views::BubbleDialogDelegate::CreateBubbleDeprecated(
++      std::move(bubble), views::Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET);
++  closer_ptr->set_widget(widget->GetWeakPtr());
++  widget->Show();
++}
++#endif
++
+ void OpenLanguageSettings(TranslateBubbleModel* model_,
+                           content::WebContents* web_contents_) {
+   model_->ReportUIInteraction(translate::UIInteraction::kOpenLanguageSettings);
+@@ -234,6 +394,9 @@ void TranslateBubbleView::Init() {
+ 
+   if (GetViewState() == TranslateBubbleModel::VIEW_STATE_ERROR) {
+     model_->ShowError(error_type_);
++#if BUILDFLAG(IS_MAC)
++    CheckHeliumLanguageStatus();
++#endif
+   }
+ }
+ 
+@@ -1172,8 +1335,62 @@ void TranslateBubbleView::SwitchToErrorV
+   SwitchView(TranslateBubbleModel::VIEW_STATE_ERROR);
+   error_type_ = error_type;
+   model_->ShowError(error_type);
++#if BUILDFLAG(IS_MAC)
++  CheckHeliumLanguageStatus();
++#endif
++}
++
++#if BUILDFLAG(IS_MAC)
++void TranslateBubbleView::CheckHeliumLanguageStatus() {
++  weak_ptr_factory_.InvalidateWeakPtrs();
++  if (!translate::IsHeliumNativeTranslateEnabled() ||
++      model_->GetSourceLanguageCode() ==
++          language_detection::kUnknownLanguageCode) {
++    return;
++  }
++  translate::GetHeliumLanguageStatus(
++      model_->GetSourceLanguageCode(), model_->GetTargetLanguageCode(),
++      base::BindOnce(&TranslateBubbleView::OnHeliumLanguageStatus,
++                     weak_ptr_factory_.GetWeakPtr()));
+ }
+ 
++void TranslateBubbleView::OnHeliumLanguageStatus(
++    translate::HeliumLanguageStatus status) {
++  if ((status != translate::HeliumLanguageStatus::kNeedsDownload &&
++       status != translate::HeliumLanguageStatus::kUnsupported) ||
++      !GetAnchorView() || !web_contents()) {
++    return;
++  }
++
++  views::View* anchor_view = GetAnchorView();
++  const views::BubbleBorder::Arrow bubble_arrow = arrow();
++  const std::string source_lang = model_->GetSourceLanguageCode();
++  const std::string target_lang = model_->GetTargetLanguageCode();
++  const std::u16string source_name =
++      model_->GetSourceLanguageNameAt(model_->GetSourceLanguageIndex());
++  const std::u16string target_name =
++      model_->GetTargetLanguageNameAt(model_->GetTargetLanguageIndex());
++  content::WebContents* contents = web_contents();
++  base::WeakPtr<actions::ActionItem> translate_action;
++  if (tabs::TabInterface* tab =
++          tabs::TabInterface::MaybeGetFromContents(web_contents())) {
++    if (actions::ActionItem* item = actions::ActionManager::Get().FindAction(
++            kActionShowTranslate,
++            BrowserActions::From(tab->GetBrowserWindowInterface())
++                ->root_action_item())) {
++      translate_action = item->GetAsWeakPtr();
++    }
++  }
++
++  // Close synchronously, so closing doesn't reset the icon state of the new
++  // bubble. This deletes |this|.
++  GetWidget()->CloseNow();
++  ShowHeliumLanguageStatusBubble(
++      anchor_view, bubble_arrow, status, source_lang, target_lang, source_name,
++      target_name, contents, std::move(translate_action));
++}
++#endif
++
+ void TranslateBubbleView::UpdateAdvancedView() {
+   if (advanced_done_button_source_) {
+     advanced_done_button_source_->SetText(
+--- a/chrome/browser/ui/views/translate/translate_bubble_view.h
++++ b/chrome/browser/ui/views/translate/translate_bubble_view.h
+@@ -11,7 +11,9 @@
+ #include "base/functional/callback_forward.h"
+ #include "base/gtest_prod_util.h"
+ #include "base/memory/raw_ptr.h"
++#include "base/memory/weak_ptr.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "build/build_config.h"
+ #include "chrome/browser/translate/chrome_translate_client.h"
+ #include "chrome/browser/ui/translate/source_language_combobox_model.h"
+ #include "chrome/browser/ui/translate/target_language_combobox_model.h"
+@@ -32,6 +34,10 @@
+ #include "ui/views/controls/tabbed_pane/tabbed_pane_listener.h"
+ #include "ui/views/window/frame_view.h"
+ 
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/translate/helium_native_translator_mac.h"
++#endif
++
+ class BrowserWindowInterface;
+ 
+ namespace translate {
+@@ -258,6 +264,12 @@ class TranslateBubbleView : public Locat
+   // Switches to the error view.
+   void SwitchToErrorView(translate::TranslateErrors error_type);
+ 
++#if BUILDFLAG(IS_MAC)
++  // Replaces the error with a bubble for missing or unsupported languages.
++  void CheckHeliumLanguageStatus();
++  void OnHeliumLanguageStatus(translate::HeliumLanguageStatus status);
++#endif
++
+   // Updates the advanced view.
+   void UpdateAdvancedView();
+ 
+@@ -327,6 +339,8 @@ class TranslateBubbleView : public Locat
+   std::unique_ptr<WebContentMouseHandler> mouse_handler_;
+ 
+   base::OnceClosure on_closing_;
++
++  base::WeakPtrFactory<TranslateBubbleView> weak_ptr_factory_{this};
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_VIEWS_TRANSLATE_TRANSLATE_BUBBLE_VIEW_H_
