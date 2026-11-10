@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 set -exo pipefail
 
 source dev.sh
