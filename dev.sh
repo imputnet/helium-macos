@@ -111,12 +111,12 @@ ___helium_substitution() {
 }
 
 ___helium_build() {
+    local -a siso_flags=(${=SISO_FLAGS:-})
     cd "$_src_dir"
     if [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
         configure_siso || return
-        export RBE_service_no_security=true
     fi
-    helium_build -k 0
+    helium_build -k 0 "${siso_flags[@]}" "$@"
 }
 
 ___helium_run() {
@@ -257,7 +257,7 @@ __helium_menu() {
         tidy) ___helium_tidy;;
         lint) ___helium_lint;;
 
-        build) ___helium_build;;
+        build) shift; ___helium_build "$@";;
         run) ___helium_run;;
         reset) ___helium_reset;;
         *)
