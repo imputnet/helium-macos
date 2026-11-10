@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+if [ -z "${ZSH_VERSION:-}" ]; then
+    echo "dev.sh requires zsh; run 'source dev.sh' from zsh." >&2
+    return 1 2>/dev/null || exit 1
+fi
 
 _root_dir=$(dirname $(greadlink -f $0))
 
