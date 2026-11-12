@@ -634,7 +634,7 @@
  #endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_MAC_H_
 --- a/components/translate/core/browser/translate_manager.cc
 +++ b/components/translate/core/browser/translate_manager.cc
-@@ -298,6 +298,7 @@ bool TranslateManager::CanPartiallyTrans
+@@ -328,6 +328,7 @@ bool TranslateManager::CanPartiallyTrans
        target_lang);
  }
  
@@ -644,7 +644,7 @@
      return false;
 --- a/components/translate/core/browser/translate_manager.h
 +++ b/components/translate/core/browser/translate_manager.h
-@@ -148,7 +148,7 @@ class TranslateManager {
+@@ -152,7 +152,7 @@ class TranslateManager {
    // but shares a target language with full page translation.
    bool CanPartiallyTranslateTargetLanguage();
  
