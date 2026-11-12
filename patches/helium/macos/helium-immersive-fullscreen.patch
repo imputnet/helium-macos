@@ -259,9 +259,9 @@
        "//chrome/browser/profiles:profile",
        "//chrome/browser/themes",
 +      "//chrome/browser/ui/views/helium:fullscreen_window_controls_mac",
-       "//chrome/browser/ui/views/helium:native_frame_materials",
        "//chrome/browser/ui:fullscreen_util_mac",
        "//chrome/browser/ui:layout_constants",
+       "//chrome/browser/ui:view_ids",
 --- a/chrome/browser/ui/views/helium/BUILD.gn
 +++ b/chrome/browser/ui/views/helium/BUILD.gn
 @@ -20,6 +20,19 @@ source_set("frame_corner_radius") {
@@ -298,7 +298,7 @@
    // This is typically called when child views (e.g. tab strip, toolbar,
 --- a/chrome/browser/ui/views/frame/browser_frame_view_mac.h
 +++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.h
-@@ -26,6 +26,11 @@ enum class ToolbarVisibilityStyle;
+@@ -27,6 +27,11 @@ enum class ToolbarVisibilityStyle;
  }
  
  @class FullscreenToolbarController;
@@ -310,7 +310,7 @@
  
  class CaptionButtonPlaceholderContainer;
  
-@@ -62,6 +67,7 @@ class BrowserFrameViewMac : public Brows
+@@ -63,6 +68,7 @@ class BrowserFrameViewMac : public Brows
    void UpdateMinimumSize() override;
    void WindowControlsOverlayEnabledChanged() override;
    void SetCaptionButtonsOpacity(float opacity) override;
@@ -318,7 +318,7 @@
  
    // views::View:
    gfx::Size GetMinimumSize() const override;
-@@ -88,6 +94,10 @@ class BrowserFrameViewMac : public Brows
+@@ -89,6 +95,10 @@ class BrowserFrameViewMac : public Brows
    FRIEND_TEST_ALL_PREFIXES(BrowserFrameViewMacTest,
                             GetCaptionButtonPlaceholderBounds);
  
@@ -329,7 +329,7 @@
    // Calculate the y offset the top UI needs to shift down due to showing the
    // slide down menu bar at the very top in full screen.
    int TopUIFullscreenYOffset() const;
-@@ -116,6 +126,11 @@ class BrowserFrameViewMac : public Brows
+@@ -119,6 +129,11 @@ class BrowserFrameViewMac : public Brows
  
    FullscreenToolbarController* __strong fullscreen_toolbar_controller_;
  
@@ -343,7 +343,7 @@
    std::optional<base::TimeTicks> fullscreen_session_start_;
 --- a/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
 +++ b/chrome/browser/ui/views/frame/browser_frame_view_mac.mm
-@@ -27,6 +27,7 @@
+@@ -28,6 +28,7 @@
  #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
  #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
  #include "chrome/browser/ui/fullscreen_util_mac.h"
@@ -351,15 +351,15 @@
  #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
  #include "chrome/browser/ui/layout_constants.h"
  #include "chrome/browser/ui/tabs/tab_style.h"
-@@ -37,6 +38,7 @@
- #include "chrome/browser/ui/views/frame/browser_widget.h"
+@@ -39,6 +40,7 @@
  #include "chrome/browser/ui/views/frame/caption_button_placeholder_container.h"
+ #include "chrome/browser/ui/views/frame/glass_frame_service.h"
  #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
 +#import "chrome/browser/ui/views/helium/fullscreen_window_controls_mac.h"
- #include "chrome/browser/ui/views/helium/native_frame_materials.h"
  #include "chrome/browser/ui/views/tabs/tab_strip.h"
  #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
-@@ -61,6 +63,7 @@
+ #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_utils.h"
+@@ -64,6 +66,7 @@
  #include "ui/native_theme/native_theme.h"
  #include "ui/views/cocoa/native_widget_mac_ns_window_host.h"
  #include "ui/views/controls/label.h"
@@ -367,7 +367,7 @@
  #include "ui/views/layout/layout_types.h"
  #include "ui/views/widget/widget.h"
  
-@@ -119,6 +122,10 @@ BrowserFrameViewMac::BrowserFrameViewMac
+@@ -131,6 +134,10 @@ BrowserFrameViewMac::BrowserFrameViewMac
  }
  
  BrowserFrameViewMac::~BrowserFrameViewMac() {
@@ -378,7 +378,7 @@
    if ([fullscreen_toolbar_controller_ isInFullscreen]) {
      [fullscreen_toolbar_controller_ exitFullscreenMode];
    }
-@@ -163,14 +170,11 @@ void BrowserFrameViewMac::OnFullscreenSt
+@@ -175,14 +182,11 @@ void BrowserFrameViewMac::OnFullscreenSt
      return;
    }
  
@@ -395,7 +395,7 @@
      [fullscreen_toolbar_controller_ exitFullscreenMode];
    }
    GetBrowserView()->DeprecatedLayoutImmediately();
-@@ -215,7 +219,10 @@ bool BrowserFrameViewMac::CaptionButtons
+@@ -227,7 +231,10 @@ bool BrowserFrameViewMac::CaptionButtons
  
  BrowserLayoutParams BrowserFrameViewMac::GetBrowserLayoutParams() const {
    auto params = BrowserFrameView::GetBrowserLayoutParams();
@@ -407,7 +407,7 @@
      // No insets for caption buttons in fullscreen, since caption buttons are on
      // a separate pane that slides in. However, preserve the height of the
      // caption area to ensure that the toolbar renders correctly (this is kind
-@@ -361,6 +368,7 @@ gfx::RoundedCornersF BrowserFrameViewMac
+@@ -365,6 +372,7 @@ gfx::RoundedCornersF BrowserFrameViewMac
  }
  
  void BrowserFrameViewMac::SetCaptionButtonsOpacity(float opacity) {
@@ -415,7 +415,7 @@
    NSWindow* window = GetWidget()->GetNativeWindow().GetNativeNSWindow();
    if (!window) {
      return;
-@@ -372,6 +380,78 @@ void BrowserFrameViewMac::SetCaptionButt
+@@ -376,6 +384,78 @@ void BrowserFrameViewMac::SetCaptionButt
    }
  }
  
@@ -494,7 +494,7 @@
  ///////////////////////////////////////////////////////////////////////////////
  // BrowserFrameViewMac, views::FrameView implementation:
  
-@@ -397,6 +477,13 @@ gfx::Rect BrowserFrameViewMac::GetWindow
+@@ -401,6 +481,13 @@ gfx::Rect BrowserFrameViewMac::GetWindow
  }
  
  int BrowserFrameViewMac::NonClientHitTest(const gfx::Point& point) {
@@ -508,7 +508,7 @@
    int super_component = BrowserFrameView::NonClientHitTest(point);
    if (super_component != HTNOWHERE) {
      return super_component;
-@@ -572,9 +659,14 @@ int BrowserFrameViewMac::TopUIFullscreen
+@@ -578,9 +665,14 @@ int BrowserFrameViewMac::TopUIFullscreen
      menu_bar_height = 0;
    }
  
