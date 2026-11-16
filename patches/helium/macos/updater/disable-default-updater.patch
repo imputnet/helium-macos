@@ -1,12 +1,25 @@
 --- a/chrome/browser/ui/webui/help/version_updater_mac.mm
 +++ b/chrome/browser/ui/webui/help/version_updater_mac.mm
-@@ -120,6 +120,9 @@ class VersionUpdaterMac : public Version
+@@ -43,6 +43,7 @@ int GetDownloadProgress(int64_t download
+                           0.0, 1.0);
+ }
+ 
++[[maybe_unused]]
+ void UpdateStatus(VersionUpdater::StatusCallback status_callback,
+                   const updater::UpdateService::UpdateState& update_state) {
+   VersionUpdater::Status status = VersionUpdater::Status::CHECKING;
+@@ -120,11 +121,9 @@ class VersionUpdaterMac : public Version
    // VersionUpdater implementation.
    void CheckForUpdate(StatusCallback status_callback,
                        PromoteCallback promote_callback) override {
-+    status_callback.Run(VersionUpdater::Status::DISABLED, 0, false, false, "", 0, u"");
-+    return;
-+
-     updater::EnsureUpdater(
-         base::TaskPriority::USER_VISIBLE,
-         base::BindOnce(promote_callback, PromotionState::PROMOTE_ENABLED),
+-    updater::EnsureUpdater(
+-        base::TaskPriority::USER_VISIBLE,
+-        base::BindOnce(promote_callback, PromotionState::PROMOTE_ENABLED),
+-        base::BindOnce(&updater::CheckForUpdate,
+-                       base::BindRepeating(&UpdateStatus, status_callback)));
++    // Helium is updated by Sparkle, not by the Chromium updater.
++    status_callback.Run(VersionUpdater::Status::DISABLED, 0, false, false, "",
++                        0, u"");
+   }
+   void PromoteUpdater() override { updater::SetUpSystemUpdater(); }
+ };

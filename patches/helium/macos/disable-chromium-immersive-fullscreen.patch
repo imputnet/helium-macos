@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
 +++ b/chrome/browser/ui/window_feature_controller/window_feature_controller.cc
-@@ -60,17 +60,11 @@ bool WindowFeatureController::IsTrustedS
+@@ -61,17 +61,11 @@ bool WindowFeatureController::IsTrustedS
  
  #if BUILDFLAG(IS_MAC)
  bool WindowFeatureController::UsesImmersiveFullscreenMode() const {
@@ -22,7 +22,7 @@
  
 --- a/chrome/browser/ui/browser_actions.cc
 +++ b/chrome/browser/ui/browser_actions.cc
-@@ -2742,19 +2742,6 @@ void BrowserActions::InitializeToolbarAn
+@@ -2805,19 +2805,6 @@ void BrowserActions::InitializeToolbarAn
            .SetActionId(kActionOpenInPwaWindow)
            .Build());
  
@@ -44,7 +44,7 @@
            base::BindRepeating(
 --- a/chrome/browser/ui/browser_command_controller.cc
 +++ b/chrome/browser/ui/browser_command_controller.cc
-@@ -2617,8 +2617,7 @@ void BrowserCommandController::UpdateCom
+@@ -2634,8 +2634,7 @@ void BrowserCommandController::UpdateCom
  #endif
  
    command_updater_->UpdateCommandEnabled(IDC_FULLSCREEN, fullscreen_enabled);
@@ -69,7 +69,7 @@
  namespace chrome {
  
 -void ToggleAlwaysShowToolbarInFullscreen(BrowserWindowInterface* browser) {
--  DCHECK(browser);
+-  CHECK(browser, base::NotFatalUntil::M162);
 -
 -  // If this browser belongs to an app, toggle the value for that app.
 -  web_app::AppBrowserController* app_controller =
