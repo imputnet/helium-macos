@@ -25,6 +25,20 @@
 1. Unlink binutils to use the one provided with Xcode: `brew unlink binutils`
 1. Restart your terminal.
 
+### Nix
+Instead of Homebrew and pip, you can use the bundled Nix flake, which provides
+Python (with dependencies), coreutils, quilt, zstd, wget and sccache:
+
+```sh
+nix develop -c zsh     # or, with direnv: direnv allow
+```
+
+Xcode can't be shipped through Nix, so the shell uses the Xcode from
+`$HELIUM_XCODE` or `xcode-select -p`, and warns if it's missing, too old, or
+lacks the Metal toolchain. In that case, run `helium-xcode-setup [version]`
+from inside the shell: it installs Xcode via `xcodes` (Apple ID login
+required), accepts the license, and downloads the Metal toolchain.
+
 ## Official (non-development) build
 
 First, ensure the Xcode application is open.
