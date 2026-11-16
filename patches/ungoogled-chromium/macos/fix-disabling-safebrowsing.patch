@@ -2,7 +2,7 @@
 
 --- a/chrome/browser/extensions/BUILD.gn
 +++ b/chrome/browser/extensions/BUILD.gn
-@@ -902,9 +902,6 @@ source_set("extensions") {
+@@ -910,9 +910,6 @@ source_set("extensions") {
        # TODO(crbug.com/346472679): Remove this circular dependency.
        "//chrome/browser/web_applications/extensions",
  
@@ -12,7 +12,7 @@
        # TODO(crbug.com/343037853): Remove this circular dependency.
        "//chrome/browser/themes",
  
-@@ -931,7 +928,6 @@ source_set("extensions") {
+@@ -939,7 +936,6 @@ source_set("extensions") {
        "//chrome/common",
        "//chrome/common/extensions/api",
        "//components/omnibox/browser",
@@ -22,7 +22,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/tabs/BUILD.gn
 +++ b/chrome/browser/ui/tabs/BUILD.gn
-@@ -725,7 +725,6 @@ if (!is_android) {
+@@ -741,7 +741,6 @@ if (!is_android) {
        "//components/privacy_sandbox:features",
        "//components/record_replay/core/common",
        "//components/safe_browsing:buildflags",
@@ -30,19 +30,9 @@
        "//components/safe_browsing/core/common:features",
        "//components/search",
        "//components/security_interstitials/content:security_interstitial_page",
---- a/chrome/browser/ui/BUILD.gn
-+++ b/chrome/browser/ui/BUILD.gn
-@@ -1639,7 +1639,6 @@ group("ui_public_dependencies") {
-     "//components/dom_distiller/core",
-     "//components/enterprise/buildflags",
-     "//components/paint_preview/buildflags",
--    "//components/safe_browsing:buildflags",
-     "//components/segmentation_platform/public",
-     "//components/sync",
-     "//components/sync_user_events",
 --- a/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
 +++ b/chrome/browser/safe_browsing/download_protection/download_protection_service.cc
-@@ -391,8 +391,12 @@ void DownloadProtectionService::ShowDeta
+@@ -394,8 +394,12 @@ void DownloadProtectionService::ShowDeta
    Profile* profile = Profile::FromBrowserContext(
        content::DownloadItemUtils::GetBrowserContext(item));
    if (profile &&
@@ -57,7 +47,7 @@
      learn_more_url = GURL(chrome::kAdvancedProtectionDownloadLearnMoreURL);
 --- a/chrome/browser/download/notification/download_item_notification.cc
 +++ b/chrome/browser/download/notification/download_item_notification.cc
-@@ -981,9 +981,13 @@ std::u16string DownloadItemNotification:
+@@ -983,9 +983,13 @@ std::u16string DownloadItemNotification:
      }
      case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT: {
        bool requests_ap_verdicts =
@@ -160,7 +150,7 @@
      ash::prefs::kAuthenticationFlowAutoReloadInterval,
 --- a/chrome/browser/chrome_content_browser_client.cc
 +++ b/chrome/browser/chrome_content_browser_client.cc
-@@ -8659,33 +8659,6 @@ bool ChromeContentBrowserClient::SetupEm
+@@ -8735,33 +8735,6 @@ bool ChromeContentBrowserClient::SetupEm
      CHECK(!soda_language_pack_path.empty());
      CHECK(serializer->SetParameter(sandbox::policy::kParamSodaLanguagePackPath,
                                     soda_language_pack_path.value()));

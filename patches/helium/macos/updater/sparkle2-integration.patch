@@ -129,7 +129,7 @@
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1351,6 +1366,10 @@ if (is_win) {
+@@ -1366,6 +1381,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -140,7 +140,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1405,6 +1424,12 @@ if (is_win) {
+@@ -1420,6 +1439,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -419,7 +419,7 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1787,6 +1795,21 @@ source_set("core") {
+@@ -1889,6 +1897,21 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]
@@ -441,17 +441,17 @@
    }
  
    if (!is_win && !is_android) {
-@@ -4580,6 +4603,10 @@ source_set("browser") {
-       "Carbon.framework",
-       "Quartz.framework",
+@@ -4649,6 +4672,10 @@ source_set("browser") {
+       "//components/user_education/views",
+       "//ui/base:ozone_buildflags",
      ]
 +
 +    if (enable_sparkle) {
 +      public_configs = [ "//third_party/sparkle:sparkle_link_test" ]
 +    }
    }
- 
-   if (is_win) {
+   if (enable_print_preview) {
+     deps += [
 --- a/chrome/browser/ui/webui/help/BUILD.gn
 +++ b/chrome/browser/ui/webui/help/BUILD.gn
 @@ -3,6 +3,7 @@
@@ -462,7 +462,7 @@
  
  source_set("help") {
    public = [ "version_updater.h" ]
-@@ -35,7 +36,7 @@ source_set("help") {
+@@ -39,7 +40,7 @@ source_set("help") {
      ]
    }
  
@@ -563,7 +563,7 @@
  #include "chrome/browser/download/download_core_service.h"
  #include "chrome/browser/global_features.h"
  #include "chrome/browser/lifetime/application_lifetime.h"
-@@ -75,6 +76,10 @@
+@@ -76,6 +77,10 @@
  #include "chrome/browser/sessions/session_data_service_factory.h"
  #endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
  
@@ -574,7 +574,7 @@
  namespace chrome {
  
  namespace {
-@@ -286,8 +291,19 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -324,8 +329,19 @@ void AttemptRestartInternal(IgnoreUnload
    content::GetUIThreadTaskRunner({})->PostTask(
        FROM_HERE, base::BindOnce(&ExitIgnoreUnloadHandlers));
  #else   // !BUILDFLAG(IS_CHROMEOS).

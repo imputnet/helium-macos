@@ -1,6 +1,6 @@
 --- a/chrome/app/generated_resources.grd
 +++ b/chrome/app/generated_resources.grd
-@@ -6042,6 +6042,9 @@ are declared in tools/grit/grit_args.gni
+@@ -6051,6 +6051,9 @@ are declared in tools/grit/grit_args.gni
          <message name="IDS_EXTENSIONS_TOOLBAR_ACTION_HOVER_CARD_POLICY_LABEL_INSTALLED_TEXT" desc="The text in the card that shows up on mouse hover of a toolbar action when extension was installed by the administrator.">
            Installed by your administrator
          </message>
@@ -518,7 +518,7 @@
 +@end
 --- a/chrome/app/chrome_command_ids.h
 +++ b/chrome/app/chrome_command_ids.h
-@@ -408,6 +408,7 @@
+@@ -399,6 +399,7 @@
  #define IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE 50194
  // Listen to this page context menu.
  #define IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE 50195
@@ -526,66 +526,55 @@
  // Open with items.
  #define IDC_CONTENT_CONTEXT_OPEN_WITH1 50200
  // Context menu items that provide fast access to input methods.
---- a/chrome/browser/ui/actions/chrome_action_id.h
-+++ b/chrome/browser/ui/actions/chrome_action_id.h
-@@ -297,6 +297,8 @@
-     IDC_CONTENT_CONTEXT_REMOVELINKTOTEXT) \
-   /* Other items. */ \
-   E(kActionContentContextTranslate, IDC_CONTENT_CONTEXT_TRANSLATE) \
-+  E(kActionContentContextSystemTranslate, \
-+    IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE) \
-   E(kActionContentContextInspectElement, IDC_CONTENT_CONTEXT_INSPECTELEMENT) \
-   E(kActionContentContextLanguageSettings, \
-     IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS) \
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -677,13 +677,14 @@ int UmaEnumForCommand(int key, UmaEnumId
-        {IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU, 171},
+@@ -688,13 +688,14 @@ int UmaEnumForCommand(int key, UmaEnumId
         {IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION, 172},
-        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 173},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 174},
+        {IDC_CONTENT_CONTEXT_INDIGO, 173},
+        {IDC_CONTENT_CONTEXT_FORCE_PASTE, 174},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 175},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the RenderViewContextMenuItem enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {kUmaMaxValueKey, 174}});
-+       {kUmaMaxValueKey, 175}});
+-       {kUmaMaxValueKey, 175}});
++       {kUmaMaxValueKey, 176}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -725,13 +726,14 @@ int UmaEnumForCommand(int key, UmaEnumId
-        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
+@@ -737,13 +738,14 @@ int UmaEnumForCommand(int key, UmaEnumId
         {IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED, 34},
         {IDC_CONTENT_CONTEXT_ASK_GOOGLE_ABOUT_THIS_PAGE, 35},
-+       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 36},
+        {IDC_CONTENT_CONTEXT_INDIGO, 36},
++       {IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE, 37},
         // To add new items:
         //   - Add one more line above this comment block, using the UMA value
         //     from the line below this comment block.
         //   - Increment the UMA value in that latter line.
         //   - Add the new item to the ContextMenuOptionDesktop enum in
         //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {kUmaMaxValueKey, 36}});
-+       {kUmaMaxValueKey, 37}});
+-       {kUmaMaxValueKey, 37}});
++       {kUmaMaxValueKey, 38}});
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
  
    switch (type) {
 --- a/tools/metrics/histograms/metadata/ui/enums.xml
 +++ b/tools/metrics/histograms/metadata/ui/enums.xml
-@@ -81,6 +81,7 @@ chromium-metrics-reviews@google.com.
-   <int value="33" label="Remove from dictionary"/>
+@@ -82,6 +82,7 @@ chromium-metrics-reviews@google.com.
    <int value="34" label="Open link in isolated window"/>
    <int value="35" label="Ask Google about this page"/>
-+  <int value="36" label="Translate with macOS system translation"/>
+   <int value="36" label="Try it on (Indigo)"/>
++  <int value="37" label="Translate with macOS system translation"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -443,6 +444,7 @@ chromium-metrics-reviews@google.com.
-   <int value="171" label="IDC_CONTENT_CONTEXT_CONTEXTUAL_TASKS_SUBMENU"/>
+@@ -453,6 +454,7 @@ chromium-metrics-reviews@google.com.
    <int value="172" label="IDC_CONTENT_CONTEXT_GLIC_SMART_SUGGESTION"/>
-   <int value="173" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
-+  <int value="174" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
+   <int value="173" label="IDC_CONTENT_CONTEXT_INDIGO"/>
+   <int value="174" label="IDC_CONTENT_CONTEXT_FORCE_PASTE"/>
++  <int value="175" label="IDC_CONTENT_CONTEXT_SYSTEM_TRANSLATE"/>
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->

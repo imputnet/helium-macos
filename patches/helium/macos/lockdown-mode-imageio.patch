@@ -8,7 +8,7 @@
  #include <unistd.h>
  
  #include <optional>
-@@ -59,6 +60,11 @@ BASE_FEATURE(kMacSandboxRestrictGpuDarwi
+@@ -64,6 +65,11 @@ BASE_FEATURE(kMacSandboxAllowRendererPid
  
  namespace {
  
@@ -20,7 +20,7 @@
  std::optional<base::FilePath>& GetNetworkTestCertsDirectory() {
    // Set by SetNetworkTestCertsDirectoryForTesting().
    static base::NoDestructor<std::optional<base::FilePath>>
-@@ -66,6 +72,14 @@ std::optional<base::FilePath>& GetNetwor
+@@ -71,6 +77,14 @@ std::optional<base::FilePath>& GetNetwor
    return *network_test_certs_dir;
  }
  
@@ -35,7 +35,7 @@
  // Produce the OS version as an integer "1010", etc. and pass that to the
  // profile. The profile converts the string back to a number and can do
  // comparison operations on OS version.
-@@ -122,6 +136,10 @@ void SetupCommonSandboxParameters(
+@@ -127,6 +141,10 @@ void SetupCommonSandboxParameters(
                                          enable_logging));
    CHECK(serializer->SetBooleanParameter(
        sandbox::policy::kParamDisableSandboxDenialLogging, !enable_logging));
@@ -48,7 +48,7 @@
        sandbox::policy::GetCanonicalPath(base::apple::MainBundlePath()).value();
 --- a/sandbox/policy/mac/common.sb
 +++ b/sandbox/policy/mac/common.sb
-@@ -36,6 +36,10 @@
+@@ -39,6 +39,10 @@
  ; process.
  (define webnn-compiler-process "WEBNN_COMPILER_PROCESS")
  
@@ -61,7 +61,7 @@
    (deny default (with no-log))
 --- a/sandbox/policy/mac/renderer.sb
 +++ b/sandbox/policy/mac/renderer.sb
-@@ -84,6 +84,11 @@
+@@ -89,6 +89,11 @@
    (global-name "com.apple.system.notification_center")  ; https://crbug.com/792217
  )
  
