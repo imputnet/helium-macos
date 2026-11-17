@@ -254,7 +254,7 @@
 +@end
 --- a/chrome/browser/ui/views/frame/BUILD.gn
 +++ b/chrome/browser/ui/views/frame/BUILD.gn
-@@ -1956,6 +1956,7 @@ if (is_mac) {
+@@ -1958,6 +1958,7 @@ if (is_mac) {
        "//chrome/browser/picture_in_picture",
        "//chrome/browser/profiles:profile",
        "//chrome/browser/themes",
@@ -283,7 +283,7 @@
 +
  source_set("native_frame_materials") {
    sources = [
-     "native_frame_materials.cc",
+     "contents_reflection.cc",
 --- a/chrome/browser/ui/views/frame/browser_frame_view.h
 +++ b/chrome/browser/ui/views/frame/browser_frame_view.h
 @@ -169,6 +169,9 @@ class BrowserFrameView : public views::F
