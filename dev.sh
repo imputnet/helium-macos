@@ -302,7 +302,7 @@ ___helium_lint() {
     ___helium_tidy;
 }
 
-__helium_menu() {
+___helium_menu() {
     set -e
     case $1 in
         setup) shift; ___helium_setup "$@";;
@@ -374,7 +374,7 @@ __helium_menu() {
 }
 
 he() {
-    (__helium_menu "$@")
+    (___helium_menu "$@")
 }
 
 if ! (return 0 2>/dev/null); then
