@@ -120,7 +120,7 @@
 +    sys.exit(main())
 --- /dev/null
 +++ b/chrome/browser/mac/sparkle_glue.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,26 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -134,7 +134,8 @@
 +// Sparkle browser updates. UI thread only.
 +namespace helium {
 +
-+// Starts Sparkle. Checks only run while a profile allows updates.
++// Starts Sparkle, or shows a pending approval in a newly loaded profile. Checks
++// only run while a profile allows updates.
 +void StartSparkleUpdater();
 +
 +// Version of a downloaded update that awaits a relaunch.
@@ -148,7 +149,7 @@
 +#endif  // CHROME_BROWSER_MAC_SPARKLE_GLUE_H_
 --- /dev/null
 +++ b/chrome/browser/mac/sparkle_glue.mm
-@@ -0,0 +1,494 @@
+@@ -0,0 +1,501 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -485,6 +486,10 @@
 +void SparkleUpdater::Start() {
 +  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 +  if (updater_) {
++    // Profiles loaded later need the approval item too.
++    if (approval_reply_) {
++      SetApprovalErrorShown(true);
++    }
 +    return;
 +  }
 +
@@ -546,6 +551,9 @@
 +void SparkleUpdater::ReportError(NSError* error) {
 +  LOG(ERROR) << "Browser update failed: "
 +             << base::SysNSStringToUTF8(error.localizedDescription);
++  // The session is over, so a held relaunch can't install anymore.
++  pending_version_ = nil;
++  install_handler_ = nil;
 +  SetStatus(VersionUpdater::FAILED, 0,
 +            base::SysNSStringToUTF16(error.localizedDescription));
 +}
