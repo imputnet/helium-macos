@@ -7,3 +7,5 @@ build/
 .pc
 
 resources/generated/
+
+.direnv/

@@ -97,7 +97,8 @@ write_gn_args() {
       echo 'include_branded_entitlements=true' >> "$args"
     fi
     if [ "$mode" = dev ]; then
-      sed -i '' s/is_official_build/is_component_build/ "$args"
+      sed s/is_official_build/is_component_build/ "$args" > "$args.tmp"
+      mv "$args.tmp" "$args"
     fi
   fi
 

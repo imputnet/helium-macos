@@ -1,0 +1,48 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1794644783,
+        "narHash": "sha256-3GnIGIy15bMduoS9RnWqKTmsJLWThla42UFtm0S7+us=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "5d2b81a7a3be3e2f832879028e4d60abbf58e9a0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "q": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794849339,
+        "narHash": "sha256-CJvyXFeER+1m4MpQFDi7DGAN7fm/EVDfsSZn2C4BHSU=",
+        "owner": "imputnet",
+        "repo": "q",
+        "rev": "866c614ead6634979cacb1ec02f02927fbe3e5c2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "imputnet",
+        "repo": "q",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "q": "q"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
