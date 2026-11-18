@@ -96,7 +96,7 @@ mkShellNoCC {
     unset SDKROOT NIX_CFLAGS_COMPILE NIX_LDFLAGS MACOSX_DEPLOYMENT_TARGET \
       CC CXX LD AR NM RANLIB STRIP OBJC OBJCXX
 
-    __helium_check_xcode() {
+    ___helium_check_xcode() {
       local xcode xcode_version xcode_ok
       ${resolveXcode}
 
@@ -114,8 +114,8 @@ mkShellNoCC {
         echo "helium: Metal toolchain missing; run helium-xcode-setup" >&2
       fi
     }
-    __helium_check_xcode
-    unset -f __helium_check_xcode
+    ___helium_check_xcode
+    unset -f ___helium_check_xcode
   '';
 
   meta.platforms = lib.platforms.darwin;

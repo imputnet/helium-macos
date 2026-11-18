@@ -120,11 +120,80 @@ ___helium_build() {
 }
 
 ___helium_run() {
+    local profile="$HOME/Library/Application Support/net.imput.helium.dev"
+    # .git is a file in linked worktrees, and a directory in the main checkout
+    if [ -f "$_root_dir/.git" ]; then
+        profile="$profile.wt/${_root_dir#*.wt/}"
+    fi
+
     "$_out_dir/Helium.app/Contents/MacOS/Helium" \
-    --user-data-dir="$HOME/Library/Application Support/net.imput.helium.dev" \
+    --user-data-dir="$profile" \
     --enable-ui-devtools \
     --use-mock-keychain \
-    --disable-features=DialMediaRouteProvider
+    --disable-features=DialMediaRouteProvider \
+    "$@"
+}
+
+___helium_wt_path() {
+    local common
+    common=$(git -C "$_root_dir" rev-parse --path-format=absolute --git-common-dir)
+    echo "${common:h}.wt/$1"
+}
+
+___helium_wt_new() {
+    local name=${1:?usage: he wt new <name>} dest
+    dest=$(___helium_wt_path "$name")
+    if [ ! -f "$_root_dir/patches/series.merged" ] || [ ! -d "$_src_dir/.pc" ]; then
+        echo "$_src_dir must be set up with merged patches applied" >&2
+        return 1
+    fi
+
+    if git -C "$_root_dir" rev-parse -q --verify "refs/heads/$name" >/dev/null \
+        || git -C "$_main_repo" rev-parse -q --verify "refs/heads/$name" >/dev/null; then
+        echo "branch $name already exists" >&2
+        return 1
+    fi
+
+    git -C "$_root_dir" worktree add -b "$name" "$dest" HEAD
+    git -C "$_main_repo" worktree add -b "$name" "$dest/helium-chromium" HEAD
+
+    git -C "$_root_dir" diff --binary HEAD -- . ":!patches" ":!helium-chromium" \
+        | git -C "$dest" apply --allow-empty
+    git -C "$_main_repo" diff --binary HEAD -- . ":!patches" \
+        | git -C "$dest/helium-chromium" apply --allow-empty
+
+    rm -rf "$dest/patches"
+    /bin/cp -c -R "$_root_dir/patches" "$dest/patches"
+
+    mkdir -p "$dest/build"
+    ln -s "${_download_cache:A}" "$dest/build/download_cache"
+    /bin/cp -c -R -p "$_src_dir" "$dest/build/src"
+    for f in "$_subs_cache" "$_namesubs_cache"; do
+        [ ! -f "$f" ] || /bin/cp -c -p "$f" "$dest/build/"
+    done
+
+    printf '%s\n' "$dest/patches" > "$dest/build/src/.pc/.quilt_patches"
+    (cd "$dest" && source ./dev.sh && he configure)
+}
+
+___helium_wt_rm() {
+    local dest
+    dest=$(___helium_wt_path "${1:?usage: he wt rm <name>}")
+    [ -f "$dest/.git" ] || { echo "$dest is not a worktree" >&2; return 1; }
+    rm -rf "$dest/build"
+    git -C "$_main_repo" worktree remove --force "$dest/helium-chromium" || true
+    git -C "$_root_dir" worktree remove --force "$dest"
+}
+
+___helium_wt() {
+    case "${1:-}" in
+        new) shift; ___helium_wt_new "$@";;
+        rm) shift; ___helium_wt_rm "$@";;
+        ls) git -C "$_root_dir" worktree list;;
+        *)
+            echo "usage: he wt <new <name>|rm <name>|ls>" >&2
+            return 1
+    esac
 }
 
 ___helium_pull() {
@@ -233,7 +302,7 @@ ___helium_lint() {
     ___helium_tidy;
 }
 
-__helium_menu() {
+___helium_menu() {
     set -e
     case $1 in
         setup) shift; ___helium_setup "$@";;
@@ -258,8 +327,9 @@ __helium_menu() {
         lint) ___helium_lint;;
 
         build) shift; ___helium_build "$@";;
-        run) ___helium_run;;
+        run) shift; ___helium_run "$@";;
         reset) ___helium_reset;;
+        wt) shift; ___helium_wt "$@";;
         *)
             echo "usage: he <command>" >&2
             echo "\tsetup [-c] - sets up the dev environment, optionally cloning Chromium" >&2
@@ -293,13 +363,18 @@ __helium_menu() {
 
             echo "\n" >&2
             echo "\tbuild - builds a development binary" >&2
-            echo "\trun - runs a development build of helium with dev data dir & ui devtools enabled" >&2
+            echo "\trun [args] - runs a development build of helium with dev data dir & ui devtools enabled" >&2
             echo "\treset - nukes everything" >&2
+
+            echo "\n" >&2
+            echo "\twt new <name> - creates a worktree with an APFS clone of the current source tree" >&2
+            echo "\twt rm <name> - removes a worktree and its source tree, keeping its branches" >&2
+            echo "\twt ls - lists worktrees" >&2
     esac
 }
 
 he() {
-    (__helium_menu "$@")
+    (___helium_menu "$@")
 }
 
 if ! (return 0 2>/dev/null); then
