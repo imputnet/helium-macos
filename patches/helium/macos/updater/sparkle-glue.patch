@@ -1,0 +1,709 @@
+--- /dev/null
++++ b/third_party/sparkle/BUILD.gn
+@@ -0,0 +1,53 @@
++# Copyright 2025 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++import("//build/config/mac/mac_sdk.gni")
++
++assert(is_mac)
++
++action("build_sparkle_framework") {
++  script = "build_sparkle_framework.py"
++  sources = [ "Package.swift" ]
++  outputs = [
++    "$root_out_dir/BinaryDelta",
++    "$root_out_dir/Sparkle.framework",
++  ]
++  args = [
++    rebase_path(root_out_dir, root_build_dir),
++    mac_deployment_target,
++  ]
++}
++
++bundle_data("sparkle_framework") {
++  public_deps = [ ":build_sparkle_framework" ]
++  sources = [ "$root_out_dir/Sparkle.framework" ]
++  outputs = [ "{{bundle_contents_dir}}/Frameworks/{{source_file_part}}" ]
++}
++
++config("sparkle_config") {
++  include_dirs = [ "//third_party/sparkle" ]
++  framework_dirs = [ root_out_dir ]
++  frameworks = [ "Sparkle.framework" ]
++}
++
++group("sparkle") {
++  public_deps = [ ":build_sparkle_framework" ]
++  public_configs = [ ":sparkle_config" ]
++}
++
++# GN doesn't pass ldflags from source sets on to the linker, so each binary
++# that loads Sparkle adds the matching rpath with one of these configs.
++config("sparkle_link_framework") {
++  ldflags = [
++    "-rpath",
++    "@loader_path/Frameworks",
++  ]
++}
++
++config("sparkle_link_test") {
++  ldflags = [
++    "-rpath",
++    "@executable_path",
++  ]
++}
+--- /dev/null
++++ b/third_party/sparkle/build_sparkle_framework.py
+@@ -0,0 +1,61 @@
++#!/usr/bin/env python3
++
++# Copyright 2025 The Helium Authors
++# You can use, redistribute, and/or modify this source code under
++# the terms of the GPL-3.0 license that can be found in the LICENSE file.
++"""Usage: build_sparkle_framework.py <out_dir> <macos_deployment_target>"""
++
++import os
++import subprocess
++import sys
++import tempfile
++
++SPARKLE_DIR = os.path.dirname(os.path.abspath(__file__))
++
++# Skip everything Helium doesn't use.
++BUILD_SETTINGS = {
++    'SPARKLE_BUILD_UI_BITS': '0',
++    'SPARKLE_BUILD_LEGACY_SUUPDATER': '0',
++    'SPARKLE_BUILD_LEGACY_DSA_SUPPORT': '0',
++    'SPARKLE_BUILD_LEGACY_DELTA_SUPPORT': '0',
++    'GENERATE_APPCAST_BUILD_LEGACY_DSA_SUPPORT': '0',
++    'SPARKLE_BUILD_PACKAGE_SUPPORT': '0',
++    'SPARKLE_COPY_LOCALIZATIONS': '0',
++    'SPARKLE_EMBED_INSTALLER_LAUNCHER_XPC_SERVICE': '0',
++    'SPARKLE_EMBED_DOWNLOADER_XPC_SERVICE': '0',
++    'SPARKLE_EMBED_INSTALLER_STATUS_XPC_SERVICE': '0',
++    'SPARKLE_EMBED_INSTALLER_CONNECTION_XPC_SERVICE': '0',
++    'ENABLE_MODULE_VERIFIER': 'NO',
++}
++
++
++def main():
++    out_dir, deployment_target = sys.argv[1:]
++    # Sparkle's scripts need the BSD tools (e.g. `ln -h`).
++    env = dict(os.environ, PATH='/usr/bin:/bin:/usr/sbin:/sbin')
++    with tempfile.TemporaryDirectory() as temp_dir:
++        settings = dict(BUILD_SETTINGS,
++                        CONFIGURATION_BUILD_DIR=os.path.abspath(out_dir),
++                        MACOSX_DEPLOYMENT_TARGET=deployment_target,
++                        PROJECT_TEMP_DIR=temp_dir,
++                        SYMROOT=temp_dir)
++        for target in ('Sparkle', 'BinaryDelta'):
++            result = subprocess.run(
++                ['xcodebuild', '-disableAutomaticPackageResolution',
++                 '-target', target, '-configuration', 'Release'] +
++                [f'{key}={value}' for key, value in settings.items()] +
++                ['build'],
++                cwd=SPARKLE_DIR,
++                env=env,
++                stdout=subprocess.PIPE,
++                stderr=subprocess.STDOUT,
++                text=True,
++                check=False)
++            if result.returncode != 0:
++                sys.stderr.write(result.stdout)
++                return result.returncode
++    return 0
++
++
++if __name__ == '__main__':
++    sys.exit(main())
+--- /dev/null
++++ b/chrome/browser/mac/sparkle_glue.h
+@@ -0,0 +1,26 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_MAC_SPARKLE_GLUE_H_
++#define CHROME_BROWSER_MAC_SPARKLE_GLUE_H_
++
++#include <optional>
++#include <string>
++
++// Sparkle browser updates. UI thread only.
++namespace helium {
++
++// Starts Sparkle, or shows a pending approval in a newly loaded profile. Checks
++// only run while a profile allows updates.
++void StartSparkleUpdater();
++
++// Version of a downloaded update that awaits a relaunch.
++std::optional<std::string> GetSparklePendingUpdateVersion();
++
++// Installs the pending update and relaunches; false if there is none.
++bool RelaunchToInstallSparkleUpdate();
++
++}  // namespace helium
++
++#endif  // CHROME_BROWSER_MAC_SPARKLE_GLUE_H_
+--- /dev/null
++++ b/chrome/browser/mac/sparkle_glue.mm
+@@ -0,0 +1,499 @@
++// Copyright 2025 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/mac/sparkle_glue.h"
++
++#import <Foundation/Foundation.h>
++
++#include <algorithm>
++#include <memory>
++#include <optional>
++#include <string>
++#include <utility>
++
++#include "base/callback_list.h"
++#include "base/functional/bind.h"
++#include "base/functional/callback.h"
++#include "base/logging.h"
++#include "base/no_destructor.h"
++#include "base/strings/escape.h"
++#include "base/strings/sys_string_conversions.h"
++#include "chrome/app/chrome_command_ids.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/channel_selection.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "chrome/browser/ui/global_error/global_error.h"
++#include "chrome/browser/ui/global_error/global_error_service.h"
++#include "chrome/browser/ui/global_error/global_error_service_factory.h"
++#include "chrome/browser/ui/webui/help/version_updater.h"
++#include "chrome/grit/branded_strings.h"
++#include "components/helium_services/helium_services_helpers.h"
++#include "content/public/browser/browser_thread.h"
++#include "third_party/sparkle/Sparkle/Sparkle.h"
++#include "ui/base/l10n/l10n_util.h"
++
++@class HeliumSparkleDelegate;
++@class HeliumSparkleUserDriver;
++
++namespace {
++
++const PrefService* GetUpdatePrefs() {
++  ProfileManager* profile_manager = g_browser_process->profile_manager();
++  if (!profile_manager) {
++    return nullptr;
++  }
++
++  for (Profile* profile : profile_manager->GetLoadedProfiles()) {
++    if (helium::ShouldAccessUpdateService(*profile->GetPrefs())) {
++      return profile->GetPrefs();
++    }
++  }
++
++  return nullptr;
++}
++
++// Adds "Update Helium" to the app menu while an update waits for approval.
++class UpdateApprovalError : public GlobalError {
++ public:
++  Severity GetSeverity() override { return SEVERITY_LOW; }
++  bool HasMenuItem() override { return true; }
++  int MenuItemCommandID() override { return IDC_HELIUM_APPROVE_UPDATE; }
++  std::u16string MenuItemLabel() override {
++    return l10n_util::GetStringUTF16(IDS_HELIUM_APPROVE_UPDATE_MENU_ITEM);
++  }
++  void ExecuteMenuItem(BrowserWindowInterface* browser) override;
++  bool HasBubbleView() override { return false; }
++  bool HasShownBubbleView() override { return false; }
++  void ShowBubbleView(BrowserWindowInterface* browser) override {}
++  GlobalErrorBubbleViewBase* GetBubbleView() override { return nullptr; }
++};
++
++// Owns the SPUUpdater and keeps the latest status for new About pages.
++class SparkleUpdater {
++ public:
++  using StatusCallback =
++      base::RepeatingCallback<void(VersionUpdater::Status status,
++                                   int progress,
++                                   const std::u16string& message)>;
++
++  static SparkleUpdater& Get() {
++    static base::NoDestructor<SparkleUpdater> instance;
++    return *instance;
++  }
++
++  SparkleUpdater() = default;
++  SparkleUpdater(const SparkleUpdater&) = delete;
++  SparkleUpdater& operator=(const SparkleUpdater&) = delete;
++
++  void Start();
++  void CheckForUpdates();
++  base::CallbackListSubscription AddStatusCallback(StatusCallback callback);
++
++  void SetStatus(VersionUpdater::Status status,
++                 int progress = 0,
++                 const std::u16string& message = {});
++  void ReportError(NSError* error);
++  void SetPendingUpdate(NSString* version, void (^install_handler)(void));
++
++  // Sparkle couldn't install an update silently, so the user installs it from
++  // the app menu. macOS asks for an administrator password if needed.
++  void AwaitApproval(NSString* version, void (^reply)(SPUUserUpdateChoice));
++  void ApproveUpdate();
++  void CancelApproval();
++
++  std::optional<std::string> pending_version() const {
++    if (!pending_version_) {
++      return std::nullopt;
++    }
++
++    return base::SysNSStringToUTF8(pending_version_);
++  }
++
++  bool InstallPendingUpdate();
++
++ private:
++  void SetApprovalErrorShown(bool shown);
++
++  SPUUpdater* __strong updater_;
++  HeliumSparkleDelegate* __strong delegate_;
++  HeliumSparkleUserDriver* __strong user_driver_;
++
++  VersionUpdater::Status status_ = VersionUpdater::CHECKING;
++  int progress_ = 0;
++  std::u16string message_;
++  base::RepeatingCallbackList<
++      void(VersionUpdater::Status, int, const std::u16string&)>
++      status_callbacks_;
++
++  NSString* __strong pending_version_;
++  void (^install_handler_)(void);
++
++  UpdateApprovalError approval_error_;
++  void (^approval_reply_)(SPUUserUpdateChoice);
++};
++
++void UpdateApprovalError::ExecuteMenuItem(BrowserWindowInterface* browser) {
++  SparkleUpdater::Get().ApproveUpdate();
++}
++
++class VersionUpdaterSparkle : public VersionUpdater {
++ public:
++  VersionUpdaterSparkle() = default;
++  VersionUpdaterSparkle(const VersionUpdaterSparkle&) = delete;
++  VersionUpdaterSparkle& operator=(const VersionUpdaterSparkle&) = delete;
++  ~VersionUpdaterSparkle() override = default;
++
++  void CheckForUpdate(StatusCallback status_callback,
++                      PromoteCallback promote_callback) override {
++    status_callback_ = std::move(status_callback);
++    subscription_ = SparkleUpdater::Get().AddStatusCallback(base::BindRepeating(
++        &VersionUpdaterSparkle::OnStatus, base::Unretained(this)));
++    SparkleUpdater::Get().CheckForUpdates();
++  }
++
++  void PromoteUpdater() override {}
++
++ private:
++  void OnStatus(Status status, int progress, const std::u16string& message) {
++    status_callback_.Run(status, progress, false, false, std::string(), 0,
++                         message);
++  }
++
++  StatusCallback status_callback_;
++  base::CallbackListSubscription subscription_;
++};
++
++}  // namespace
++
++@interface HeliumSparkleDelegate : NSObject <SPUUpdaterDelegate>
++@end
++
++@implementation HeliumSparkleDelegate
++
++- (BOOL)updater:(SPUUpdater*)updater
++    mayPerformUpdateCheck:(SPUUpdateCheck)updateCheck
++                    error:(NSError* __autoreleasing*)error {
++  return GetUpdatePrefs() != nullptr;
++}
++
++- (NSString*)feedURLStringForUpdater:(SPUUpdater*)updater {
++  const PrefService* prefs = GetUpdatePrefs();
++  return prefs ? base::SysUTF8ToNSString(
++                     helium::GetBrowserUpdateURL(*prefs).spec())
++               : nil;
++}
++
++- (NSSet<NSString*>*)allowedChannelsForUpdater:(SPUUpdater*)updater {
++  return [NSSet
++      setWithObject:base::SysUTF8ToNSString(helium::GetSelectedChannel())];
++}
++
++- (void)updater:(SPUUpdater*)updater didFindValidUpdate:(SUAppcastItem*)item {
++  SparkleUpdater::Get().SetStatus(VersionUpdater::UPDATING);
++}
++
++- (void)updaterDidNotFindUpdate:(SPUUpdater*)updater error:(NSError*)error {
++  SparkleUpdater::Get().SetStatus(VersionUpdater::UPDATED);
++}
++
++- (void)updater:(SPUUpdater*)updater
++    failedToDownloadUpdate:(SUAppcastItem*)item
++                     error:(NSError*)error {
++  SparkleUpdater::Get().ReportError(error);
++}
++
++- (void)updater:(SPUUpdater*)updater didAbortWithError:(NSError*)error {
++  if (error.code == SUInstallationCanceledError) {
++    // The password prompt was canceled, so offer the update again.
++    SparkleUpdater::Get().CheckForUpdates();
++  } else if (error.code != SUNoUpdateError) {
++    SparkleUpdater::Get().ReportError(error);
++  }
++}
++
++// Install right away, but hold the relaunch until the user restarts.
++- (BOOL)updater:(SPUUpdater*)updater
++       willInstallUpdateOnQuit:(SUAppcastItem*)item
++    immediateInstallationBlock:(void (^)(void))immediateInstallHandler {
++  immediateInstallHandler();
++  return YES;
++}
++
++- (BOOL)updater:(SPUUpdater*)updater
++    shouldPostponeRelaunchForUpdate:(SUAppcastItem*)item
++                 untilInvokingBlock:(void (^)(void))installHandler {
++  SparkleUpdater::Get().SetPendingUpdate(item.versionString, installHandler);
++  return YES;
++}
++
++@end
++
++// No Sparkle UI. Always reply at once: Sparkle ignores new checks until then.
++@interface HeliumSparkleUserDriver : NSObject <SPUUserDriver>
++@end
++
++@implementation HeliumSparkleUserDriver {
++  uint64_t _expectedLength;
++  uint64_t _receivedLength;
++}
++
++- (void)showUpdatePermissionRequest:(SPUUpdatePermissionRequest*)request
++                              reply:
++                                  (void (^)(SUUpdatePermissionResponse*))reply {
++  reply([[SUUpdatePermissionResponse alloc] initWithAutomaticUpdateChecks:YES
++                                                        sendSystemProfile:NO]);
++}
++
++- (void)showUserInitiatedUpdateCheckWithCancellation:
++    (void (^)(void))cancellation {
++}
++
++// Only reached when an update can't be installed silently, e.g. because the
++// user can't write to the app bundle.
++- (void)showUpdateFoundWithAppcastItem:(SUAppcastItem*)item
++                                 state:(SPUUserUpdateState*)state
++                                 reply:(void (^)(SPUUserUpdateChoice))reply {
++  // Already approved; the relaunch is still held until the user restarts.
++  if (state.stage == SPUUserUpdateStageInstalling) {
++    reply(SPUUserUpdateChoiceInstall);
++    return;
++  }
++
++  SparkleUpdater::Get().AwaitApproval(item.displayVersionString, reply);
++}
++
++- (void)showUpdateReleaseNotesWithDownloadData:(SPUDownloadData*)downloadData {
++}
++
++- (void)showUpdateReleaseNotesFailedToDownloadWithError:(NSError*)error {
++}
++
++- (void)showUpdateNotFoundWithError:(NSError*)error
++                    acknowledgement:(void (^)(void))acknowledgement {
++  acknowledgement();
++}
++
++- (void)showUpdaterError:(NSError*)error
++         acknowledgement:(void (^)(void))acknowledgement {
++  acknowledgement();
++}
++
++- (void)showDownloadInitiatedWithCancellation:(void (^)(void))cancellation {
++}
++
++// Download fills the first half of the progress bar, extraction the second.
++- (void)showDownloadDidReceiveExpectedContentLength:(uint64_t)length {
++  _expectedLength = length;
++  _receivedLength = 0;
++}
++
++- (void)showDownloadDidReceiveDataOfLength:(uint64_t)length {
++  _receivedLength += length;
++  if (_expectedLength > 0) {
++    SparkleUpdater::Get().SetStatus(
++        VersionUpdater::UPDATING,
++        static_cast<int>(_receivedLength * 50 / _expectedLength));
++  }
++}
++
++- (void)showDownloadDidStartExtractingUpdate {
++  SparkleUpdater::Get().SetStatus(VersionUpdater::UPDATING, 50);
++}
++
++- (void)showExtractionReceivedProgress:(double)progress {
++  SparkleUpdater::Get().SetStatus(VersionUpdater::UPDATING,
++                                  50 + static_cast<int>(progress * 50));
++}
++
++// Only reached after the user approved the update.
++- (void)showReadyToInstallAndRelaunch:(void (^)(SPUUserUpdateChoice))reply {
++  reply(SPUUserUpdateChoiceInstall);
++}
++
++- (void)showInstallingUpdateWithApplicationTerminated:
++            (BOOL)applicationTerminated
++                          retryTerminatingApplication:
++                              (void (^)(void))retryTerminatingApplication {
++}
++
++- (void)showUpdateInstalledAndRelaunched:(BOOL)relaunched
++                         acknowledgement:(void (^)(void))acknowledgement {
++  acknowledgement();
++}
++
++- (void)dismissUpdateInstallation {
++  SparkleUpdater::Get().CancelApproval();
++}
++
++@end
++
++namespace {
++
++void SparkleUpdater::Start() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (updater_) {
++    // Profiles loaded later need the approval item too.
++    if (approval_reply_) {
++      SetApprovalErrorShown(true);
++    }
++    return;
++  }
++
++  delegate_ = [[HeliumSparkleDelegate alloc] init];
++  user_driver_ = [[HeliumSparkleUserDriver alloc] init];
++  updater_ = [[SPUUpdater alloc] initWithHostBundle:NSBundle.mainBundle
++                                  applicationBundle:NSBundle.mainBundle
++                                         userDriver:user_driver_
++                                           delegate:delegate_];
++
++  NSError* error = nil;
++  if (![updater_ startUpdater:&error]) {
++    ReportError(error);
++    updater_ = nil;
++    return;
++  }
++  // Don't wait for the next scheduled check.
++  [updater_ checkForUpdatesInBackground];
++}
++
++void SparkleUpdater::CheckForUpdates() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!updater_ || !GetUpdatePrefs()) {
++    SetStatus(VersionUpdater::DISABLED);
++    return;
++  }
++
++  // Don't interrupt a pending update or a running session.
++  if (install_handler_ || updater_.sessionInProgress) {
++    status_callbacks_.Notify(status_, progress_, message_);
++    return;
++  }
++
++  SetStatus(VersionUpdater::CHECKING);
++  [updater_ checkForUpdatesInBackground];
++}
++
++base::CallbackListSubscription SparkleUpdater::AddStatusCallback(
++    StatusCallback callback) {
++  return status_callbacks_.Add(std::move(callback));
++}
++
++void SparkleUpdater::SetStatus(VersionUpdater::Status status,
++                               int progress,
++                               const std::u16string& message) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  // A downloaded update wins until relaunch.
++  if (install_handler_ && status != VersionUpdater::NEARLY_UPDATED) {
++    return;
++  }
++
++  status_ = status;
++  progress_ = progress;
++  // Rendered as HTML.
++  message_ = base::EscapeForHTML(message);
++  status_callbacks_.Notify(status_, progress_, message_);
++}
++
++void SparkleUpdater::ReportError(NSError* error) {
++  LOG(ERROR) << "Browser update failed: "
++             << base::SysNSStringToUTF8(error.localizedDescription);
++  // The session is over, so a held relaunch can't install anymore.
++  pending_version_ = nil;
++  install_handler_ = nil;
++  SetStatus(VersionUpdater::FAILED, 0,
++            base::SysNSStringToUTF16(error.localizedDescription));
++}
++
++void SparkleUpdater::SetPendingUpdate(NSString* version,
++                                      void (^install_handler)(void)) {
++  pending_version_ = version;
++  install_handler_ = install_handler;
++  SetStatus(VersionUpdater::NEARLY_UPDATED);
++}
++
++void SparkleUpdater::AwaitApproval(NSString* version,
++                                   void (^reply)(SPUUserUpdateChoice)) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  approval_reply_ = reply;
++  SetApprovalErrorShown(true);
++  SetStatus(VersionUpdater::FAILED, 0,
++            l10n_util::GetStringFUTF16(IDS_HELIUM_APPROVE_UPDATE_STATUS,
++                                       base::SysNSStringToUTF16(version)));
++}
++
++void SparkleUpdater::ApproveUpdate() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!approval_reply_) {
++    return;
++  }
++
++  auto reply = approval_reply_;
++  approval_reply_ = nil;
++  SetApprovalErrorShown(false);
++  SetStatus(VersionUpdater::UPDATING);
++  reply(SPUUserUpdateChoiceInstall);
++}
++
++void SparkleUpdater::CancelApproval() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  approval_reply_ = nil;
++  SetApprovalErrorShown(false);
++}
++
++void SparkleUpdater::SetApprovalErrorShown(bool shown) {
++  ProfileManager* profile_manager = g_browser_process->profile_manager();
++  if (!profile_manager) {
++    return;
++  }
++
++  for (Profile* profile : profile_manager->GetLoadedProfiles()) {
++    GlobalErrorService* service =
++        GlobalErrorServiceFactory::GetForProfile(profile);
++    if (!service) {
++      continue;
++    }
++
++    const bool added =
++        std::ranges::contains(service->errors(), &approval_error_);
++    if (shown && !added) {
++      service->AddUnownedGlobalError(&approval_error_);
++    } else if (!shown && added) {
++      service->RemoveUnownedGlobalError(&approval_error_);
++    }
++  }
++}
++
++bool SparkleUpdater::InstallPendingUpdate() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!install_handler_) {
++    return false;
++  }
++
++  install_handler_();
++  return true;
++}
++
++}  // namespace
++
++std::unique_ptr<VersionUpdater> VersionUpdater::Create(
++    content::WebContents* web_contents) {
++  return std::make_unique<VersionUpdaterSparkle>();
++}
++
++namespace helium {
++
++void StartSparkleUpdater() {
++  SparkleUpdater::Get().Start();
++}
++
++std::optional<std::string> GetSparklePendingUpdateVersion() {
++  return SparkleUpdater::Get().pending_version();
++}
++
++bool RelaunchToInstallSparkleUpdate() {
++  return SparkleUpdater::Get().InstallPendingUpdate();
++}
++
++}  // namespace helium
+--- a/chrome/browser/upgrade_detector/get_installed_version_mac.mm
++++ b/chrome/browser/upgrade_detector/get_installed_version_mac.mm
+@@ -11,9 +11,26 @@
+ #include "base/task/task_traits.h"
+ #include "base/task/thread_pool.h"
+ #include "base/version.h"
++#include "chrome/browser/buildflags.h"
+ #include "chrome/browser/updater/updater.h"
+ 
++#if BUILDFLAG(ENABLE_SPARKLE)
++#include "base/task/sequenced_task_runner.h"
++#include "chrome/browser/mac/sparkle_glue.h"
++#endif
++
+ void GetInstalledVersion(InstalledVersionCallback callback) {
++#if BUILDFLAG(ENABLE_SPARKLE)
++  // Applied on relaunch, so it counts as installed.
++  if (auto version = helium::GetSparklePendingUpdateVersion()) {
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE,
++        base::BindOnce(std::move(callback), InstalledAndCriticalVersion(
++                                                base::Version(*version))));
++    return;
++  }
++#endif
++
+   base::ThreadPool::PostTaskAndReplyWithResult(
+       FROM_HERE,
+       {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -289,6 +289,7 @@
+ #define IDC_SHOW_TTC_MENU 40306
+ 
+ #define IDC_HELIUM_SERVICES_OPEN 40700
++#define IDC_HELIUM_APPROVE_UPDATE 40701
+ 
+ // Spell-check
+ #define IDC_SPELLCHECK_SUGGESTION_0     41000
+--- a/chrome/app/chromium_strings.grd
++++ b/chrome/app/chromium_strings.grd
+@@ -1947,6 +1947,16 @@ Chromium is unable to recover your setti
+         Review Helium services updates
+       </message>
+ 
++      <!-- Helium updates that need the user's approval -->
++      <if expr="is_macosx">
++        <message name="IDS_HELIUM_APPROVE_UPDATE_MENU_ITEM" desc="App menu item that installs a Helium update that couldn't be installed automatically. macOS may ask for an administrator password. Mac-only.">
++          Update Helium
++        </message>
++        <message name="IDS_HELIUM_APPROVE_UPDATE_STATUS" desc="Status on the About page when a Helium update is waiting for the user to install it from the app menu. Mac-only.">
++          Version <ph name="VERSION">$1<ex>0.22.1.1</ex></ph> needs your approval to install. Choose "Update Helium" in the menu to continue.
++        </message>
++      </if>
++
+       <!-- User menu errors -->
+       <message name="IDS_SYNC_ERROR_USER_MENU_UPGRADE_BUTTON" desc="Button in the header of desktop user menu that prompts the user to update Chrome to fix the out-of-date Chrome client error.">
+         Update Chromium
