@@ -103,7 +103,7 @@
 +    if (enable_sparkle) {
 +      assert(sparkle_ed_key != "", "Sparkle updates need sparkle_ed_key")
 +      assert(sparkle_check_interval >= 3600,
-+             "Sparkle checks for updates at most once an hour")
++             "sparkle_check_interval must be at least 3600 seconds")
 +
 +      args += [
 +        "--sparkle=1",
