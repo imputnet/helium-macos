@@ -3,9 +3,6 @@ set -exo pipefail
 
 source dev.sh
 
-export QUILT_PATCHES="$PWD/patches"
-export QUILT_SERIES="series.merged"
-
 _check="${1:-sanity}"
 _source_archive="$_root_dir/build/chromium-source.tar"
 
