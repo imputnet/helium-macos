@@ -1,30 +1,9 @@
-# Sets quilt variables for updating the patches
-# Make sure to run this with the shell command "source" in order to inherit the variables into the interactive environment
+# Loads helium-chromium's quilt settings and points them at the merged
+# platform patch series. Source this, don't run it.
+_quilt_root=$(dirname "$(dirname "$(greadlink -f "${BASH_SOURCE[0]:-${(%):-%x}}")")")
 
-# There is some problem with the absolute paths in QUILT_PATCHES and QUILT_SERIES breaking quilt
-# (refresh and diff don't read QUILT_*_ARGS, and series displays absolute paths instead of relative)
-# Specifying a quiltrc file fixes this, so "--quiltrc -" fixes this too.
-# One side effect of '--quiltrc -' is that we lose default settings from /etc/quilt.quiltrc, so they are redefined below.
-alias quilt='quilt --quiltrc -'
+source "$_quilt_root/helium-chromium/devutils/set_quilt_vars.sh"
+export QUILT_PATCHES="$_quilt_root/patches"
+export QUILT_SERIES="$QUILT_PATCHES/series.merged"
 
-# Assume this script lives within devutils/
-PLATFORM_ROOT=$(dirname $(dirname $(greadlink -f $0)))
-
-export QUILT_PATCHES="$PLATFORM_ROOT/patches"
-export QUILT_SERIES="series.merged"
-
-# Options below borrowed from Debian and default quilt options (from /etc/quilt.quiltrc on Debian)
-export QUILT_PUSH_ARGS="--color=auto"
-export QUILT_DIFF_OPTS="--show-c-function"
-export QUILT_PATCH_OPTS="--unified --reject-format=unified"
-export QUILT_DIFF_ARGS="-p ab --no-timestamps --no-index --color=auto"
-export QUILT_REFRESH_ARGS="-p ab --no-timestamps --no-index"
-export QUILT_COLORS="diff_hdr=1;32:diff_add=1;34:diff_rem=1;31:diff_hunk=1;33:diff_ctx=35:diff_cctx=33"
-export QUILT_SERIES_ARGS="--color=auto"
-export QUILT_PATCHES_ARGS="--color=auto"
-
-# When non-default less options are used, add the -R option so that less outputs
-# ANSI color escape codes "raw".
-if [ -n "${LESS-}" -a -z "${QUILT_PAGER+x}" ]; then
-    export QUILT_PAGER="less -FRX"
-fi
+unset _quilt_root
