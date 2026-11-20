@@ -22,7 +22,7 @@
        "//content/public/browser",
 --- a/chrome/browser/ui/tabs/BUILD.gn
 +++ b/chrome/browser/ui/tabs/BUILD.gn
-@@ -741,7 +741,6 @@ if (!is_android) {
+@@ -758,7 +758,6 @@ if (!is_android) {
        "//components/privacy_sandbox:features",
        "//components/record_replay/core/common",
        "//components/safe_browsing:buildflags",
