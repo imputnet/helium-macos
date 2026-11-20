@@ -441,7 +441,7 @@
    }
  
    if (!is_win && !is_android) {
-@@ -4649,6 +4672,10 @@ source_set("browser") {
+@@ -4652,6 +4675,10 @@ source_set("browser") {
        "//components/user_education/views",
        "//ui/base:ozone_buildflags",
      ]
