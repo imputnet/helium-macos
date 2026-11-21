@@ -73,7 +73,6 @@ write_gn_args() {
   printf 'target_cpu = "%s"\n' "$target_cpu" >> "$args"
 
   if [ "$mode" = ci ]; then
-    echo 'cc_wrapper="sccache"' >> "$args"
     if [ -n "${PROD_MACOS_SPECIAL_ENTITLEMENTS_PROFILE_B64:-}" ]; then
       echo 'include_branded_entitlements=true' >> "$args"
     fi
