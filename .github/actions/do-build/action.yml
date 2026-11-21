@@ -28,19 +28,11 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Show sccache stats before build
-      run: sccache --show-stats
-      shell: bash
-
     - name: Build
       id: build
       run: |
         set -o pipefail
         ./github_build.sh '${{ inputs.arch }}' 2>&1 | tee -a github_actions_build_${{ inputs.arch }}.log
-      shell: bash
-
-    - name: Show sccache stats after build
-      run: sccache --show-stats
       shell: bash
 
     - name: Prepare archive of build as artifact
