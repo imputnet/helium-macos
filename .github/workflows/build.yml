@@ -72,15 +72,13 @@ jobs:
             echo EOF
           } >> "$GITHUB_OUTPUT"
       - name: Release Helium binaries
-        uses: imputnet/action-gh-release@v2.5
+        uses: imputnet/immutable-release@v1
         with:
-          body_path: ./github_release_note.md
-          draft: false
+          tag: ${{ steps.bake.outputs.release_tag_version }}
+          title: ${{ steps.bake.outputs.release_name }}
           prerelease: true
+          notes-file: ./github_release_note.md
           files: |
             ./release_asset/${{ steps.bake.outputs.arm64_file_name }}
             ./release_asset/${{ steps.bake.outputs.x64_file_name }}
             ${{ steps.list_deltas.outputs.deltas }}
-          name: ${{ steps.bake.outputs.release_name }}
-          tag_name: ${{ steps.bake.outputs.release_tag_version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
