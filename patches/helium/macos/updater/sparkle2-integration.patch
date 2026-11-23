@@ -18,29 +18,32 @@
 +Patches are applied to integrate Sparkle into Chromium and hide the Sparkle UI.
 --- a/build/apple/tweak_info_plist.py
 +++ b/build/apple/tweak_info_plist.py
-@@ -216,6 +216,21 @@ def _IsValidBundleId(bundle_identifier):
+@@ -216,6 +216,24 @@ def _IsValidBundleId(bundle_identifier):
      return re.match(r'^[0-9a-zA-Z-.]+$', bundle_identifier) is not None
  
  
-+def _AddSparkleKeys(plist, ed_key, auto_checks, check_interval):
-+  plist['SUPublicEDKey'] = ed_key
-+  plist['SUEnableAutomaticChecks'] = 'YES' if auto_checks else 'NO'
-+  plist['SUScheduledCheckInterval'] = check_interval
-+  plist['SUVerifyUpdateBeforeExtraction'] = 'YES'
-+  plist['SUShowReleaseNotes'] = 'NO'
++_SPARKLE_KEYS = ('SUPublicEDKey', 'SUEnableAutomaticChecks',
++                 'SUAutomaticallyUpdate', 'SUScheduledCheckInterval',
++                 'SUVerifyUpdateBeforeExtraction')
++
++
++def _AddSparkleKeys(plist, ed_key, check_interval):
++    plist['SUPublicEDKey'] = ed_key
++    plist['SUEnableAutomaticChecks'] = True
++    plist['SUAutomaticallyUpdate'] = True
++    plist['SUScheduledCheckInterval'] = check_interval
++    plist['SUVerifyUpdateBeforeExtraction'] = True
 +
 +
 +def _RemoveSparkleKeys(plist):
-+  """Removes any set Sparkle keys."""
-+  _RemoveKeys(plist, 'SUPublicEDKey', 'SUEnableAutomaticChecks',
-+              'SUScheduledCheckInterval', 'SUVerifyUpdateBeforeExtraction',
-+              'SUShowReleaseNotes')
++    """Removes any set Sparkle keys."""
++    _RemoveKeys(plist, *_SPARKLE_KEYS)
 +
 +
  def _TagSuffixes():
      # Keep this list sorted in the order that tag suffix components are to
      # appear in a tag value. That is to say, it should be sorted per ASCII.
-@@ -359,6 +374,36 @@ def Main(argv):
+@@ -359,6 +377,27 @@ def Main(argv):
          help='Use staging breakpad to upload reports. Ignored if --breakpad=0.',
      )
      parser.add_option(
@@ -48,52 +51,36 @@
 +        dest='use_sparkle',
 +        action='store',
 +        type='int',
-+        default=False,
-+        help='Enable Sparkle [1 or 0]'
-+    )
-+    parser.add_option('--sparkle_ed_key',
-+        dest='sparkle_ed_key',
-+        action='store',
-+        default=None,
-+        help='Sparkle update signing EdDSA key'
++        default=0,
++        help='Enable Sparkle [1 or 0]',
 +    )
 +    parser.add_option(
-+        '--sparkle_automatic_checks',
-+        dest='sparkle_automatic_checks',
++        '--sparkle_ed_key',
++        dest='sparkle_ed_key',
 +        action='store',
-+        type='int',
-+        default=False,
-+        help='Enable Sparkle automatic checks [1 or 0]'
++        help='EdDSA public key that Sparkle updates are signed with',
 +    )
 +    parser.add_option(
 +        '--sparkle_check_interval',
 +        dest='sparkle_check_interval',
 +        action='store',
 +        type='int',
-+        default=0,
-+        help='Sparkle check interval (min: 3600)'
++        help='Seconds between Sparkle update checks',
 +    )
 +    parser.add_option(
          '--keystone',
          dest='use_keystone',
          action='store',
-@@ -535,6 +580,20 @@ def Main(argv):
+@@ -535,6 +574,13 @@ def Main(argv):
      else:
          _RemoveKeystoneKeys(plist)
  
 +    # Add Sparkle parameters if configured to do so.
 +    if options.use_sparkle:
-+      if not options.sparkle_ed_key:
-+        print('Sparkle updates require an EdDSA key.', file=sys.stderr)
-+        return 1
-+      if options.sparkle_check_interval < 3600:
-+        print('Sparkle update check interval must be at least 1 hour (3600).', file=sys.stderr)
-+        return 1
-+      _AddSparkleKeys(plist, options.sparkle_ed_key,
-+                      options.sparkle_automatic_checks,
-+                      options.sparkle_check_interval)
++        _AddSparkleKeys(plist, options.sparkle_ed_key,
++                        options.sparkle_check_interval)
 +    else:
-+      _RemoveSparkleKeys(plist)
++        _RemoveSparkleKeys(plist)
 +
      # Adds or removes any SCM keys.
      if not _DoSCMKeys(plist, options.add_scm_info):
@@ -108,28 +95,26 @@
    import("//chrome/version.gni")
    import("//content/public/app/mac_helpers.gni")
    import("//media/cdm/library_cdm/cdm_paths.gni")
-@@ -537,6 +538,20 @@ if (is_win) {
+@@ -537,6 +538,18 @@ if (is_win) {
      } else {
        args += [ "--keystone=0" ]
      }
 +
 +    if (enable_sparkle) {
-+      assert(sparkle_ed_key != "")
++      assert(sparkle_ed_key != "", "Sparkle updates need sparkle_ed_key")
++      assert(sparkle_check_interval >= 3600,
++             "sparkle_check_interval must be at least 3600 seconds")
 +
 +      args += [
 +        "--sparkle=1",
 +        "--sparkle_ed_key=$sparkle_ed_key",
 +        "--sparkle_check_interval=$sparkle_check_interval",
 +      ]
-+
-+      if (sparkle_automatic_checks) {
-+        args += [ "--sparkle_automatic_checks=1" ]
-+      }
 +    }
    }
  
    mac_app_bundle("chrome_app") {
-@@ -1366,6 +1381,10 @@ if (is_win) {
+@@ -1366,6 +1379,10 @@ if (is_win) {
  
      if (is_component_build) {
        frameworks = [ "Carbon.framework" ]
@@ -140,7 +125,7 @@
      }
  
      ldflags = [ "-ObjC" ]
-@@ -1420,6 +1439,12 @@ if (is_win) {
+@@ -1420,6 +1437,12 @@ if (is_win) {
        bundle_deps += [ ":chrome_renderer_library" ]
      }
  
@@ -155,219 +140,21 @@
        configs += [ ":chrome_dll_symbol_exports" ]
 --- /dev/null
 +++ b/chrome/updater/sparkle.gni
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,14 @@
 +# Copyright 2025 The Helium Authors
 +# You can use, redistribute, and/or modify this source code under
 +# the terms of the GPL-3.0 license that can be found in the LICENSE file.
 +
 +declare_args() {
-+  # Enable automatic update checking via Sparkle.
++  # Update via Sparkle.
 +  enable_sparkle = false
 +
-+  # SUPublicEDKey: EdDSA key used for signing Sparkle updates.
++  # EdDSA public key that updates are signed with.
 +  sparkle_ed_key = ""
 +
-+  # SUEnableAutomaticChecks: enable automatic checking of updates
-+  sparkle_automatic_checks = false
-+
-+  # SUScheduledCheckInterval: number of seconds between update checks (min: 3600)
++  # Seconds between update checks (at least 3600).
 +  sparkle_check_interval = 3600
 +}
---- a/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
-+++ b/third_party/sparkle/Sparkle.xcodeproj/project.pbxproj
-@@ -465,6 +465,8 @@
- 		72F9EC441D5E9ED8004AC8B6 /* SPUDownloadData.h in Headers */ = {isa = PBXBuildFile; fileRef = 72F9EC421D5E9ED8004AC8B6 /* SPUDownloadData.h */; settings = {ATTRIBUTES = (Public, ); }; };
- 		72F9EC451D5E9ED8004AC8B6 /* SPUDownloadData.m in Sources */ = {isa = PBXBuildFile; fileRef = 72F9EC431D5E9ED8004AC8B6 /* SPUDownloadData.m */; };
- 		72F9EC481D5EA904004AC8B6 /* SPUUpdaterDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 72F9EC471D5EA7D3004AC8B6 /* SPUUpdaterDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
-+		75709667053ACD97A7429E07 /* SPUHeadlessUserDriver.h in Headers */ = {isa = PBXBuildFile; fileRef = 7C9EE836A8449E0F363F7E47 /* SPUHeadlessUserDriver.h */; };
-+		9328EB08163BA45AD58F2AC8 /* SPUHeadlessUserDriver.m in Sources */ = {isa = PBXBuildFile; fileRef = A444E1A92967D436041BC0FA /* SPUHeadlessUserDriver.m */; };
- 		72FE54422E56A14100227A91 /* SUUpdateAlert.xib in Resources */ = {isa = PBXBuildFile; fileRef = 72FE54412E56A14100227A91 /* SUUpdateAlert.xib */; };
- 		C23E885B1BE7B24F0050BB73 /* SparkleTestCodeSignApp.enc.dmg in Resources */ = {isa = PBXBuildFile; fileRef = C23E88591BE7AF890050BB73 /* SparkleTestCodeSignApp.enc.dmg */; };
- 		EA1E281722B645AE004AA304 /* libbsdiff.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EA1E280F22B64522004AA304 /* libbsdiff.a */; };
-@@ -1404,9 +1406,11 @@
- 		72F9EC421D5E9ED8004AC8B6 /* SPUDownloadData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPUDownloadData.h; sourceTree = "<group>"; };
- 		72F9EC431D5E9ED8004AC8B6 /* SPUDownloadData.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SPUDownloadData.m; sourceTree = "<group>"; };
- 		72F9EC471D5EA7D3004AC8B6 /* SPUUpdaterDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPUUpdaterDelegate.h; sourceTree = "<group>"; };
-+		7C9EE836A8449E0F363F7E47 /* SPUHeadlessUserDriver.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = SPUHeadlessUserDriver.h; sourceTree = "<group>"; };
- 		72FE54412E56A14100227A91 /* SUUpdateAlert.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = SUUpdateAlert.xib; sourceTree = "<group>"; };
- 		8DC2EF5A0486A6940098B216 /* Sparkle-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Sparkle-Info.plist"; sourceTree = "<group>"; };
- 		8DC2EF5B0486A6940098B216 /* Sparkle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Sparkle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-+		A444E1A92967D436041BC0FA /* SPUHeadlessUserDriver.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = SPUHeadlessUserDriver.m; sourceTree = "<group>"; };
- 		A5BF4F1B1BC7668B007A052A /* SUTestWebServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SUTestWebServer.h; sourceTree = "<group>"; };
- 		A5BF4F1C1BC7668B007A052A /* SUTestWebServer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SUTestWebServer.m; sourceTree = "<group>"; };
- 		C23E88591BE7AF890050BB73 /* SparkleTestCodeSignApp.enc.dmg */ = {isa = PBXFileReference; lastKnownFileType = file; path = SparkleTestCodeSignApp.enc.dmg; sourceTree = "<group>"; };
-@@ -2246,6 +2250,8 @@
- 				7269E49C2648FC6C0088C213 /* SPUUserUpdateState+Private.h */,
- 				7269E4992648F7C00088C213 /* SPUUserUpdateState.m */,
- 				725CB9561C7120410064365A /* SPUUserDriver.h */,
-+				7C9EE836A8449E0F363F7E47 /* SPUHeadlessUserDriver.h */,
-+				A444E1A92967D436041BC0FA /* SPUHeadlessUserDriver.m */,
- 			);
- 			name = "User Driver";
- 			sourceTree = "<group>";
-@@ -2585,6 +2591,7 @@
- 				3772FEA913DE0B6B00F79537 /* SUVersionDisplayProtocol.h in Headers */,
- 				724BB3871D32A167005D534A /* SUXPCInstallerConnection.h in Headers */,
- 				724BB3A81D33461B005D534A /* SUXPCInstallerStatus.h in Headers */,
-+				75709667053ACD97A7429E07 /* SPUHeadlessUserDriver.h in Headers */,
- 			);
- 			runOnlyForDeploymentPostprocessing = 0;
- 		};
-@@ -3672,6 +3679,7 @@
- 				724BB3881D32A167005D534A /* SUXPCInstallerConnection.m in Sources */,
- 				724BB3A91D33461B005D534A /* SUXPCInstallerStatus.m in Sources */,
- 				723AC011259DBDAA00BDB4FA /* SUReleaseNotesCommon.m in Sources */,
-+				9328EB08163BA45AD58F2AC8 /* SPUHeadlessUserDriver.m in Sources */,
- 			);
- 			runOnlyForDeploymentPostprocessing = 0;
- 		};
---- /dev/null
-+++ b/third_party/sparkle/Sparkle/SPUHeadlessUserDriver.h
-@@ -0,0 +1,29 @@
-+// Copyright 2025 The Helium Authors
-+// You can use, redistribute, and/or modify this source code under
-+// the terms of the GPL-3.0 license that can be found in the LICENSE file.
-+
-+#ifndef THIRD_PARTY_SPARKLE_SPARKLE_SPUHEADLESSUSERDRIVER_H_
-+#define THIRD_PARTY_SPARKLE_SPARKLE_SPUHEADLESSUSERDRIVER_H_
-+
-+#import <Foundation/Foundation.h>
-+
-+#if defined(BUILDING_SPARKLE_SOURCES_EXTERNALLY)
-+// Ignore incorrect warning
-+#pragma clang diagnostic push
-+#pragma clang diagnostic ignored "-Wquoted-include-in-framework-header"
-+#import "SPUUserDriver.h"
-+#import "SUExport.h"
-+#pragma clang diagnostic pop
-+#else
-+#import <Sparkle/SPUUserDriver.h>
-+#import <Sparkle/SUExport.h>
-+#endif
-+
-+NS_ASSUME_NONNULL_BEGIN
-+
-+SU_EXPORT @interface SPUHeadlessUserDriver : NSObject <SPUUserDriver>
-+@end
-+
-+NS_ASSUME_NONNULL_END
-+
-+#endif  /* THIRD_PARTY_SPARKLE_SPARKLE_SPUHEADLESSUSERDRIVER_H_ */
---- /dev/null
-+++ b/third_party/sparkle/Sparkle/SPUHeadlessUserDriver.m
-@@ -0,0 +1,82 @@
-+// Copyright 2025 The Helium Authors
-+// You can use, redistribute, and/or modify this source code under
-+// the terms of the GPL-3.0 license that can be found in the LICENSE file.
-+
-+#import "SPUHeadlessUserDriver.h"
-+#import <AppKit/AppKit.h>
-+#import <Sparkle/Sparkle.h>
-+
-+@implementation SPUHeadlessUserDriver
-+{}
-+
-+- (instancetype)initWithUpdatePermissionResponse:(nullable SUUpdatePermissionResponse *)updatePermissionResponse deferInstallation:(BOOL)deferInstallation verbose:(BOOL)verbose
-+{
-+    self = [super init];
-+    return self;
-+}
-+
-+- (void)showUpdatePermissionRequest:(SPUUpdatePermissionRequest *)__unused request reply:(void (^)(SUUpdatePermissionResponse *))reply
-+{}
-+
-+- (void)showUserInitiatedUpdateCheckWithCancellation:(void (^)(void))__unused cancellation
-+{}
-+
-+- (void)displayReleaseNotes:(const char * _Nullable)__unused releaseNotes SPU_OBJC_DIRECT
-+{}
-+
-+- (void)displayHTMLReleaseNotes:(NSData *)__unused releaseNotes SPU_OBJC_DIRECT
-+{}
-+
-+- (void)displayPlainTextReleaseNotes:(NSData *)__unused releaseNotes encoding:(NSStringEncoding)__unused encoding SPU_OBJC_DIRECT
-+{}
-+
-+- (void)showUpdateWithAppcastItem:(SUAppcastItem *)__unused appcastItem updateAdjective:(NSString *)__unused updateAdjective
-+{}
-+
-+- (void)showUpdateFoundWithAppcastItem:(SUAppcastItem *)__unused appcastItem state:(SPUUserUpdateState *)__unused state reply:(void (^)(SPUUserUpdateChoice))__unused reply
-+{}
-+
-+- (void)showUpdateReleaseNotesWithDownloadData:(SPUDownloadData *)__unused downloadData
-+{}
-+
-+- (void)showUpdateReleaseNotesFailedToDownloadWithError:(NSError *)__unused error
-+{}
-+
-+- (void)showUpdateNotFoundWithError:(NSError *)__unused error acknowledgement:(void (^)(void))acknowledgement
-+{
-+    acknowledgement();
-+}
-+
-+- (void)showUpdaterError:(NSError *)__unused error acknowledgement:(void (^)(void))acknowledgement
-+{
-+    acknowledgement();
-+}
-+
-+- (void)showDownloadInitiatedWithCancellation:(void (^)(void))__unused cancellation
-+{}
-+
-+- (void)showDownloadDidReceiveExpectedContentLength:(uint64_t)__unused expectedContentLength
-+{}
-+
-+- (void)showDownloadDidReceiveDataOfLength:(uint64_t)__unused length
-+{}
-+
-+- (void)showDownloadDidStartExtractingUpdate
-+{}
-+
-+- (void)showExtractionReceivedProgress:(double)__unused progress
-+{}
-+
-+- (void)showReadyToInstallAndRelaunch:(void (^)(SPUUserUpdateChoice))__unused installUpdateHandler
-+{}
-+
-+- (void)showInstallingUpdateWithApplicationTerminated:(BOOL)__unused applicationTerminated retryTerminatingApplication:(void (^)(void))__unused retryTerminatingApplication
-+{}
-+
-+- (void)showUpdateInstalledAndRelaunched:(BOOL)__unused relaunched acknowledgement:(void (^)(void))acknowledgement
-+{}
-+
-+- (void)dismissUpdateInstallation
-+{}
-+
-+@end
---- a/chrome/browser/app_controller_mac.mm
-+++ b/chrome/browser/app_controller_mac.mm
-@@ -45,6 +45,7 @@
- #include "chrome/browser/browser_features.h"
- #include "chrome/browser/browser_process.h"
- #include "chrome/browser/browser_process_platform_part.h"
-+#include "chrome/browser/buildflags.h"
- #include "chrome/browser/command_updater_impl.h"
- #include "chrome/browser/download/download_core_service.h"
- #include "chrome/browser/download/download_core_service_factory.h"
-@@ -57,6 +58,9 @@
- #include "chrome/browser/lifetime/browser_shutdown.h"
- #include "chrome/browser/mac/auth_session_request.h"
- #include "chrome/browser/mac/key_window_notifier.h"
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+#include "chrome/browser/mac/sparkle_glue.h"
-+#endif
- #include "chrome/browser/policy/chrome_browser_policy_connector.h"
- #include "chrome/browser/prefs/incognito_mode_prefs.h"
- #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-@@ -932,6 +936,9 @@ class AppControllerProfileObserver : pub
-   NSWindow.allowsAutomaticWindowTabbing = NO;
- 
-   [self initShareMenu];
-+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+  helium::InitializeSparkleFramework();
-+#endif
- }
- 
- - (void)tryToTerminateApplication {
 --- a/chrome/browser/chrome_browser_main_mac.mm
 +++ b/chrome/browser/chrome_browser_main_mac.mm
 @@ -30,6 +30,9 @@
@@ -380,17 +167,12 @@
  #include "chrome/browser/ui/cocoa/main_menu_builder.h"
  #include "chrome/browser/ui/cocoa/renderer_context_menu/chrome_swizzle_services_menu_updater.h"
  #include "chrome/browser/updater/updater.h"
-@@ -178,6 +181,14 @@ void ChromeBrowserMainPartsMac::PreProfi
+@@ -178,6 +181,9 @@ void ChromeBrowserMainPartsMac::PreProfi
  
  void ChromeBrowserMainPartsMac::PostProfileInit(Profile* profile,
                                                  bool is_initial_profile) {
 +#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_SPARKLE)
-+  if (is_initial_profile) {
-+    // Intentionally not stored - this object is leaked so its sparkle_subscription_
-+    // (and thus the background update callback) remains registered for the app lifetime.
-+    // TODO: refactor the whole sparkle integration to use Singleton patterns instead of this.
-+    new VersionUpdaterSparkle(profile);
-+  }
++  helium::StartSparkleUpdater();
 +#endif
    ChromeBrowserMainPartsPosix::PostProfileInit(profile, is_initial_profile);
  }
@@ -419,29 +201,27 @@
    # Android and ChromeOS don't support multiple browser processes, so they don't
    # employ ProcessSingleton.
    if (is_android || is_chromeos) {
-@@ -1889,6 +1897,21 @@ source_set("core") {
+@@ -1889,6 +1897,19 @@ source_set("core") {
        "UniformTypeIdentifiers.framework",
        "VideoToolbox.framework",
      ]
 +
 +    if (enable_sparkle) {
-+      include_dirs = [ "//third_party/sparkle" ]
-+
 +      sources += [
 +        "mac/sparkle_glue.h",
 +        "mac/sparkle_glue.mm",
 +      ]
-+
 +      deps += [
-+        "//third_party/sparkle:build_sparkle_framework",
++        "//chrome/browser/ui/global_error",
++        "//chrome/browser/ui/webui/help",
 +        "//components/helium_services",
++        "//third_party/sparkle",
 +      ]
-+      frameworks += [ "Sparkle.framework" ]
 +    }
    }
  
    if (!is_win && !is_android) {
-@@ -4652,6 +4675,10 @@ source_set("browser") {
+@@ -4649,6 +4670,10 @@ source_set("browser") {
        "//components/user_education/views",
        "//ui/base:ozone_buildflags",
      ]
@@ -462,39 +242,27 @@
  
  source_set("help") {
    public = [ "version_updater.h" ]
-@@ -39,7 +40,7 @@ source_set("help") {
+@@ -39,17 +40,9 @@ source_set("help") {
      ]
    }
  
 -  if (is_mac) {
+-    sources = [ "version_updater_mac.mm" ]
+-    deps += [
+-      "//base:i18n",
+-      "//chrome/app:branded_strings",
+-      "//chrome/app:generated_resources_grit",
+-      "//chrome/browser/updater",
+-      "//chrome/updater:browser_sources",
+-      "//ui/base",
+-    ]
+-    frameworks = [ "Foundation.framework" ]
++  # With Sparkle, the glue provides the VersionUpdater.
 +  if (is_mac && !enable_sparkle) {
-     sources = [ "version_updater_mac.mm" ]
-     deps += [
-       "//base:i18n",
---- a/chrome/browser/upgrade_detector/BUILD.gn
-+++ b/chrome/browser/upgrade_detector/BUILD.gn
-@@ -4,6 +4,10 @@
- 
- import("//build/config/ui.gni")
- 
-+if (is_mac) {
-+  import("//chrome/updater/sparkle.gni")
-+}
-+
- source_set("build_state_observer") {
-   public = [ "build_state_observer.h" ]
- 
-@@ -132,6 +136,10 @@ source_set("impl") {
-       "get_installed_version_mac.mm",
-     ]
-     deps += [ "//chrome/browser/updater" ]
-+
-+    if (enable_sparkle) {
-+      include_dirs = [ "//third_party/sparkle" ]
-+    }
++    sources = [ "version_updater_basic.cc" ]
    }
  
-   if (is_linux) {
+   if (is_win) {
 --- a/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 +++ b/third_party/sparkle/Sparkle/SPUAutomaticUpdateDriver.m
 @@ -152,4 +152,24 @@ static BOOL SPUUpdateRequiresUserAttenti
@@ -541,14 +309,15 @@
  }
 --- a/third_party/sparkle/Configurations/strip-framework.sh
 +++ b/third_party/sparkle/Configurations/strip-framework.sh
-@@ -40,6 +40,11 @@ if [[ "$SPARKLE_BUILD_UI_BITS" -eq 0 ]];
+@@ -40,6 +40,12 @@ if [[ "$SPARKLE_BUILD_UI_BITS" -eq 0 ]];
      rm -rf "${FRAMEWORK_PATH}"/"Versions/"${FRAMEWORK_VERSION}"/Resources"/"ReleaseNotesColorStyle.css"
  fi
  
 +# Remove headers
 +
-+find "$TARGET_BUILD_DIR" -name Headers -exec rm -rf {} \;
-+find "$TARGET_BUILD_DIR" -name PrivateHeaders -exec rm -rf {} \;
++find "${FRAMEWORK_PATH}" \
++    \( -name Headers -o -name PrivateHeaders \) \
++    -prune -exec rm -rf {} +
 +
  # Remove localization files if requested
  
@@ -574,14 +343,13 @@
  namespace chrome {
  
  namespace {
-@@ -324,8 +329,19 @@ void AttemptRestartInternal(IgnoreUnload
+@@ -324,7 +329,16 @@ void AttemptRestartInternal(IgnoreUnload
    content::GetUIThreadTaskRunner({})->PostTask(
        FROM_HERE, base::BindOnce(&ExitIgnoreUnloadHandlers));
  #else   // !BUILDFLAG(IS_CHROMEOS).
 -  // Set the flag to restore state after the restart.
 +#if BUILDFLAG(ENABLE_SPARKLE)
-+  if (helium::ApplicationIsNearlyUpdated()) {
-+    helium::RelaunchBrowserUsingSparkle();
++  if (helium::RelaunchToInstallSparkleUpdate()) {
 +    return;
 +  }
 +#endif
@@ -591,7 +359,26 @@
 +  // would request two relaunches. kWasRestarted still restores the session in
 +  // either case.
    pref_service->SetBoolean(prefs::kRestartLastSessionOnShutdown, true);
-+
    if (ignore_unload_handlers) {
      ExitIgnoreUnloadHandlers();
-   } else {
+--- a/chrome/browser/ui/webui/help/version_updater_basic.cc
++++ b/chrome/browser/ui/webui/help/version_updater_basic.cc
+@@ -5,6 +5,7 @@
+ #include <memory>
+ #include <string>
+ 
++#include "build/build_config.h"
+ #include "chrome/browser/ui/webui/help/version_updater.h"
+ #include "chrome/browser/upgrade_detector/upgrade_detector.h"
+ 
+@@ -25,6 +26,10 @@ class VersionUpdaterBasic : public Versi
+                               : DISABLED;
+     callback.Run(status, 0, false, false, std::string(), 0, std::u16string());
+   }
++
++#if BUILDFLAG(IS_MAC)
++  void PromoteUpdater() override {}
++#endif
+ };
+ 
+ }  // namespace
