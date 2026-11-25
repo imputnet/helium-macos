@@ -1,6 +1,6 @@
 --- a/chrome/browser/ui/views/frame/BUILD.gn
 +++ b/chrome/browser/ui/views/frame/BUILD.gn
-@@ -1958,6 +1958,7 @@ if (is_mac) {
+@@ -1960,6 +1960,7 @@ if (is_mac) {
        "//chrome/browser/profiles:profile",
        "//chrome/browser/themes",
        "//chrome/browser/ui/views/helium:fullscreen_window_controls_mac",
@@ -8,7 +8,7 @@
        "//chrome/browser/ui:fullscreen_util_mac",
        "//chrome/browser/ui:layout_constants",
        "//chrome/browser/ui:view_ids",
-@@ -2011,6 +2012,7 @@ if (is_mac) {
+@@ -2013,6 +2014,7 @@ if (is_mac) {
        "//base:i18n",
        "//chrome/app:command_ids",
        "//chrome/app:generated_resources",
@@ -16,7 +16,7 @@
        "//chrome/browser:app_controller_mac",
        "//chrome/browser:global_keyboard_shortcuts_mac",
        "//chrome/browser/apps/app_shim",
-@@ -3325,6 +3327,7 @@ source_set("browser_widget_impl") {
+@@ -3327,6 +3329,7 @@ source_set("browser_widget_impl") {
      "//chrome/browser/app_mode",
      "//chrome/browser/profiles:profile",
      "//chrome/browser/themes",
