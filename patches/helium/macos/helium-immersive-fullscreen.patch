@@ -254,7 +254,7 @@
 +@end
 --- a/chrome/browser/ui/views/frame/BUILD.gn
 +++ b/chrome/browser/ui/views/frame/BUILD.gn
-@@ -1957,6 +1957,7 @@ if (is_mac) {
+@@ -1959,6 +1959,7 @@ if (is_mac) {
        "//chrome/browser/picture_in_picture",
        "//chrome/browser/profiles:profile",
        "//chrome/browser/themes",
@@ -528,7 +528,7 @@
  }
 --- a/chrome/browser/ui/views/frame/browser_view.h
 +++ b/chrome/browser/ui/views/frame/browser_view.h
-@@ -1507,6 +1507,8 @@ class BrowserView : public BrowserWindow
+@@ -1508,6 +1508,8 @@ class BrowserView : public BrowserWindow
    base::OneShotTimer zen_cursor_exit_timer_;
    std::optional<gfx::Point> zen_last_cursor_;
    bool zen_mode_enabled_ = false;
@@ -539,7 +539,7 @@
  };
 --- a/chrome/browser/ui/views/frame/browser_view.cc
 +++ b/chrome/browser/ui/views/frame/browser_view.cc
-@@ -2011,7 +2011,7 @@ void BrowserView::UpdateZenModeEventMoni
+@@ -2040,7 +2040,7 @@ void BrowserView::UpdateZenModeEventMoni
  }
  
  void BrowserView::StartZenCollapseTimer(base::TimeDelta delay) {
@@ -548,7 +548,7 @@
      return;
    }
    zen_cursor_exit_timer_.Start(
-@@ -2040,7 +2040,7 @@ bool BrowserView::IsLeavingZenSideGap(co
+@@ -2069,7 +2069,7 @@ bool BrowserView::IsLeavingZenSideGap(co
  }
  
  void BrowserView::UpdateZenModeRevealFromCursor() {
@@ -557,7 +557,7 @@
      return;
    }
  
-@@ -2086,7 +2086,7 @@ void BrowserView::UpdateZenModeRevealFro
+@@ -2115,7 +2115,7 @@ void BrowserView::UpdateZenModeRevealFro
  }
  
  void BrowserView::UpdateZenModeReveal(bool reveal_top, bool reveal_side) {
@@ -566,7 +566,7 @@
      return;
    }
  
-@@ -2955,6 +2955,13 @@ void BrowserView::FullscreenStateChangin
+@@ -2984,6 +2984,13 @@ void BrowserView::FullscreenStateChangin
      return;
    }
  
@@ -580,7 +580,7 @@
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
      PrepareFullscreen(IsFullscreen());
    } else {
-@@ -2999,7 +3006,6 @@ void BrowserView::FullscreenStateChanged
+@@ -3028,7 +3035,6 @@ void BrowserView::FullscreenStateChanged
  
    multi_contents_view_->SetProperty(views::kWidgetForAnchoringKey,
                                      widget_for_anchoring);
@@ -588,7 +588,7 @@
  
    // Reopen a popup that `OmniboxPopupView::OnFullscreenTransitionStarting()`
    // closed for the transition. This runs after entering and after exiting, as
-@@ -3021,6 +3027,12 @@ void BrowserView::FullscreenStateChanged
+@@ -3050,6 +3056,12 @@ void BrowserView::FullscreenStateChanged
        ->fullscreen_controller()
        ->WindowFullscreenStateChanged();
  
@@ -601,7 +601,7 @@
    multi_contents_view_->OnFullscreenStateChanged();
  
    if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
-@@ -3036,6 +3048,10 @@ void BrowserView::FullscreenStateChanged
+@@ -3065,6 +3077,10 @@ void BrowserView::FullscreenStateChanged
      }
    }
  
@@ -612,7 +612,7 @@
    UpdateZenModeState();
  }
  
-@@ -5614,14 +5630,22 @@ gfx::Size BrowserView::GetMinimumSize()
+@@ -5643,14 +5659,22 @@ gfx::Size BrowserView::GetMinimumSize()
  
  void BrowserView::Layout(PassKey) {
    TRACE_EVENT0("ui", "BrowserView::Layout");
@@ -639,7 +639,7 @@
    if (base::FeatureList::IsEnabled(
            features::kDeferLayoutDuringBrowserStartup) &&
        startup_layout_state_ == StartupLayoutState::kDeferring &&
-@@ -5668,6 +5692,7 @@ void BrowserView::Layout(PassKey) {
+@@ -5697,6 +5721,7 @@ void BrowserView::Layout(PassKey) {
  
    // TODO(jamescook): Why was this in the middle of layout code?
    toolbar_->location_bar()->UpdateFocusBehavior(IsToolbarVisible());
