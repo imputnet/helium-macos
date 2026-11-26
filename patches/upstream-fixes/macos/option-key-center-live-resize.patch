@@ -1,0 +1,122 @@
+From da053b032ad87060f610224512d21bb8562ca36b Mon Sep 17 00:00:00 2001
+From: Bryan Oltman <bryanoltman@google.com>
+Date: Wed, 11 Nov 2026 00:53:35 +0000
+Subject: [PATCH] [macOS] Fix Option-key center live resizing under kAsyncLiveResize
+
+When resizing an NSWindow while holding the Option key on macOS, AppKit
+expands or contracts the window symmetrically around its center along
+the active axes (both axes for a corner drag, or a single axis for an
+edge drag). When features::kAsyncLiveResize is enabled,
+ViewsNSWindowDelegate shifted the origin for left and bottom edges by
+the entire width and height deltas rather than half the delta, causing
+the window to drift instead of preserving its center.
+
+This CL updates -[ViewsNSWindowDelegate windowWillResize:toSize:] to
+detect whether the live resize edge mask contains opposing edges along
+the horizontal axis, vertical axis, or both, and halves the origin shift
+only along the active center-resizing axes.
+
+This also updates NSWindowLiveResizeEdge to be an option set and to use
+more idiomatic naming, as well as adding unit tests to verify window
+resize behavior.
+
+Fixed: 582361821
+Change-Id: I0459fc149aaec47da07b54dea81196dfc1af3060
+Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/8785583
+Commit-Queue: Bryan Oltman <bryanoltman@google.com>
+Reviewed-by: ccameron chromium <ccameron@chromium.org>
+Cr-Commit-Position: refs/heads/main@{#1741206}
+---
+--- a/components/remote_cocoa/app_shim/views_nswindow_delegate.h
++++ b/components/remote_cocoa/app_shim/views_nswindow_delegate.h
+@@ -16,6 +16,23 @@ namespace remote_cocoa {
+ class NativeWidgetNSWindowBridge;
+ }  // namespace remote_cocoa
+ 
++// Models the bitmask returned by AppKit's private SPI
++// -[NSWindow liveResizeEdges], which identifies the active window edges during
++// a user live-resize event.
++typedef NS_OPTIONS(NSUInteger, NSWindowLiveResizeEdges) {
++  NSWindowLiveResizeEdgesNone = 0,
++  NSWindowLiveResizeEdgesLeft = 1 << 0,
++  NSWindowLiveResizeEdgesBottom = 1 << 1,
++  NSWindowLiveResizeEdgesRight = 1 << 2,
++  NSWindowLiveResizeEdgesTop = 1 << 3,
++  NSWindowLiveResizeEdgesHorizontal = NSWindowLiveResizeEdgesLeft |
++                                      NSWindowLiveResizeEdgesRight,
++  NSWindowLiveResizeEdgesVertical = NSWindowLiveResizeEdgesBottom |
++                                    NSWindowLiveResizeEdgesTop,
++  NSWindowLiveResizeEdgesAll = NSWindowLiveResizeEdgesHorizontal |
++                               NSWindowLiveResizeEdgesVertical,
++};
++
+ // The delegate set on the NSWindow when a
+ // remote_cocoa::NativeWidgetNSWindowBridge is initialized.
+ REMOTE_COCOA_APP_SHIM_EXPORT
+--- a/components/remote_cocoa/app_shim/views_nswindow_delegate.mm
++++ b/components/remote_cocoa/app_shim/views_nswindow_delegate.mm
+@@ -4,6 +4,7 @@
+ 
+ #import "components/remote_cocoa/app_shim/views_nswindow_delegate.h"
+ 
++#include <cmath>
+ #include <optional>
+ 
+ #include "base/check.h"
+@@ -18,15 +19,8 @@
+ #include "ui/base/ui_base_features.h"
+ #include "ui/gfx/geometry/resize_utils.h"
+ 
+-enum NSWindowLiveResizeEdge {
+-  kLeftEdge = 1 << 0,
+-  kBottomEdge = 1 << 1,
+-  kRightEdge = 1 << 2,
+-  kTopEdge = 1 << 3
+-};
+-
+ @interface NSWindow (SPI)
+-- (NSWindowLiveResizeEdge)liveResizeEdges;
++- (NSWindowLiveResizeEdges)liveResizeEdges;
+ @end
+ 
+ @implementation ViewsNSWindowDelegate {
+@@ -189,14 +183,32 @@ enum NSWindowLiveResizeEdge {
+     NSRect newWindowFrame = windowFrame;
+     newWindowFrame.size = size;
+ 
+-    NSWindowLiveResizeEdge edge = [_parent->ns_window() liveResizeEdges];
+-    if (edge & kLeftEdge) {
+-      newWindowFrame.origin.x -=
+-          newWindowFrame.size.width - windowFrame.size.width;
++    NSWindowLiveResizeEdges edge = [_parent->ns_window() liveResizeEdges];
++    const CGFloat width_delta =
++        newWindowFrame.size.width - windowFrame.size.width;
++    const CGFloat height_delta =
++        newWindowFrame.size.height - windowFrame.size.height;
++    // Holding down the Option key while resizing a window causes the window to
++    // resize symmetrically around its center instead of anchoring the opposite
++    // edge or corner. In that case, the window's height and width values will
++    // change at double the rate of the origin shift along the active axes
++    // (e.g., a 100px change in width causes a 50px shift to the x origin).
++    const bool is_resizing_from_horizontal_center =
++        (edge & NSWindowLiveResizeEdgesHorizontal) ==
++        NSWindowLiveResizeEdgesHorizontal;
++    const bool is_resizing_from_vertical_center =
++        (edge & NSWindowLiveResizeEdgesVertical) ==
++        NSWindowLiveResizeEdgesVertical;
++    const CGFloat horizontal_divisor =
++        is_resizing_from_horizontal_center ? 2.0 : 1.0;
++    const CGFloat vertical_divisor =
++        is_resizing_from_vertical_center ? 2.0 : 1.0;
++
++    if (edge & NSWindowLiveResizeEdgesLeft) {
++      newWindowFrame.origin.x -= std::round(width_delta / horizontal_divisor);
+     }
+-    if (edge & kBottomEdge) {
+-      newWindowFrame.origin.y -=
+-          newWindowFrame.size.height - windowFrame.size.height;
++    if (edge & NSWindowLiveResizeEdgesBottom) {
++      newWindowFrame.origin.y -= std::round(height_delta / vertical_divisor);
+     }
+ 
+     _parent->OnLiveResizeToFrame(newWindowFrame);
