@@ -1,0 +1,467 @@
+--- a/chrome/browser/chrome_browser_interface_binders.cc
++++ b/chrome/browser/chrome_browser_interface_binders.cc
+@@ -464,6 +464,10 @@ void PopulateChromeFrameBinders(
+ 
+   map->Add<translate::mojom::ContentTranslateDriver>(
+       &translate::BindContentTranslateDriver);
++#if BUILDFLAG(IS_MAC)
++  map->Add<translate::mojom::NativeTranslator>(
++      &translate::BindNativeTranslator);
++#endif
+ 
+   map->Add<optimization_guide::mojom::ModelBroker>(&BindModelBroker);
+ 
+--- a/chrome/browser/translate/BUILD.gn
++++ b/chrome/browser/translate/BUILD.gn
+@@ -93,6 +93,17 @@ source_set("impl") {
+     ]
+   }
+ 
++  if (is_mac) {
++    sources += [
++      "helium_native_translator_mac.h",
++      "helium_native_translator_mac.mm",
++    ]
++    frameworks = [
++      "Foundation.framework",
++      "NaturalLanguage.framework",
++    ]
++  }
++
+   if (enable_pdf) {
+     deps += [ "//components/pdf/browser" ]
+   }
+--- /dev/null
++++ b/chrome/browser/translate/helium_native_translator_mac.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
++#define CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
++
++#include "components/translate/content/common/translate.mojom-forward.h"
++#include "mojo/public/cpp/bindings/pending_receiver.h"
++
++namespace content {
++class RenderFrameHost;
++}  // namespace content
++
++namespace translate {
++
++bool IsHeliumNativeTranslatorAvailable();
++
++// Binds a NativeTranslator backed by the macOS Translation framework.
++void CreateHeliumNativeTranslator(
++    content::RenderFrameHost* render_frame_host,
++    mojo::PendingReceiver<mojom::NativeTranslator> receiver);
++
++}  // namespace translate
++
++#endif  // CHROME_BROWSER_TRANSLATE_HELIUM_NATIVE_TRANSLATOR_MAC_H_
+--- /dev/null
++++ b/chrome/browser/translate/helium_native_translator_mac.mm
+@@ -0,0 +1,344 @@
++// Copyright 2026 The Helium Authors
++// You can use, redistribute, and/or modify this source code under
++// the terms of the GPL-3.0 license that can be found in the LICENSE file.
++
++#include "chrome/browser/translate/helium_native_translator_mac.h"
++
++#import <Foundation/Foundation.h>
++#import <NaturalLanguage/NaturalLanguage.h>
++
++#include <string>
++#include <string_view>
++#include <utility>
++#include <vector>
++
++#include "base/containers/fixed_flat_map.h"
++#include "base/functional/bind.h"
++#include "base/logging.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/task/bind_post_task.h"
++#include "components/translate/content/common/translate.mojom.h"
++#include "components/translate/core/common/translate_errors.h"
++#include "content/public/browser/document_service.h"
++#include "content/public/browser/render_frame_host.h"
++
++// Translation's public API is Swift-only. These describe the private
++// Objective-C classes behind TranslationSession, looked up at runtime.
++
++@protocol HeliumLTTextSessionConfiguration <NSObject>
++- (void)setSourceLocale:(NSLocale*)locale;
++- (void)setTargetLocale:(NSLocale*)locale;
++- (void)setIsHeadless:(BOOL)isHeadless;
++@end
++
++@protocol HeliumLTTextSession <NSObject>
++- (instancetype)initWithConfiguration:
++    (id<HeliumLTTextSessionConfiguration>)configuration;
++- (void)setAllowOnlineTranslation:(BOOL)allowOnlineTranslation;
++- (void)translateBatch:(NSArray*)batch
++           itemHandler:(id)itemHandler
++     completionHandler:(void (^)(NSArray* results, NSError* error))completion;
++@end
++
++@protocol HeliumLTTextInput <NSObject>
++- (instancetype)initWithSourceText:(NSString*)sourceText
++                  clientIdentifier:(NSString*)clientIdentifier;
++@end
++
++@protocol HeliumLTTextResult <NSObject>
++- (NSString*)clientIdentifier;
++- (NSString*)targetText;
++@end
++
++namespace translate {
++namespace {
++
++// The injected script sends smaller batches than this.
++constexpr size_t kMaxTextsPerRequest = 100;
++constexpr size_t kMaxCharactersPerRequest = 20000;
++
++struct TranslationClasses {
++  Class configuration = Nil;
++  Class session = Nil;
++  Class input = Nil;
++};
++
++const TranslationClasses& GetTranslationClasses() {
++  static const TranslationClasses classes = []() -> TranslationClasses {
++    NSBundle* bundle = [NSBundle
++        bundleWithPath:@"/System/Library/Frameworks/Translation.framework"];
++    if (!bundle || ![bundle load]) {
++      return {};
++    }
++
++    TranslationClasses result;
++    result.configuration = NSClassFromString(@"_LTTextSessionConfiguration");
++    result.session = NSClassFromString(@"_LTTextSession");
++    result.input = NSClassFromString(@"_LTTextInput");
++    Class text_result = NSClassFromString(@"_LTTextResult");
++
++    // Treat any change to the private API as unavailable.
++    if (!result.configuration || !result.session || !result.input ||
++        !text_result ||
++        ![result.configuration
++            instancesRespondToSelector:@selector(setSourceLocale:)] ||
++        ![result.configuration
++            instancesRespondToSelector:@selector(setTargetLocale:)] ||
++        ![result.configuration
++            instancesRespondToSelector:@selector(setIsHeadless:)] ||
++        ![result.session
++            instancesRespondToSelector:@selector(initWithConfiguration:)] ||
++        ![result.session
++            instancesRespondToSelector:@selector(setAllowOnlineTranslation:)] ||
++        ![result.session
++            instancesRespondToSelector:
++                @selector(translateBatch:itemHandler:completionHandler:)] ||
++        ![result.input instancesRespondToSelector:
++                           @selector(initWithSourceText:clientIdentifier:)] ||
++        ![text_result instancesRespondToSelector:@selector(clientIdentifier)] ||
++        ![text_result instancesRespondToSelector:@selector(targetText)]) {
++      return {};
++    }
++    return result;
++  }();
++  return classes;
++}
++
++// Chromium's translate codes differ from Apple's for a few languages.
++NSLocale* LocaleForLanguage(std::string_view language) {
++  static constexpr auto kSynonyms =
++      base::MakeFixedFlatMap<std::string_view, std::string_view>({
++          {"no", "nb"},
++          {"zh-CN", "zh-Hans"},
++          {"zh-TW", "zh-Hant"},
++      });
++  if (const auto it = kSynonyms.find(language); it != kSynonyms.end()) {
++    language = it->second;
++  }
++  return
++      [NSLocale localeWithLocaleIdentifier:base::SysUTF8ToNSString(language)];
++}
++
++// TranslateAgent asks for "auto" when the page language is unknown ("und").
++bool IsUnknownLanguage(std::string_view language) {
++  return language.empty() || language == "auto" || language == "und";
++}
++
++// Chromium's translate codes differ from Apple's for a few languages.
++std::string ToTranslateLanguageCode(std::string_view language) {
++  static constexpr auto kSynonyms =
++      base::MakeFixedFlatMap<std::string_view, std::string_view>({
++          {"nb", "no"},
++          {"zh-Hans", "zh-CN"},
++          {"zh-Hant", "zh-TW"},
++      });
++  if (const auto it = kSynonyms.find(language); it != kSynonyms.end()) {
++    return std::string(it->second);
++  }
++  return std::string(language);
++}
++
++// Returns an Apple language code for |texts|, or an empty string.
++std::string DetectLanguage(const std::vector<std::u16string>& texts) {
++  NLLanguageRecognizer* recognizer = [[NLLanguageRecognizer alloc] init];
++  for (const std::u16string& text : texts) {
++    [recognizer processString:base::SysUTF16ToNSString(text + u"\n")];
++  }
++  NLLanguage language = recognizer.dominantLanguage;
++  if (!language || [language isEqualToString:NLLanguageUndetermined]) {
++    return std::string();
++  }
++  return base::SysNSStringToUTF8(language);
++}
++
++bool IsSameLanguage(std::string_view a, std::string_view b) {
++  NSLocale* locale_a = LocaleForLanguage(a);
++  NSLocale* locale_b = LocaleForLanguage(b);
++  return [locale_a.languageCode isEqualToString:locale_b.languageCode] &&
++         (locale_a.scriptCode == locale_b.scriptCode ||
++          [locale_a.scriptCode isEqualToString:locale_b.scriptCode]);
++}
++
++class HeliumNativeTranslator final
++    : public content::DocumentService<mojom::NativeTranslator> {
++ public:
++  HeliumNativeTranslator(
++      content::RenderFrameHost& render_frame_host,
++      mojo::PendingReceiver<mojom::NativeTranslator> receiver)
++      : DocumentService(render_frame_host, std::move(receiver)) {}
++
++  HeliumNativeTranslator(const HeliumNativeTranslator&) = delete;
++  HeliumNativeTranslator& operator=(const HeliumNativeTranslator&) = delete;
++
++  ~HeliumNativeTranslator() override = default;
++
++  // mojom::NativeTranslator:
++  void TranslateText(const std::string& source_lang,
++                     const std::string& target_lang,
++                     const std::vector<std::u16string>& texts,
++                     TranslateTextCallback callback) override {
++    if (target_lang.empty()) {
++      std::move(callback).Run(std::nullopt, std::string(),
++                              TranslateErrors::UNSUPPORTED_LANGUAGE);
++      return;
++    }
++    if (source_lang == target_lang) {
++      std::move(callback).Run(std::nullopt, std::string(),
++                              TranslateErrors::IDENTICAL_LANGUAGES);
++      return;
++    }
++
++    size_t characters = 0;
++    for (const std::u16string& text : texts) {
++      characters += text.size();
++    }
++    if (texts.empty() || texts.size() > kMaxTextsPerRequest ||
++        characters > kMaxCharactersPerRequest) {
++      std::move(callback).Run(std::nullopt, std::string(),
++                              TranslateErrors::TRANSLATION_ERROR);
++      return;
++    }
++
++    // Chromium leaves the source unknown when its detection failed or when
++    // the user translates into the page's own language, so detect it here.
++    std::string source = source_lang;
++    if (IsUnknownLanguage(source)) {
++      source = ToTranslateLanguageCode(DetectLanguage(texts));
++      // Empty translations keep the original text, e.g. for numbers.
++      if (source.empty() || IsSameLanguage(source, target_lang)) {
++        std::move(callback).Run(std::vector<std::u16string>(texts.size()),
++                                source, TranslateErrors::NONE);
++        return;
++      }
++    }
++
++    id<HeliumLTTextSession> session = GetSession(source, target_lang);
++    if (!session) {
++      std::move(callback).Run(std::nullopt, std::string(),
++                              TranslateErrors::INITIALIZATION_ERROR);
++      return;
++    }
++
++    const TranslationClasses& classes = GetTranslationClasses();
++    NSMutableArray* batch = [NSMutableArray arrayWithCapacity:texts.size()];
++    for (size_t i = 0; i < texts.size(); ++i) {
++      id<HeliumLTTextInput> input = [classes.input alloc];
++      input = [input
++          initWithSourceText:base::SysUTF16ToNSString(texts[i])
++            clientIdentifier:base::SysUTF8ToNSString(base::NumberToString(i))];
++      if (!input) {
++        std::move(callback).Run(std::nullopt, std::string(),
++                                TranslateErrors::INITIALIZATION_ERROR);
++        return;
++      }
++      [batch addObject:input];
++    }
++
++    // The completion handler runs on a framework queue.
++    __block auto reply =
++        base::BindPostTaskToCurrentDefault(std::move(callback));
++    const size_t count = texts.size();
++    [session translateBatch:batch
++                itemHandler:nil
++          completionHandler:^(NSArray* results, NSError* error) {
++            // Keep |session| alive until it replies, even if it was replaced.
++            [session self];
++            if (error || !results) {
++              VLOG(1) << "Native translation failed: "
++                      << base::SysNSStringToUTF8([error description]);
++              std::move(reply).Run(std::nullopt, std::string(),
++                                   TranslateErrors::TRANSLATION_ERROR);
++              return;
++            }
++            std::move(reply).Run(ConvertResults(results, count), source,
++                                 TranslateErrors::NONE);
++          }];
++  }
++
++ private:
++  // Untranslated strings are left empty so the page keeps the original text.
++  static std::vector<std::u16string> ConvertResults(NSArray* results,
++                                                    size_t count) {
++    std::vector<std::u16string> translations(count);
++    NSUInteger position = 0;
++    for (id object in results) {
++      const NSUInteger result_position = position++;
++      if (![object respondsToSelector:@selector(targetText)]) {
++        continue;
++      }
++      id<HeliumLTTextResult> result = object;
++      NSString* target_text = [result targetText];
++      if (![target_text isKindOfClass:[NSString class]]) {
++        continue;
++      }
++
++      size_t index = result_position;
++      NSString* identifier =
++          [result respondsToSelector:@selector(clientIdentifier)]
++              ? [result clientIdentifier]
++              : nil;
++      if ([identifier isKindOfClass:[NSString class]]) {
++        size_t parsed_index;
++        if (base::StringToSizeT(base::SysNSStringToUTF8(identifier),
++                                &parsed_index)) {
++          index = parsed_index;
++        }
++      }
++      if (index < count) {
++        translations[index] = base::SysNSStringToUTF16(target_text);
++      }
++    }
++    return translations;
++  }
++
++  id<HeliumLTTextSession> GetSession(const std::string& source_lang,
++                                     const std::string& target_lang) {
++    if (session_ && session_source_lang_ == source_lang &&
++        session_target_lang_ == target_lang) {
++      return session_;
++    }
++
++    session_ = nil;
++    const TranslationClasses& classes = GetTranslationClasses();
++    if (!classes.session) {
++      return nil;
++    }
++
++    id<HeliumLTTextSessionConfiguration> configuration =
++        [[classes.configuration alloc] init];
++    [configuration setSourceLocale:LocaleForLanguage(source_lang)];
++    [configuration setTargetLocale:LocaleForLanguage(target_lang)];
++    // Headless sessions work without SwiftUI, but only with installed
++    // languages.
++    [configuration setIsHeadless:YES];
++
++    id<HeliumLTTextSession> session = [classes.session alloc];
++    session_ = [session initWithConfiguration:configuration];
++    // Keep page text on the device.
++    [session_ setAllowOnlineTranslation:NO];
++    session_source_lang_ = source_lang;
++    session_target_lang_ = target_lang;
++    return session_;
++  }
++
++  id<HeliumLTTextSession> __strong session_;
++  std::string session_source_lang_;
++  std::string session_target_lang_;
++};
++
++}  // namespace
++
++bool IsHeliumNativeTranslatorAvailable() {
++  return GetTranslationClasses().session != Nil;
++}
++
++void CreateHeliumNativeTranslator(
++    content::RenderFrameHost* render_frame_host,
++    mojo::PendingReceiver<mojom::NativeTranslator> receiver) {
++  CHECK(render_frame_host);
++  // Owned by the document. See DocumentService.
++  new HeliumNativeTranslator(*render_frame_host, std::move(receiver));
++}
++
++}  // namespace translate
+--- a/chrome/browser/translate/translate_frame_binder.cc
++++ b/chrome/browser/translate/translate_frame_binder.cc
+@@ -7,6 +7,10 @@
+ #include "build/build_config.h"
+ #include "build/buildflag.h"
+ #include "chrome/browser/translate/chrome_translate_client.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/browser/translate/helium_native_translator_mac.h"
++#include "components/translate/core/common/translate_features.h"
++#endif
+ #if !BUILDFLAG(IS_ANDROID)
+ #include "chrome/browser/ui/read_anything/read_anything_controller.h"
+ #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
+@@ -64,4 +68,21 @@ void BindContentTranslateDriver(
+ 
+   translate_client->translate_driver()->AddReceiver(std::move(receiver));
+ }
++
++#if BUILDFLAG(IS_MAC)
++void BindNativeTranslator(
++    content::RenderFrameHost* render_frame_host,
++    mojo::PendingReceiver<translate::mojom::NativeTranslator> receiver) {
++  if (!IsHeliumNativeTranslateEnabled() ||
++      !IsHeliumNativeTranslatorAvailable()) {
++    return;
++  }
++
++  if (!render_frame_host->IsInPrimaryMainFrame()) {
++    return;
++  }
++
++  CreateHeliumNativeTranslator(render_frame_host, std::move(receiver));
++}
++#endif
+ }  // namespace translate
+--- a/chrome/browser/translate/translate_frame_binder.h
++++ b/chrome/browser/translate/translate_frame_binder.h
+@@ -5,6 +5,7 @@
+ #ifndef CHROME_BROWSER_TRANSLATE_TRANSLATE_FRAME_BINDER_H_
+ #define CHROME_BROWSER_TRANSLATE_TRANSLATE_FRAME_BINDER_H_
+ 
++#include "build/build_config.h"
+ #include "components/language_detection/content/common/language_detection.mojom-forward.h"
+ #include "components/translate/content/common/translate.mojom-forward.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+@@ -18,6 +19,12 @@ namespace translate {
+ void BindContentTranslateDriver(
+     content::RenderFrameHost* render_frame_host,
+     mojo::PendingReceiver<translate::mojom::ContentTranslateDriver> receiver);
++
++#if BUILDFLAG(IS_MAC)
++void BindNativeTranslator(
++    content::RenderFrameHost* render_frame_host,
++    mojo::PendingReceiver<translate::mojom::NativeTranslator> receiver);
++#endif
+ }
+ 
+ #endif  // CHROME_BROWSER_TRANSLATE_TRANSLATE_FRAME_BINDER_H_
