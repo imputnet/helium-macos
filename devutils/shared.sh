@@ -80,7 +80,6 @@ write_gn_args() {
       echo 'enable_sparkle=true' >> "$args"
       printf 'sparkle_ed_key="%s"\n' "$PROD_MACOS_SPARKLE_ED_PUB_KEY" >> "$args"
     fi
-    echo 'symbol_level=1' >> "$args"
   else
     if [ "$mode" = dev ] && [ -n "${SISO_REAPI_ADDRESS:-}" ]; then
       echo 'use_remoteexec = true' >> "$args"
@@ -99,10 +98,6 @@ write_gn_args() {
       sed s/is_official_build/is_component_build/ "$args" > "$args.tmp"
       mv "$args.tmp" "$args"
     fi
-  fi
-
-  if [ "$mode" != dev ]; then
-    echo 'chrome_pgo_phase=2' >> "$args"
   fi
 }
 

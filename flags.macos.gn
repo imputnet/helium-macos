@@ -1,16 +1,3 @@
-blink_symbol_level=0
-v8_symbol_level=0
-enable_iterator_debugging=false
-enable_mse_mpeg2ts_stream_parser=true
-enable_rust=true
 enable_swiftshader=false
-enable_updater=false
-fatal_linker_warnings=false
-ffmpeg_branding="Chrome"
-is_clang=true
 is_debug=false
 is_official_build=true
-proprietary_codecs=true
-symbol_level=1
-use_sysroot=false
-use_siso=true
