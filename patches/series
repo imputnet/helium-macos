@@ -1,6 +1,5 @@
 ungoogled-chromium/macos/fix-disabling-safebrowsing.patch
 ungoogled-chromium/macos/fix-dsymutil.patch
-ungoogled-chromium/macos/no-unknown-warnings.patch
 
 helium/macos/fix-rust-allocator-in-component-builds.patch
 helium/macos/move-macos-settings.patch
