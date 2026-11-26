@@ -22,3 +22,4 @@ helium/macos/disable-chromium-immersive-fullscreen.patch
 helium/macos/helium-immersive-fullscreen.patch
 helium/macos/fix-history-swiper-lifetime.patch
 helium/macos/native-frame-materials.patch
+helium/macos/honor-swiftshader-buildflag.patch
