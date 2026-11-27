@@ -2,7 +2,6 @@ upstream-fixes/macos/option-key-center-live-resize.patch
 
 ungoogled-chromium/macos/fix-disabling-safebrowsing.patch
 ungoogled-chromium/macos/fix-dsymutil.patch
-ungoogled-chromium/macos/no-unknown-warnings.patch
 
 helium/macos/fix-rust-allocator-in-component-builds.patch
 helium/macos/move-macos-settings.patch
@@ -25,3 +24,4 @@ helium/macos/disable-chromium-immersive-fullscreen.patch
 helium/macos/helium-immersive-fullscreen.patch
 helium/macos/fix-history-swiper-lifetime.patch
 helium/macos/native-frame-materials.patch
+helium/macos/honor-swiftshader-buildflag.patch

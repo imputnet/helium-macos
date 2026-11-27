@@ -101,14 +101,14 @@
 +#endif  // CHROME_BROWSER_UI_VIEWS_HELIUM_FULLSCREEN_WINDOW_CONTROLS_MAC_H_
 --- /dev/null
 +++ b/chrome/browser/ui/views/helium/fullscreen_window_controls_mac.mm
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,151 @@
 +// Copyright 2026 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
 +
 +#import "chrome/browser/ui/views/helium/fullscreen_window_controls_mac.h"
 +
-+#include <iterator>
++#include <array>
 +
 +#include "base/apple/foundation_util.h"
 +#import "components/remote_cocoa/app_shim/browser_native_widget_window_mac.h"
@@ -132,18 +132,19 @@
 +  }
 +  _browserWindow = base::apple::ObjCCast<BrowserNativeWidgetWindow>(window);
 +  const NSWindowStyleMask style = window.styleMask & ~NSWindowStyleMaskFullScreen;
-+  const struct {
++  struct WindowButton {
 +    NSWindowButton type;
 +    SEL action;
 +    bool enabled;
-+  } buttons[] = {
++  };
++  const auto buttons = std::to_array<WindowButton>({
 +      {NSWindowCloseButton, @selector(performClose:),
 +       (style & NSWindowStyleMaskClosable) != 0},
 +      // Fullscreen windows cannot be minimized.
 +      {NSWindowMiniaturizeButton, @selector(performMiniaturize:), false},
 +      {NSWindowZoomButton, @selector(toggleFullScreen:),
 +       (style & NSWindowStyleMaskResizable) != 0},
-+  };
++  });
 +
 +  NSMutableDictionary<NSNumber*, NSNumber*>* hiddenStates =
 +      [NSMutableDictionary dictionary];
@@ -159,7 +160,7 @@
 +  // is hidden. Their visibility is controlled by Helium's toolbar instead.
 +  const bool rtl = window.windowTitlebarLayoutDirection ==
 +                   NSUserInterfaceLayoutDirectionRightToLeft;
-+  for (size_t i = 0; i < std::size(buttons); ++i) {
++  for (size_t i = 0; i < buttons.size(); ++i) {
 +    const auto& entry = buttons[i];
 +    NSButton* button = [NSWindow standardWindowButton:entry.type
 +                                       forStyleMask:style];
